@@ -32,21 +32,10 @@ from template.base.validator import BaseValidatorNeuron
 
 
 class Validator(BaseValidatorNeuron):
-    """
-    Your validator neuron class. You should use this class to define your validator's behavior. In particular, you should replace the forward function with your own logic.
-
-    This class inherits from the BaseValidatorNeuron class, which in turn inherits from BaseNeuron. The BaseNeuron class takes care of routine tasks such as setting up wallet, subtensor, metagraph, logging directory, parsing config, etc. You can override any of the methods in BaseNeuron if you need to customize the behavior.
-
-    This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
-    """
-
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
-
         bt.logging.info("load_state()")
         self.load_state()
-
-        # TODO(developer): Anything specific to your use case you can do here
 
     async def forward(self):
         """
@@ -57,11 +46,32 @@ class Validator(BaseValidatorNeuron):
         - Rewarding the miners
         - Updating the scores
         """
-        # TODO(developer): Rewrite this function based on your protocol definition.
-        return await forward(self)
+        # Generate challenge
+        unstructured_json = '{"name": "John", "age": "30 years", "city": "New York"}'
+        prompt = f"Convert the following unstructured JSON to structured JSON: {unstructured_json}"
+        reference = {"name": "John", "age": 30, "city": "New York"}
 
+        # Query miners
+        responses = await self.query_miners(prompt)
 
-# The main function parses the configuration and runs the validator.
+        # Score responses
+        scores = [self.score_response(response, reference) for response in responses]
+
+        # Update weights
+        self.update_weights(scores)
+
+    async def query_miners(self, prompt):
+        # Implement querying logic here
+        return []
+
+    def score_response(self, response, reference):
+        # Implement scoring logic here
+        return response == reference
+
+    def update_weights(self, scores):
+        # Implement weight updating logic here
+        pass
+
 if __name__ == "__main__":
     with Validator() as validator:
         while True:
