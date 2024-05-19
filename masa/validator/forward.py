@@ -20,63 +20,67 @@
 import bittensor as bt
 
 from masa.protocol import SimpleGETProtocol
+from masa.validator.reward import get_rewards
 from masa.utils.uids import get_random_uids
 
-async def forward(self):
-    """
-    The forward function is called by the validator every time step.
-    """
-    request_url = 'http://localhost:8080/api/v1/data/twitter/profile/brendanplayford'
-    miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
+class ValidatorNeuron:
+    def __init__(self, config):
+        self.config = config
+        self.dendrite = bt.Dendrite()  # Assuming you have a Dendrite instance for network queries
+        self.metagraph = bt.Metagraph()  # Assuming you have a Metagraph instance for network state
+        self.scores = {}  # Placeholder for storing miner scores
 
-    responses = await self.dendrite(
-        axons=[self.metagraph.axons[uid] for uid in miner_uids],
-        synapse=SimpleGETProtocol(request_url=request_url),
-        deserialize=True,
-    )
+    async def forward(self):
+        """
+        The forward function is called by the validator every time step.
+        It is responsible for querying the network and scoring the responses.
+        """
+        try:
+            # Define the GET request URL
+            request_url = 'http://example.com/api/data'  # Update this URL to your desired endpoint
 
-    bt.logging.info(f"Received responses: {responses}")
+            # Query miners
+            responses = await self.query_miners(request_url)
 
-    # Process responses and update scores
-    for uid, response in zip(miner_uids, responses):
-        if response_is_valid(response):
-            update_miner_score(uid, increase=True)
-            bt.logging.info(f"Updated score for miner {uid}: Increased")
-        else:
-            update_miner_score(uid, increase=False)
-            bt.logging.info(f"Updated score for miner {uid}: Decreased")
+            # Log the results for monitoring purposes.
+            bt.logging.info(f"Received responses: {responses}")
 
-def response_is_valid(response):
-    """
-    Checks if the response from a miner contains expected data.
-    
-    Args:
-    - response (dict): The response received from a miner.
-    
-    Returns:
-    - bool: True if the response is valid, False otherwise.
-    """
-    # Example: Check if the response contains an 'expected_key' - this would be something like the PK of a profile such as the userID
-    expected_key = "data"
-    return expected_key in response and isinstance(response[expected_key], dict)  # Further checks can be added
+            # Adjust the scores based on responses from miners.
+            rewards = get_rewards(self, responses=responses)
 
-def update_miner_score(uid, increase=True):
-    """
-    Updates the score of a miner based on the validity of their response.
-    
-    Args:
-    - uid (int): The unique identifier of the miner.
-    - increase (bool): Whether to increase or decrease the miner's score.
-    """
-    # Placeholder for score update logic
-    # This could involve interacting with the metagraph or another component managing scores
-    
-    # Example pseudo-code:
-    score_change = 1 if increase else -1
-    current_score = get_current_score(uid)  # Assume this function retrieves the current score
-    new_score = max(0, current_score + score_change)  # Ensure scores do not go negative
-    set_new_score(uid, new_score)  # Assume this function updates the score
-    
-    # Log the score update for monitoring
-    action = "Increased" if increase else "Decreased"
-    bt.logging.info(f"Score for miner {uid} {action} to {new_score}.")
+            bt.logging.info(f"Scored responses: {rewards}")
+            # Update the scores based on the rewards.
+            self.update_scores(rewards, [response['uid'] for response in responses])
+        except Exception as e:
+            bt.logging.error(f"Error during the forward pass: {str(e)}")
+
+    async def query_miners(self, request_url):
+        miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
+        responses = await self.dendrite(
+            axons=[self.metagraph.axons[uid] for uid in miner_uids],
+            synapse=SimpleGETProtocol(request_url=request_url),
+            deserialize=True,
+        )
+        return responses
+
+    def update_scores(self, rewards, miner_uids):
+        """
+        Update the scores based on the rewards.
+        This function assumes a binary scoring system where rewards are either 1.0 (success) or 0.0 (failure).
+        """
+        for uid, reward in zip(miner_uids, rewards):
+            if uid not in self.scores:
+                self.scores[uid] = 0.0  # Initialize score if miner UID not found
+            
+            if reward == 1.0:
+                self.scores[uid] += 1.0
+            
+            bt.logging.info(f"Updated score for miner {uid}: {self.scores[uid]}")
+
+# Example usage
+if __name__ == "__main__":
+    config = {}  # Define your configuration here
+    validator = ValidatorNeuron(config=config)
+    # Assuming you have an event loop to run the async forward method
+    import asyncio
+    asyncio.run(validator.forward())
