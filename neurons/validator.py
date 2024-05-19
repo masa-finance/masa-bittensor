@@ -24,7 +24,6 @@ import time
 import bittensor as bt
 
 # Bittensor Validator Template:
-import masa
 from masa.validator import forward
 from masa.utils.uids import get_random_uids
 
@@ -32,64 +31,44 @@ from masa.utils.uids import get_random_uids
 from masa.base.validator import BaseValidatorNeuron
 
 # masa 
-from masa.protocol import JSONProtocol 
-from masa.validator.reward import reward
+from masa.protocol import SimpleGETProtocol 
 
 
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
-        bt.logging.info("load_state()")
-        self.load_state()
+        bt.logging.info("Validator initialized and state loaded.")
 
     async def forward(self):
         """
         Validator forward pass. Consists of:
-        - Generating the query
-        - Querying the miners
+        - Forwarding the GET request to miners
         - Getting the responses
-        - Rewarding the miners
-        - Updating the scores
         """
         try:
-            # Generate challenge
-            unstructured_json = '{"name": "John", "age": "30 years", "city": "New York"}'
-            prompt = f"Convert the following unstructured JSON to structured JSON: {unstructured_json}"
-            reference = {"name": "John", "age": 30, "city": "New York"}
+            # Define the GET request URL (could be loaded from .env file)
+            request_url = 'http://localhost:8080/api/v1/data/twitter/profile/brendanplayford'
 
             # Query miners
-            responses = await self.query_miners(prompt)
+            responses = await self.query_miners(request_url)
 
-            # Score responses
-            scores = [self.score_response(response, reference) for response in responses]
-
-            # Update weights
-            self.update_weights(scores)
+            # Here you would process the responses as needed
+            # For example, logging them or aggregating results
+            bt.logging.info(f"Received responses: {responses}")
         except Exception as e:
             bt.logging.error(f"Error during the forward pass: {str(e)}")
 
-    async def query_miners(self, prompt):
-        # Example: Querying miners using the dendrite object
+    async def query_miners(self, request_url):
         miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
         responses = await self.dendrite(
             axons=[self.metagraph.axons[uid] for uid in miner_uids],
-            synapse=JSONProtocol(unstructured_json=prompt),
+            synapse=SimpleGETProtocol(request_url=request_url),
             deserialize=True,
         )
         return responses
 
-    def score_response(self, response, reference):
-         # Use the reward function from reward.py to maintain consistency
-        return reward(reference, response)
-
-    def update_weights(self, scores):
-        # Example: Update weights (this is a placeholder for actual weight update logic)
-        for score in scores:
-            # TODO Update logic here
-            pass
-
 if __name__ == "__main__":
     with Validator() as validator:
         while True:
-            bt.logging.info("Validator running...", time.time())
+            bt.logging.info("Validator running...")
             time.sleep(5)

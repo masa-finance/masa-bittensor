@@ -20,36 +20,33 @@
 import typing
 import bittensor as bt
 
-class JSONProtocol(bt.Synapse):
+class SimpleGETProtocol(bt.Synapse):
     """
-    A protocol for handling unstructured JSON blobs and converting them into structured JSON.
+    A protocol for handling simple GET requests.
     This protocol uses bt.Synapse as its base.
 
     Attributes:
-    - unstructured_json: A string representing the unstructured JSON input.
-    - structured_json: An optional dictionary which, when filled, represents the structured JSON output.
+    - request_url: A string representing the GET request URL.
+    - response_data: An optional dictionary which, when filled, represents the GET request's response.
     """
 
-    # Required request input, filled by sending dendrite caller.
-    unstructured_json: str
-
-    # Optional request output, filled by receiving axon.
-    structured_json: typing.Optional[dict] = None
+    request_url: str
+    response_data: typing.Optional[dict] = None
 
     def deserialize(self) -> dict:
         """
-        Deserialize the structured JSON output. This method retrieves the response from
-        the miner in the form of structured_json, deserializes it and returns it
+        Deserialize the GET request's response. This method retrieves the response from
+        the miner in the form of response_data, deserializes it (if necessary), and returns it
         as the output of the dendrite.query() call.
 
         Returns:
-        - dict: The deserialized response, which in this case is the value of structured_json.
+        - dict: The deserialized response, which in this case is the value of response_data.
 
         Example:
-        Assuming a JSONProtocol instance has a structured_json value of {"name": "John", "age": 30}:
-        >>> json_instance = JSONProtocol(unstructured_json='{"name": "John", "age": "30 years"}')
-        >>> json_instance.structured_json = {"name": "John", "age": 30}
-        >>> json_instance.deserialize()
-        {"name": "John", "age": 30}
+        Assuming a SimpleGETProtocol instance has a response_data value of {"profile": {"name": "John", "age": 30}}:
+        >>> get_request_instance = SimpleGETProtocol(request_url='http://localhost:8080/api/v1/data/twitter/profile/brendanplayford')
+        >>> get_request_instance.response_data = {"profile": {"name": "John", "age": 30}}
+        >>> get_request_instance.deserialize()
+        {"profile": {"name": "John", "age": 30}}
         """
-        return self.structured_json
+        return self.response_data

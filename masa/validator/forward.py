@@ -19,42 +19,64 @@
 
 import bittensor as bt
 
-from masa.protocol import JSONProtocol
-from masa.validator.reward import get_rewards
+from masa.protocol import SimpleGETProtocol
 from masa.utils.uids import get_random_uids
-
 
 async def forward(self):
     """
     The forward function is called by the validator every time step.
-
-    It is responsible for querying the network and scoring the responses.
-
-    Args:
-        self (:obj:`bittensor.neuron.Neuron`): The neuron object which contains all the necessary state for the validator.
-
     """
-    # Define the unstructured JSON challenge
-    unstructured_json = '{"name": "John", "age": "30 years", "city": "New York"}'
-    reference = {"name": "John", "age": 30, "city": "New York"}
-
-    # Select miners to query
+    request_url = 'http://localhost:8080/api/v1/data/twitter/profile/brendanplayford'
     miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
 
-    # Query miners
     responses = await self.dendrite(
         axons=[self.metagraph.axons[uid] for uid in miner_uids],
-        synapse=JSONProtocol(unstructured_json=unstructured_json),
+        synapse=SimpleGETProtocol(request_url=request_url),
         deserialize=True,
     )
 
-    # Log the results for monitoring purposes
     bt.logging.info(f"Received responses: {responses}")
 
-    # Score responses
-    rewards = get_rewards(self, reference=reference, responses=responses)
+    # Process responses and update scores
+    for uid, response in zip(miner_uids, responses):
+        if response_is_valid(response):
+            update_miner_score(uid, increase=True)
+            bt.logging.info(f"Updated score for miner {uid}: Increased")
+        else:
+            update_miner_score(uid, increase=False)
+            bt.logging.info(f"Updated score for miner {uid}: Decreased")
 
-    bt.logging.info(f"Scored responses: {rewards}")
+def response_is_valid(response):
+    """
+    Checks if the response from a miner contains expected data.
+    
+    Args:
+    - response (dict): The response received from a miner.
+    
+    Returns:
+    - bool: True if the response is valid, False otherwise.
+    """
+    # Example: Check if the response contains an 'expected_key' - this would be something like the PK of a profile such as the userID
+    expected_key = "data"
+    return expected_key in response and isinstance(response[expected_key], dict)  # Further checks can be added
 
-    # Update the scores based on the rewards
-    self.update_scores(rewards, miner_uids)
+def update_miner_score(uid, increase=True):
+    """
+    Updates the score of a miner based on the validity of their response.
+    
+    Args:
+    - uid (int): The unique identifier of the miner.
+    - increase (bool): Whether to increase or decrease the miner's score.
+    """
+    # Placeholder for score update logic
+    # This could involve interacting with the metagraph or another component managing scores
+    
+    # Example pseudo-code:
+    score_change = 1 if increase else -1
+    current_score = get_current_score(uid)  # Assume this function retrieves the current score
+    new_score = max(0, current_score + score_change)  # Ensure scores do not go negative
+    set_new_score(uid, new_score)  # Assume this function updates the score
+    
+    # Log the score update for monitoring
+    action = "Increased" if increase else "Decreased"
+    bt.logging.info(f"Score for miner {uid} {action} to {new_score}.")

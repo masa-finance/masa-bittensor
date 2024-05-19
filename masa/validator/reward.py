@@ -20,33 +20,22 @@
 import torch
 from typing import List, Dict
 
-
-def reward(reference: Dict, response: Dict) -> float:
+def reward(response: Dict) -> float:
     """
-    Reward the miner response to the JSON request. This method returns a reward
-    value for the miner, which is used to update the miner's score.
-
-    Returns:
-    - float: The reward value for the miner.
+    Reward the miner based on the response to the GET request.
+    This could be as simple as checking if the response contains expected data.
     """
-    return 1.0 if response == reference else 0.0
+    # Example: Reward 1.0 for successful data retrieval, 0.0 otherwise
+    return 1.0 if "expected_key" in response else 0.0
 
-def get_rewards(
-    self,
-    reference: Dict,
-    responses: List[Dict],
-) -> torch.FloatTensor:
+def get_rewards(self, responses: List[Dict]) -> torch.FloatTensor:
     """
-    Returns a tensor of rewards for the given reference and responses.
+    Returns a tensor of rewards for the given responses.
 
     Args:
-    - reference (Dict): The reference structured JSON.
     - responses (List[Dict]): A list of responses from the miners.
 
     Returns:
-    - torch.FloatTensor: A tensor of rewards for the given reference and responses.
+    - torch.FloatTensor: A tensor of rewards for the given responses.
     """
-    # Get all the reward results by iteratively calling your reward() function.
-    return torch.FloatTensor(
-        [reward(reference, response) for response in responses]
-    ).to(self.device)
+    return torch.FloatTensor([reward(response) for response in responses]).to(self.device)
