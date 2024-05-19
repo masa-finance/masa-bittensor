@@ -26,9 +26,14 @@ import bittensor as bt
 # Bittensor Validator Template:
 import alchemy
 from alchemy.validator import forward
+from alchemy.utils.uids import get_random_uids
 
 # import base validator class which takes care of most of the boilerplate
 from alchemy.base.validator import BaseValidatorNeuron
+
+# alchemy 
+from alchemy.protocol import JSONProtocol 
+from alchemy.validator.reward import reward
 
 
 class Validator(BaseValidatorNeuron):
@@ -46,31 +51,42 @@ class Validator(BaseValidatorNeuron):
         - Rewarding the miners
         - Updating the scores
         """
-        # Generate challenge
-        unstructured_json = '{"name": "John", "age": "30 years", "city": "New York"}'
-        prompt = f"Convert the following unstructured JSON to structured JSON: {unstructured_json}"
-        reference = {"name": "John", "age": 30, "city": "New York"}
+        try:
+            # Generate challenge
+            unstructured_json = '{"name": "John", "age": "30 years", "city": "New York"}'
+            prompt = f"Convert the following unstructured JSON to structured JSON: {unstructured_json}"
+            reference = {"name": "John", "age": 30, "city": "New York"}
 
-        # Query miners
-        responses = await self.query_miners(prompt)
+            # Query miners
+            responses = await self.query_miners(prompt)
 
-        # Score responses
-        scores = [self.score_response(response, reference) for response in responses]
+            # Score responses
+            scores = [self.score_response(response, reference) for response in responses]
 
-        # Update weights
-        self.update_weights(scores)
+            # Update weights
+            self.update_weights(scores)
+        except Exception as e:
+            bt.logging.error(f"Error during the forward pass: {str(e)}")
 
     async def query_miners(self, prompt):
-        # Implement querying logic here
-        return []
+        # Example: Querying miners using the dendrite object
+        miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
+        responses = await self.dendrite(
+            axons=[self.metagraph.axons[uid] for uid in miner_uids],
+            synapse=JSONProtocol(unstructured_json=prompt),
+            deserialize=True,
+        )
+        return responses
 
     def score_response(self, response, reference):
-        # Implement scoring logic here
-        return response == reference
+         # Use the reward function from reward.py to maintain consistency
+        return reward(reference, response)
 
     def update_weights(self, scores):
-        # Implement weight updating logic here
-        pass
+        # Example: Update weights (this is a placeholder for actual weight update logic)
+        for score in scores:
+            # TODO Update logic here
+            pass
 
 if __name__ == "__main__":
     with Validator() as validator:
