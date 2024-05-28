@@ -24,16 +24,16 @@ import time
 import bittensor as bt
 
 # Bittensor Validator Template:
-import alchemy
-from alchemy.validator import forward
-from alchemy.utils.uids import get_random_uids
+import masa
+from masa.validator import forward
+from masa.utils.uids import get_random_uids
 
 # import base validator class which takes care of most of the boilerplate
-from alchemy.base.validator import BaseValidatorNeuron
+from masa.base.validator import BaseValidatorNeuron
 
-# alchemy 
-from alchemy.protocol import JSONProtocol 
-from alchemy.validator.reward import reward
+# masa 
+from masa.protocol import JSONProtocol 
+from masa.validator.reward import reward
 
 
 class Validator(BaseValidatorNeuron):
