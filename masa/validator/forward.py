@@ -19,9 +19,9 @@
 
 import bittensor as bt
 
-from alchemy.protocol import JSONProtocol
-from alchemy.validator.reward import get_rewards
-from alchemy.utils.uids import get_random_uids
+from masa.protocol import JSONProtocol
+from masa.validator.reward import get_rewards
+from masa.utils.uids import get_random_uids
 
 
 async def forward(self):
