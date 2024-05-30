@@ -19,6 +19,7 @@
 
 import time
 import typing
+import requests
 import bittensor as bt
 
 # Bittensor Miner Template:
@@ -26,28 +27,38 @@ import masa
 
 # import base miner class which takes care of most of the boilerplate
 from masa.base.miner import BaseMinerNeuron
+from masa.api.request import Request
+from masa.miner.oracle_request import OracleRequest
 
-
+delay = 10
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
 
-    async def forward(self, synapse: masa.protocol.Dummy) -> masa.protocol.Dummy:
-        """
-        Processes the incoming 'Dummy' synapse by converting unstructured JSON to structured JSON.
-        """
-        unstructured_json = synapse.dummy_input
-        structured_json = self.process_json(unstructured_json)
-        synapse.dummy_output = structured_json
+    async def forward(
+        self, synapse: Request
+    ) -> Request:
+        print(f"Sleeping for rate limiting purposes: {delay}s")
+        time.sleep(delay)
+        print(f"Miner needs to fetch profile {synapse.request}")
+        try:
+            profile = OracleRequest().get_profile(synapse.request)
+            print(f"Profile: {profile}")
+            if profile != None:
+                synapse.twitter_object = profile    
+
+            else:
+                print(f"Failed to fetch twitter profile for {synapse.request}")
+                bt.logging.error(f"Failed to fetch Twitter profile for {synapse.request}.")
+        
+        except Exception as e:
+            print(f"Exception occurred while fetching Twitter profile for {synapse.request}: {str(e)}")
+            bt.logging.error(f"Exception occurred while fetching Twitter profile for {synapse.request}: {str(e)}")
+            
+        print("Returning synapse: ", synapse.twitter_object)
         return synapse
 
-    def process_json(self, unstructured_json):
-        # Replace with actual LLM processing logic
-        data = json.loads(unstructured_json)
-        data['age'] = int(data['age'].split()[0])
-        return data
-
-    async def blacklist(self, synapse: masa.protocol.Dummy) -> typing.Tuple[bool, str]:
+    async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
         uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
         if not self.config.blacklist.allow_non_registered and synapse.dendrite.hotkey not in self.metagraph.hotkeys:
             bt.logging.trace(f"Blacklisting un-registered hotkey {synapse.dendrite.hotkey}")
@@ -58,11 +69,15 @@ class Miner(BaseMinerNeuron):
         bt.logging.trace(f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}")
         return False, "Hotkey recognized!"
 
-    async def priority(self, synapse: masa.protocol.Dummy) -> float:
+    async def priority(self, synapse: Request) -> float:
         caller_uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
         priority = float(self.metagraph.S[caller_uid])
         bt.logging.trace(f"Prioritizing {synapse.dendrite.hotkey} with value: ", priority)
         return priority
+    
+    
+    def save_state(state):
+        return None
 
 if __name__ == "__main__":
     with Miner() as miner:
