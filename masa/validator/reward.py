@@ -18,6 +18,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import torch
+import bittensor as bt
 from typing import Dict
 from ..types import TwitterObject
 
@@ -25,10 +26,10 @@ from ..types import TwitterObject
 def reward(query: str, response: TwitterObject) -> float:
     if response is None:
         return 0.0 
-    print(f"Getting username from {response}")
+    bt.logging.info(f"Getting username from {response}")
     username = response.get("Username", "")
     userID = response.get("UserID", None)
-    print(f"Calculating reward for response {username.lower()}")
+    bt.logging.info(f"Calculating reward for response {username.lower()}")
     
     if username.lower() == query.lower() and userID != None:
         return 1
@@ -40,7 +41,7 @@ def get_rewards(
     query: str,
     responses: TwitterObject,
 ) -> torch.FloatTensor:
-    print(f"Getting rewards...")
+    bt.logging.info(f"Getting rewards...")
     return torch.FloatTensor(
         [reward(query, response) for response in responses]
     ).to(self.device)

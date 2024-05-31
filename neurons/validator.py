@@ -53,7 +53,7 @@ class Validator(BaseValidatorNeuron):
                 return
             
             if isinstance(responses, list) and responses:
-                print("Responses is a list")
+                bt.logging.info("Responses is a list")
                 valid_responses = []
                 valid_miner_uids = []
                 for i, response in enumerate(responses):
@@ -64,12 +64,12 @@ class Validator(BaseValidatorNeuron):
                 miner_uids = valid_miner_uids
                 parsed_responses = [TwitterObject(**response) for response in valid_responses]
                 
-                print(f"Parsed responses: {parsed_responses}")
+                bt.logging.info(f"Parsed responses: {parsed_responses}")
             
                 
                 rewards = get_rewards(self, query=profile, responses=parsed_responses)
-                print(f"Miner UIDS: {valid_miner_uids}")
-                print(f"Rewards: {rewards}")
+                bt.logging.info(f"Miner UIDS: {valid_miner_uids}")
+                bt.logging.info(f"Rewards: {rewards}")
 
                 self.update_scores(rewards, valid_miner_uids)
 
