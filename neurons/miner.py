@@ -38,21 +38,19 @@ class Miner(BaseMinerNeuron):
     async def forward(
         self, synapse: Request
     ) -> Request:
-        print(f"Sleeping for rate limiting purposes: {delay}s")
+        bt.logging.info(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
-        print(f"Miner needs to fetch profile {synapse.request}")
+        bt.logging.info(f"Miner needs to fetch profile {synapse.request}")
         try:
             profile = OracleRequest().get_profile(synapse.request)
-            print(f"Profile: {profile}")
+            bt.logging.info(f"Profile: {profile}")
             if profile != None:
                 synapse.twitter_object = profile    
 
             else:
-                print(f"Failed to fetch twitter profile for {synapse.request}")
                 bt.logging.error(f"Failed to fetch Twitter profile for {synapse.request}.")
         
         except Exception as e:
-            print(f"Exception occurred while fetching Twitter profile for {synapse.request}: {str(e)}")
             bt.logging.error(f"Exception occurred while fetching Twitter profile for {synapse.request}: {str(e)}")
             
         print("Returning synapse: ", synapse.twitter_object)

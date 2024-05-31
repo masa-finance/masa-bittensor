@@ -1,5 +1,7 @@
 import requests
+import bittensor as bt
 from ..types import TwitterObject
+
 class OracleRequest():
     def __init__(self):
         self.base_url = "http://localhost:8080/api/v1"
@@ -10,18 +12,18 @@ class OracleRequest():
         return requests.get(f"{self.base_url}{path}", headers=self.headers)
     
     def get_profile(self, profile) -> TwitterObject:
-        print(f"Getting profile from oracle {profile}")
+        bt.logging.info(f"Getting profile from oracle {profile}")
         response = self.get(f"/data/twitter/profile/{profile}")
         
         if response.status_code == 504:
-            print("Oracle request failed")
+            bt.logging.error("Oracle request failed")
             return None
         twitter_profile = self.format_profile(response)
         
         return twitter_profile
         
     def format_profile(self, data: requests.Response) -> TwitterObject:
-        print(f"Formatting oracle data: {data}")
+        bt.logging.info(f"Formatting oracle data: {data}")
         profile_data = data.json()['data']
         twitter_profile = TwitterObject(
                     UserID=profile_data.get("UserID", None),
