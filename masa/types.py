@@ -1,5 +1,5 @@
-from typing import TypedDict, Optional, List
-
+from typing import Optional, List
+from typing_extensions import TypedDict
 class TwitterObject(TypedDict, total=False):
     UserID: str
     Avatar: Optional[str]
