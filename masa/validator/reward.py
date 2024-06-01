@@ -18,35 +18,31 @@
 # DEALINGS IN THE SOFTWARE.
 
 import torch
-from typing import List, Dict
+import bittensor as bt
+from typing import Dict
+from ..types import TwitterObject
 
 
-def reward(reference: Dict, response: Dict) -> float:
-    """
-    Reward the miner response to the JSON request. This method returns a reward
-    value for the miner, which is used to update the miner's score.
-
-    Returns:
-    - float: The reward value for the miner.
-    """
-    return 1.0 if response == reference else 0.0
+def reward(query: str, response: TwitterObject) -> float:
+    if response is None:
+        return 0.0 
+    bt.logging.info(f"Getting username from {response}")
+    username = response.get("Username", "")
+    userID = response.get("UserID", None)
+    bt.logging.info(f"Calculating reward for response {username.lower()}")
+    
+    if username.lower() == query.lower() and userID != None:
+        return 1
+    else:
+        return 0
 
 def get_rewards(
     self,
-    reference: Dict,
-    responses: List[Dict],
+    query: str,
+    responses: TwitterObject,
 ) -> torch.FloatTensor:
-    """
-    Returns a tensor of rewards for the given reference and responses.
-
-    Args:
-    - reference (Dict): The reference structured JSON.
-    - responses (List[Dict]): A list of responses from the miners.
-
-    Returns:
-    - torch.FloatTensor: A tensor of rewards for the given reference and responses.
-    """
-    # Get all the reward results by iteratively calling your reward() function.
+    bt.logging.info(f"Getting rewards...")
     return torch.FloatTensor(
-        [reward(reference, response) for response in responses]
+        [reward(query, response) for response in responses]
     ).to(self.device)
+
