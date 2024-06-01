@@ -19,85 +19,30 @@
 
 
 import time
-import json
 # Bittensor
 import bittensor as bt
 
 # Bittensor Validator Template:
-from masa.utils.uids import get_random_uids
-
-# import base validator class which takes care of most of the boilerplate
 from masa.base.validator import BaseValidatorNeuron
-
-# masa 
-from masa.validator.reward import reward, get_rewards
-from masa.api.request import Request
-from masa.types.twitter import TwitterProfileObject
+from masa.validator.forward import query_and_score
 
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
-        bt.logging.info("load_state()")
-        self.load_state()
+        bt.logging.info("Validator initialized with config: {}".format(config))
 
     async def forward(self):
-        try:
-            profile = 'brendanplayford'
-            print(f"Requesting profile: {profile}")
-            
-            # Getting responses, parsing them from JSON to dict, then to TwitterObject
-            [miner_uids, responses] = await self.query_miners(profile)
-            
-            print(f"Responses: {responses}")
-            if responses == None:
-                return
-            
-            if isinstance(responses, list) and responses:
-                bt.logging.info("Responses is a list")
-                valid_responses = []
-                valid_miner_uids = []
-                for i, response in enumerate(responses):
-                    if response is not None:
-                        valid_responses.append(response)
-                        valid_miner_uids.append(miner_uids[i])
-                responses = valid_responses
-                miner_uids = valid_miner_uids
-                parsed_responses = [TwitterProfileObject(**response) for response in valid_responses]
-                
-                bt.logging.info(f"Parsed responses: {parsed_responses}")
-            
-                
-                rewards = get_rewards(self, query=profile, responses=parsed_responses)
-                bt.logging.info(f"Miner UIDS: {valid_miner_uids}")
-                bt.logging.info(f"Rewards: {rewards}")
+        profile = 'brendanplayford'
+        await query_and_score(self, profile)
 
-                self.update_scores(rewards, valid_miner_uids)
-
-        except Exception as e:
-            bt.logging.error(f"Error during the forward pass: {str(e)}")
-
-    async def query_miners(self, prompt):
-        # Example: Querying miners using the dendrite object
-        miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
-        responses = await self.dendrite(
-            axons=[self.metagraph.axons[uid] for uid in miner_uids],
-            synapse=Request(request=prompt),
-            deserialize=True,
-        )
-        return [miner_uids, responses]
-
-    def score_response(self, response, reference):
-         # Use the reward function from reward.py to maintain consistency
-        return reward(reference, response)
-
-    def update_weights(self, scores):
-        # Example: Update weights (this is a placeholder for actual weight update logic)
-        for score in scores:
-            # TODO Update logic here
-            pass
+def update_weights(self, scores):
+    # Example: Update weights (this is a placeholder for actual weight update logic)
+    for score in scores:
+        # TODO Update logic here
+        pass
 
 if __name__ == "__main__":
     with Validator() as validator:
         while True:
-            bt.logging.info("Validator running...", time.time())
+            bt.logging.info("Validator running...")
             time.sleep(5)

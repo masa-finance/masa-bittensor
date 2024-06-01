@@ -20,36 +20,26 @@
 import typing
 import bittensor as bt
 
-class JSONProtocol(bt.Synapse):
+class TwitterProfileProtocol(bt.Synapse):
     """
-    A protocol for handling unstructured JSON blobs and converting them into structured JSON.
+    A protocol for handling Twitter profile requests and responses.
     This protocol uses bt.Synapse as its base.
 
     Attributes:
-    - unstructured_json: A string representing the unstructured JSON input.
-    - structured_json: An optional dictionary which, when filled, represents the structured JSON output.
+    - profile_request: A string representing the Twitter profile request.
+    - profile_response: An optional dictionary which, when filled, represents the Twitter profile response.
     """
 
-    # Required request input, filled by sending dendrite caller.
-    unstructured_json: str
-
-    # Optional request output, filled by receiving axon.
-    structured_json: typing.Optional[dict] = None
+    profile_request: str
+    profile_response: typing.Optional[dict] = None
 
     def deserialize(self) -> dict:
         """
-        Deserialize the structured JSON output. This method retrieves the response from
-        the miner in the form of structured_json, deserializes it and returns it
+        Deserialize the Twitter profile response. This method retrieves the response from
+        the miner in the form of profile_response, deserializes it and returns it
         as the output of the dendrite.query() call.
 
         Returns:
-        - dict: The deserialized response, which in this case is the value of structured_json.
-
-        Example:
-        Assuming a JSONProtocol instance has a structured_json value of {"name": "John", "age": 30}:
-        >>> json_instance = JSONProtocol(unstructured_json='{"name": "John", "age": "30 years"}')
-        >>> json_instance.structured_json = {"name": "John", "age": 30}
-        >>> json_instance.deserialize()
-        {"name": "John", "age": 30}
+        - dict: The deserialized response, which in this case is the value of profile_response.
         """
-        return self.structured_json
+        return self.profile_response
