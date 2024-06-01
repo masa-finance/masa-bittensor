@@ -19,16 +19,13 @@
 
 import time
 import typing
-import requests
 import bittensor as bt
-
-# Bittensor Miner Template:
-import masa
 
 # import base miner class which takes care of most of the boilerplate
 from masa.base.miner import BaseMinerNeuron
 from masa.api.request import Request
 from masa.miner.twitter_profile_request import TwitterProfileRequest
+from masa.api.request import Request
 
 delay = 10
 class Miner(BaseMinerNeuron):
@@ -38,20 +35,20 @@ class Miner(BaseMinerNeuron):
     async def forward(
         self, synapse: Request
     ) -> Request:
-        bt.logging.info(f"Sleeping for rate limiting purposes: {delay}s")
+        print(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
-        bt.logging.info(f"Miner needs to fetch Twitter profile {synapse.request}")
+        print(f"Miner needs to fetch Twitter profile {synapse.request}")
         try:
             profile = TwitterProfileRequest().get_profile(synapse.request)
-            bt.logging.info(f"Profile: {profile}")
+            print(f"Profile: {profile}")
             if profile != None:
-                synapse.twitter_object = profile    
-
+                profile_dict = dict(profile)
+                synapse.twitter_object = profile_dict
             else:
-                bt.logging.error(f"Failed to fetch Twitter profile for {synapse.request}.")
+                bt.logging.error(f"Failed to fetch Twitter profile for {synapse.twitter_object}.")
         
         except Exception as e:
-            bt.logging.error(f"Exception occurred while fetching Twitter profile for {synapse.request}: {str(e)}")
+            bt.logging.error(f"Exception occurred while fetching Twitter profile for {synapse.twitter_object}: {str(e)}")
             
         print("Returning synapse: ", synapse.twitter_object)
         return synapse
@@ -80,5 +77,5 @@ class Miner(BaseMinerNeuron):
 if __name__ == "__main__":
     with Miner() as miner:
         while True:
-            bt.logging.info("Miner running...", time.time())
+            print("Miner running...", time.time())
             time.sleep(5)
