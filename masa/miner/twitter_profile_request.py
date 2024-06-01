@@ -1,15 +1,17 @@
+import os
 import requests
 import bittensor as bt
 from masa.types.twitter import TwitterProfileObject
 
 class TwitterProfileRequest():
     def __init__(self):
-        self.base_url = "http://localhost:8080/api/v1"
-        self.authorization = "Bearer 1234"
+        self.base_url = os.getenv('BASE_URL', "http://localhost:8080/api/v1")
+        self.authorization = os.getenv('AUTHORIZATION', "Bearer 1234")
         self.headers = {"Authorization": self.authorization }
         
     def get(self, path) -> requests.Response:
-        return requests.get(f"{self.base_url}{path}", headers=self.headers)
+        timeout_duration = 1
+        return requests.get(f"{self.base_url}{path}", headers=self.headers, timeout=timeout_duration)
     
     def get_profile(self, profile) -> TwitterProfileObject:
         bt.logging.info(f"Getting profile from worker {profile}")
