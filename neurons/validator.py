@@ -49,36 +49,44 @@ class Validator(BaseValidatorNeuron):
             [miner_uids, responses] = await self.query_miners(profile)
             
             print(f"Responses: {responses}")
-            if responses == None:
-                return
-            
-            if isinstance(responses, list) and responses:
-                bt.logging.info("Responses is a list")
-                valid_responses = []
-                valid_miner_uids = []
-                for i, response in enumerate(responses):
-                    if response is not None:
-                        valid_responses.append(response)
-                        valid_miner_uids.append(miner_uids[i])
-                responses = valid_responses
-                miner_uids = valid_miner_uids
-                parsed_responses = [TwitterObject(**response) for response in valid_responses]
+            if responses is not None and any(response is not None for response in responses):
                 
-                bt.logging.info(f"Parsed responses: {parsed_responses}")
-            
+                    
                 
-                rewards = get_rewards(self, query=profile, responses=parsed_responses)
-                bt.logging.info(f"Miner UIDS: {valid_miner_uids}")
-                bt.logging.info(f"Rewards: {rewards}")
-
-                self.update_scores(rewards, valid_miner_uids)
+                if isinstance(responses, list) and responses:
+                    bt.logging.info("Responses is a list")
+                    valid_responses = []
+                    valid_miner_uids = []
+                    for i, response in enumerate(responses):
+                        if response is not None:
+                            valid_responses.append(response)
+                            valid_miner_uids.append(miner_uids[i])
+                    responses = valid_responses
+                    miner_uids = valid_miner_uids
+                    parsed_responses = [TwitterObject(**response) for response in valid_responses]
+                    
+                    bt.logging.info(f"Parsed responses: {parsed_responses}")
+                
+                    
+                    rewards = get_rewards(self, query=profile, responses=parsed_responses)
+                    bt.logging.info(f"Miner UIDS: {valid_miner_uids}")
+                    bt.logging.info(f"Rewards: {rewards}")
+                    
+                    
+                    
+                    if len(rewards) > 0:
+                        print(f"Updating scores {rewards} {valid_miner_uids}")
+                        self.update_scores(rewards, valid_miner_uids)
 
         except Exception as e:
             bt.logging.error(f"Error during the forward pass: {str(e)}")
 
     async def query_miners(self, prompt):
+        print("QUERY MINERS")
+        print(f"Sample size :{self.config.neuron.sample_size}")
         # Example: Querying miners using the dendrite object
         miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
+        print("QUERY MINERS", miner_uids)
         responses = await self.dendrite(
             axons=[self.metagraph.axons[uid] for uid in miner_uids],
             synapse=Request(request=prompt),
