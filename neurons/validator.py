@@ -32,7 +32,7 @@ from masa.base.validator import BaseValidatorNeuron
 # masa 
 from masa.validator.reward import reward, get_rewards
 from masa.api.request import Request
-from masa.types import TwitterObject
+from masa.types.twitter import TwitterProfileObject
 
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
@@ -62,7 +62,7 @@ class Validator(BaseValidatorNeuron):
                         valid_miner_uids.append(miner_uids[i])
                 responses = valid_responses
                 miner_uids = valid_miner_uids
-                parsed_responses = [TwitterObject(**response) for response in valid_responses]
+                parsed_responses = [TwitterProfileObject(**response) for response in valid_responses]
                 
                 bt.logging.info(f"Parsed responses: {parsed_responses}")
             
