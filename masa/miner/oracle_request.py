@@ -1,6 +1,6 @@
 import requests
 import bittensor as bt
-from ..types import TwitterObject
+from masa.types.twitter import TwitterProfileObject
 
 class OracleRequest():
     def __init__(self):
@@ -11,7 +11,7 @@ class OracleRequest():
     def get(self, path) -> requests.Response:
         return requests.get(f"{self.base_url}{path}", headers=self.headers)
     
-    def get_profile(self, profile) -> TwitterObject:
+    def get_profile(self, profile) -> TwitterProfileObject:
         bt.logging.info(f"Getting profile from oracle {profile}")
         response = self.get(f"/data/twitter/profile/{profile}")
         
@@ -22,10 +22,10 @@ class OracleRequest():
         
         return twitter_profile
         
-    def format_profile(self, data: requests.Response) -> TwitterObject:
+    def format_profile(self, data: requests.Response) -> TwitterProfileObject:
         bt.logging.info(f"Formatting oracle data: {data}")
         profile_data = data.json()['data']
-        twitter_profile = TwitterObject(
+        twitter_profile = TwitterProfileObject(
                     UserID=profile_data.get("UserID", None),
                     Avatar=profile_data.get("Avatar", None),
                     Banner=profile_data.get("Banner", None),

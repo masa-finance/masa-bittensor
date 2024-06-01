@@ -1,6 +1,6 @@
 from typing import Optional, List
 from typing_extensions import TypedDict
-class TwitterObject(TypedDict, total=False):
+class TwitterProfileObject(TypedDict, total=False):
     UserID: str
     Avatar: Optional[str]
     Banner: Optional[str]

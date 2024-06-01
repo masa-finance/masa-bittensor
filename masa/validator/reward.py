@@ -20,10 +20,10 @@
 import torch
 import bittensor as bt
 from typing import Dict
-from ..types import TwitterObject
+from masa.types.twitter import TwitterProfileObject
 
 
-def reward(query: str, response: TwitterObject) -> float:
+def reward(query: str, response: TwitterProfileObject) -> float:
     if response is None:
         return 0.0 
     bt.logging.info(f"Getting username from {response}")
@@ -39,7 +39,7 @@ def reward(query: str, response: TwitterObject) -> float:
 def get_rewards(
     self,
     query: str,
-    responses: TwitterObject,
+    responses: TwitterProfileObject,
 ) -> torch.FloatTensor:
     bt.logging.info(f"Getting rewards...")
     return torch.FloatTensor(
