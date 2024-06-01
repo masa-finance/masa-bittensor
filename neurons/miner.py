@@ -28,7 +28,7 @@ import masa
 # import base miner class which takes care of most of the boilerplate
 from masa.base.miner import BaseMinerNeuron
 from masa.api.request import Request
-from masa.miner.oracle_request import OracleRequest
+from masa.miner.twitter_profile_request import TwitterProfileRequest
 
 delay = 10
 class Miner(BaseMinerNeuron):
@@ -40,9 +40,9 @@ class Miner(BaseMinerNeuron):
     ) -> Request:
         bt.logging.info(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
-        bt.logging.info(f"Miner needs to fetch profile {synapse.request}")
+        bt.logging.info(f"Miner needs to fetch Twitter profile {synapse.request}")
         try:
-            profile = OracleRequest().get_profile(synapse.request)
+            profile = TwitterProfileRequest().get_profile(synapse.request)
             bt.logging.info(f"Profile: {profile}")
             if profile != None:
                 synapse.twitter_object = profile    
