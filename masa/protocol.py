@@ -17,9 +17,9 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import typing
+from typing import Optional
 import bittensor as bt
-
+from masa.types.twitter import TwitterProfileObject
 class TwitterProfileProtocol(bt.Synapse):
     """
     A protocol for handling Twitter profile requests and responses.
@@ -31,9 +31,9 @@ class TwitterProfileProtocol(bt.Synapse):
     """
 
     profile_request: str
-    profile_response: typing.Optional[dict] = None
+    profile_response: Optional[TwitterProfileObject] = None
 
-    def deserialize(self) -> dict:
+    def deserialize(self) -> Optional[TwitterProfileObject]:
         """
         Deserialize the Twitter profile response. This method retrieves the response from
         the miner in the form of profile_response, deserializes it and returns it
