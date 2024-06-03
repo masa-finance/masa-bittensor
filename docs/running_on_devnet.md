@@ -1,42 +1,85 @@
-# Development Setup
+## Environment Setup
 
-This guide assumes that you have Bittensor and a virtual environment (venv/conda) with the `apple_m1_environment.yml` already installed.
+### 1. Create virtual environment
 
-For more details on how to install Bittensor and set up the virtual environment, please refer to the [official Bittensor installation guide](https://github.com/opentensor/bittensor#install).
+If you do not already have a dedicated virtual envionment for Bittensor, you can create one using conda:
 
-Please remember to always set the environment when opening a new terminal. If you are using conda, you can do:
+```bash
+conda create --name bittensor python
+```
+
+### 2. Activate virtual environment
+
+Please remember to always activate the environment when opening a new terminal!
 
 ```bash
 conda activate bittensor
+```
+
+### 3. Install packages
+
+In the root of this repository, run:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Finish setup
+
+```bash
+python setup.py install
+```
+
+```bash
 export PYTHONPATH=$PYTHONPATH:<path_to_this_repo>
 ```
 
+For more details on how to install Bittensor and set up the virtual environment, please refer to the [official Bittensor installation guide](https://github.com/opentensor/bittensor#install).
+
 ## Wallet Setup
 
-First, create three cold wallets: `owner`, `miner`, and `validator`. For `miner` and `validator`, create a hot wallet (`default`). Use the following commands:
+### 1. Create cold wallets
+
+Create wallets for an `owner`, `miner`, and `validator`.
 
 ```bash
-
 btcli wallet new_coldkey --wallet.name <name>
-btcli wallet new_hotkey --wallet.name <name of the cold wallet> --wallet.hotkey default
 ```
 
-## Mint Tokens
+### 2. Create hot wallets
 
-Next, mint tokens for these wallets:
+For `miner` and `validator`, also create a hot wallet (`default`).
 
 ```bash
-btcli wallet faucet --wallet.name <name of the wallet> --subtensor.chain_endpoint ws://54.157.190.36:9945
+btcli wallet new_hotkey --wallet.name <name> --wallet.hotkey default
 ```
 
-**Note:** If you are creating a new subnet, you need at least 1000 tTAO in the `owner` wallet. Otherwise, just fund `miner` and `validator`.
+### 3. Verify creation of wallets
+
+```bash
+make list-wallets
+```
+
+You should see your three wallets listed, with `miner` and `validator` also having a hotkey (`default`) assigned to them.
+
+### 4. Mint Tokens
+
+Next, mint tokens for these wallets. **Note:** If you are creating a new subnet, you need at least 1000 tTAO in the `owner` wallet. Otherwise, just fund `miner` and `validator` once.
+
+```bash
+make fund-miner-wallet
+make fund-validator-wallet
+
+# if creating a subnet
+make fund-owner-wallet
+```
 
 ## Create Subnet
 
-To create a subnet, use:
+To create a subnet, use the following command. **Note:** there is no need to create a new subnet in this walkthrough.
 
 ```bash
-btcli subnet create --wallet.name owner --subtensor.chain_endpoint ws://54.157.190.36:9945
+make create-subnet
 ```
 
 ## Register Wallets to Subnet
@@ -44,17 +87,18 @@ btcli subnet create --wallet.name owner --subtensor.chain_endpoint ws://54.157.1
 Register your `validator` and `miner` to the subnet:
 
 ```bash
-btcli subnet register --wallet.name <wallet name> --wallet.hotkey default --subtensor.chain_endpoint ws://54.157.190.36:9945 --netuid 1
+make register-validator
+make register-miner
 ```
 
 **Note:** You may encounter an error about exceeding blocks. This is normal; wait for one tempo (approximately 1 hour).
 
 ## Stake on Validator
 
-Stake on the `validator` to set your weights:
+Stake TAO on the `validator` hotkey to enable the ability to set weights:
 
 ```bash
-btcli stake add --wallet.name validator --wallet.hotkey default --subtensor.chain_endpoint ws://54.157.190.36:9945 --netuid 1
+make stake-validator
 ```
 
 ## Register Validator on Root Subnet
@@ -62,13 +106,13 @@ btcli stake add --wallet.name validator --wallet.hotkey default --subtensor.chai
 Register your `validator` on the root subnet:
 
 ```bash
-btcli root register --wallet.name validator --wallet.hotkey --subtensor.chain_endpoint ws://54.157.190.36:9945 --netuid 1
+make register-validator-root
 ```
 
 Then, set your weights:
 
 ```bash
-btcli root boost --netuid 1 --increase 1 --wallet.name validator --wallet.hotkey default --subtensor.chain_endpoint ws://54.157.190.36:9945
+make boost-root
 ```
 
 **Note:** You may encounter an error like 'setting weights too fast', which also means wait for another hour.
@@ -78,13 +122,13 @@ btcli root boost --netuid 1 --increase 1 --wallet.name validator --wallet.hotkey
 Finally, run the `miner` and/or `validator`:
 
 ```bash
-python neurons/miner.py --netuid 1  --wallet.name miner --wallet.hotkey default --logging.debug --subtensor.chain_endpoint ws://54.157.190.36:9945
+make run-miner
 ```
 
 or
 
 ```bash
-python neurons/validator.py --netuid 1 --wallet.name validator --wallet.hotkey default --logging.debug --subtensor.chain_endpoint ws://54.157.190.36:9945
+make run-validator
 ```
 
-**Important:** Don't forget to add the flags `--subtensor.chain_endpoint ws://54.157.190.36:9945` and `--netuid 1` to each command. These flags point to our devnet and specify the subnet ID, respectively.
+**Important:** If using the `btcli` directly and not `make` commands, remember to add the flags `--subtensor.chain_endpoint ws://54.157.190.36:9945` and `--netuid 1` to each command. These flags point to our devnet and specify the subnet ID, respectively.
