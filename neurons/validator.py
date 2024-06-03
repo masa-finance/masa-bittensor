@@ -19,20 +19,23 @@
 
 
 import time
+import uvicorn
 # Bittensor
 import bittensor as bt
 
 # Bittensor Validator Template:
 from masa.base.validator import BaseValidatorNeuron
 from masa.validator.forward import query_and_score
+from masa.api.validator_api import ValidatorAPI
 
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
+        self.API = ValidatorAPI(self)
         bt.logging.info("Validator initialized with config: {}".format(config))
 
-    async def forward(self):
-        profile = 'brendanplayford'
+
+    async def forward(self, profile = 'brendanplayford'):
         await query_and_score(self, profile)
 
 def update_weights(self, scores):
