@@ -16,9 +16,15 @@ Please remember to always activate the environment when opening a new terminal!
 conda activate bittensor
 ```
 
-### 3. Install Packages
+### 3. Install packages
 
 In the root of this repository, run:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Finish setup
 
 ```bash
 python setup.py install
@@ -30,36 +36,43 @@ For more details on how to install Bittensor and set up the virtual environment,
 
 ### 1. Create cold wallets
 
-Create wallets for an `owner`, `miner`, and `validator`. For `miner` and `validator`, also create a hot wallet (`default`). Use the following commands:
+Create wallets for an `owner`, `miner`, and `validator`.
 
 ```bash
 btcli wallet new_coldkey --wallet.name <name>
+```
+
+### 2. Create hot wallets
+
+For `miner` and `validator`, also create a hot wallet (`default`).
+
+```bash
 btcli wallet new_hotkey --wallet.name <name> --wallet.hotkey default
 ```
 
-### 2. Verify creation of wallets
+### 3. Verify creation of wallets
 
 ```bash
 make list-wallets
 ```
 
-You should see your three wallets listed, with `miner` and `validator` wallets also having a hotkey (`default`) assigned to them.
+You should see your three wallets listed, with `miner` and `validator` also having a hotkey (`default`) assigned to them.
 
-## Mint Tokens
+### 4. Mint Tokens
 
-Next, mint tokens for these wallets:
+Next, mint tokens for these wallets. **Note:** If you are creating a new subnet, you need at least 1000 tTAO in the `owner` wallet. Otherwise, just fund `miner` and `validator` once.
 
 ```bash
-make fund-owner-wallet
-make fund-validaotr-wallet
 make fund-miner-wallet
-```
+make fund-validator-wallet
 
-**Note:** If you are creating a new subnet, you need at least 1000 tTAO in the `owner` wallet. Otherwise, just fund `miner` and `validator`.
+# if creating a subnet
+make fund-owner-wallet
+```
 
 ## Create Subnet
 
-To create a subnet, use:
+To create a subnet, use the following command. **Note:** there is no need to create a new subnet in this walkthrough.
 
 ```bash
 make create-subnet
@@ -78,7 +91,7 @@ make register-miner
 
 ## Stake on Validator
 
-Stake on the `validator` to set your weights:
+Stake TAO on the `validator` hotkey to enable the ability to set weights:
 
 ```bash
 make stake-validator
