@@ -40,6 +40,9 @@ create-subnet:
 	btcli subnet create --wallet.name owner --subtensor.$(ENVIRONMENT)
 
 ## Subnet and wallet info
+list-wallets:
+	btcli wallet list
+
 overview-all:
 	btcli wallet overview --all --subtensor.$(ENVIRONMENT)
 
