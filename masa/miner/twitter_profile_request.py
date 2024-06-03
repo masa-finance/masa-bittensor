@@ -1,31 +1,33 @@
+import os
 import requests
 import bittensor as bt
-from ..types import TwitterObject
+from masa.types.twitter import TwitterProfileObject
 
-class OracleRequest():
+class TwitterProfileRequest():
     def __init__(self):
-        self.base_url = "http://localhost:8080/api/v1"
-        self.authorization = "Bearer 1234"
+        self.base_url = os.getenv('BASE_URL', "http://localhost:8080/api/v1")
+        self.authorization = os.getenv('AUTHORIZATION', "Bearer 1234")
         self.headers = {"Authorization": self.authorization }
         
     def get(self, path) -> requests.Response:
-        return requests.get(f"{self.base_url}{path}", headers=self.headers)
+        timeout_duration = 1
+        return requests.get(f"{self.base_url}{path}", headers=self.headers, timeout=timeout_duration)
     
-    def get_profile(self, profile) -> TwitterObject:
-        bt.logging.info(f"Getting profile from oracle {profile}")
+    def get_profile(self, profile) -> TwitterProfileObject:
+        bt.logging.info(f"Getting profile from worker {profile}")
         response = self.get(f"/data/twitter/profile/{profile}")
         
         if response.status_code == 504:
-            bt.logging.error("Oracle request failed")
+            bt.logging.error("Worker request failed")
             return None
         twitter_profile = self.format_profile(response)
         
         return twitter_profile
         
-    def format_profile(self, data: requests.Response) -> TwitterObject:
-        bt.logging.info(f"Formatting oracle data: {data}")
+    def format_profile(self, data: requests.Response) -> TwitterProfileObject:
+        bt.logging.info(f"Formatting twitter profile data: {data}")
         profile_data = data.json()['data']
-        twitter_profile = TwitterObject(
+        twitter_profile = TwitterProfileObject(
                     UserID=profile_data.get("UserID", None),
                     Avatar=profile_data.get("Avatar", None),
                     Banner=profile_data.get("Banner", None),
