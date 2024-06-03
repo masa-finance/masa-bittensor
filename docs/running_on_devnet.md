@@ -30,6 +30,10 @@ pip install -r requirements.txt
 python setup.py install
 ```
 
+```bash
+export PYTHONPATH=$PYTHONPATH:<path_to_this_repo>
+```
+
 For more details on how to install Bittensor and set up the virtual environment, please refer to the [official Bittensor installation guide](https://github.com/opentensor/bittensor#install).
 
 ## Wallet Setup
