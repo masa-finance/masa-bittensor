@@ -1,11 +1,11 @@
 import typing
 import bittensor as bt
-from ..types import TwitterObject
+from ..types.twitter import TwitterProfileObject 
 from typing import Optional
 
 class Request(bt.Synapse):
     request: str
-    twitter_object: Optional[TwitterObject] = None
+    twitter_object: Optional[TwitterProfileObject] = None
 
 
     def deserialize(self) -> int:

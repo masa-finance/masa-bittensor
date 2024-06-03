@@ -130,7 +130,7 @@ class BaseNeuron(ABC):
             try:
                 self.set_weights()
             except:
-                print("Set weights didn't work")
+                print("Setting weights failed")
 
         # Always save state.
         self.save_state()

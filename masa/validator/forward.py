@@ -18,43 +18,33 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
-
-from masa.protocol import JSONProtocol
+from masa.api.request import Request
 from masa.validator.reward import get_rewards
 from masa.utils.uids import get_random_uids
+from masa.types.twitter import TwitterProfileObject
 
+async def query_and_score(validator, profile):
+    try:
+        # Select miners to query
+        miner_uids = get_random_uids(validator, k=validator.config.neuron.sample_size)
 
-async def forward(self):
-    """
-    The forward function is called by the validator every time step.
+        # Query miners
+        responses = await validator.dendrite(
+            axons=[validator.metagraph.axons[uid] for uid in miner_uids],
+            synapse=Request(request=profile),
+            deserialize=True,
+        )
+    
+        # Filter and parse valid responses
+        valid_responses = [response for response in responses if response is not None]
+        valid_miner_uids = [miner_uids[i] for i, response in enumerate(responses) if response is not None]
+        parsed_responses = [TwitterProfileObject(**response) for response in valid_responses]
 
-    It is responsible for querying the network and scoring the responses.
+        # Score responses
+        rewards = get_rewards(validator, query=profile, responses=parsed_responses)
 
-    Args:
-        self (:obj:`bittensor.neuron.Neuron`): The neuron object which contains all the necessary state for the validator.
+        # Update the scores based on the rewards
+        validator.update_scores(rewards, valid_miner_uids)
 
-    """
-    # Define the unstructured JSON challenge
-    unstructured_json = '{"name": "John", "age": "30 years", "city": "New York"}'
-    reference = {"name": "John", "age": 30, "city": "New York"}
-
-    # Select miners to query
-    miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
-
-    # Query miners
-    responses = await self.dendrite(
-        axons=[self.metagraph.axons[uid] for uid in miner_uids],
-        synapse=JSONProtocol(unstructured_json=unstructured_json),
-        deserialize=True,
-    )
-
-    # Log the results for monitoring purposes
-    bt.logging.info(f"Received responses: {responses}")
-
-    # Score responses
-    rewards = get_rewards(self, reference=reference, responses=responses)
-
-    bt.logging.info(f"Scored responses: {rewards}")
-
-    # Update the scores based on the rewards
-    self.update_scores(rewards, miner_uids)
+    except Exception as e:
+        bt.logging.error(f"Error during the query and score process: {str(e)}")
