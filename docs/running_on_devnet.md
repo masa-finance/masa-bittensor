@@ -4,6 +4,13 @@ This guide assumes that you have Bittensor and a virtual environment (venv/conda
 
 For more details on how to install Bittensor and set up the virtual environment, please refer to the [official Bittensor installation guide](https://github.com/opentensor/bittensor#install).
 
+Please remember to always set the environment when opening a new terminal. If you are using conda, you can do:
+
+```bash
+conda activate bittensor
+export PYTHONPATH=$PYTHONPATH:<path_to_this_repo>
+```
+
 ## Wallet Setup
 
 First, create three cold wallets: `owner`, `miner`, and `validator`. For `miner` and `validator`, create a hot wallet (`default`). Use the following commands:
