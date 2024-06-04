@@ -16,8 +16,8 @@ NETUID = 1
 ########################################################################
 #####                       SELECT YOUR ENV                        #####
 ########################################################################
-ENVIRONMENT = $(LOCAL_ENVIRONMENT)
-# ENVIRONMENT = $(AWS_ENVIRONMENT)
+# ENVIRONMENT = $(LOCAL_ENVIRONMENT)
+ENVIRONMENT = $(AWS_ENVIRONMENT)
 # ENVIRONMENT = $(TEST_ENVIRONMENT)
 
 
