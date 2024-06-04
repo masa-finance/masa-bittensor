@@ -34,8 +34,7 @@ class ValidatorAPI:
         return await self.validator.forward(username)
 
     
-    def get_axons(self, data: dict = {}):
-        print(f"Data: {data}")
+    def get_axons(self):
         return self.validator.metagraph.axons
         
     def start_server(self):
