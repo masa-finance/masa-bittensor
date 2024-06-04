@@ -90,6 +90,14 @@ docker-run:
 docker-run-remote:
 	docker run -d --name masa-subtensor -p 30333:30333 -p 9933:9933 -p 9944:9944 -p 9945:9945 -p 9946:9946 ghcr.io/masa-finance/subtensor:arm-latest
 
+
+########################################################################
+#####                       VALIDATOR API                          #####
+########################################################################
+
+test-profile:
+	curl -X GET "http://localhost:8000/data/twitter/brendanplayford" -H "Authorization: Bearer 1234"
+
 ########################################################################
 ########################################################################
 
