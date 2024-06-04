@@ -36,7 +36,7 @@ class Validator(BaseValidatorNeuron):
 
 
     async def forward(self, profile = 'brendanplayford'):
-        await query_and_score(self, profile)
+        return await query_and_score(self, profile)
 
 def update_weights(self, scores):
     # Example: Update weights (this is a placeholder for actual weight update logic)
