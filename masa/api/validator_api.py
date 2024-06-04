@@ -13,10 +13,10 @@ class ValidatorAPI:
         self.app = FastAPI()
 
         self.app.add_api_route(
-            "/data/twitter/{profile}",
+            "/data/twitter/profile/{username}",
             self.get_twitter_profile,
             methods=["GET"],
-            # dependencies=[Depends(self.get_self)],
+            dependencies=[Depends(self.get_self)],
             response_description="Get the Twitter profile for the given username"
         )
         
@@ -30,8 +30,8 @@ class ValidatorAPI:
         self.start_server()
         
         
-    async def get_twitter_profile(self, profile: str):
-        responses = await self.validator.forward(profile)
+    async def get_twitter_profile(self, username: str):
+        responses = await self.validator.forward(username)
         print(f"Responses: {responses}")
         return responses
 
