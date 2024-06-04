@@ -3,7 +3,7 @@ LOCAL_ENDPOINT = ws://127.0.0.1:9945
 LOCAL_ENVIRONMENT = chain_endpoint $(LOCAL_ENDPOINT)
 
 # AWS_ENDPOINT = ws://54.144.144.227:9945 # DEV
-AWS_ENDPOINT = ws://54.157.190.36:9945 # MAIN
+AWS_ENDPOINT = ws://54.166.139.8:9944 # MAIN
 AWS_ENVIRONMENT = chain_endpoint $(AWS_ENDPOINT)
 
 TEST_ENVIRONMENT = network test
@@ -16,8 +16,8 @@ NETUID = 1
 ########################################################################
 #####                       SELECT YOUR ENV                        #####
 ########################################################################
-# ENVIRONMENT = $(LOCAL_ENVIRONMENT)
-ENVIRONMENT = $(AWS_ENVIRONMENT)
+ENVIRONMENT = $(LOCAL_ENVIRONMENT)
+# ENVIRONMENT = $(AWS_ENVIRONMENT)
 # ENVIRONMENT = $(TEST_ENVIRONMENT)
 
 

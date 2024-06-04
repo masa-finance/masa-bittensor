@@ -46,5 +46,10 @@ async def query_and_score(validator, profile):
         # Update the scores based on the rewards
         validator.update_scores(rewards, valid_miner_uids)
 
+        # Return the valid responses
+        print(f"VALID RESPONSES: {valid_responses}")
+        return valid_responses
+    
     except Exception as e:
         bt.logging.error(f"Error during the query and score process: {str(e)}")
+        return []
