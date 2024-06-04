@@ -31,9 +31,7 @@ class ValidatorAPI:
         
         
     async def get_twitter_profile(self, username: str):
-        responses = await self.validator.forward(username)
-        print(f"Responses: {responses}")
-        return responses
+        return await self.validator.forward(username)
 
     
     def get_axons(self, data: dict = {}):
