@@ -47,7 +47,6 @@ async def query_and_score(validator, profile):
         validator.update_scores(rewards, valid_miner_uids)
 
         # Return the valid responses
-        print(f"VALID RESPONSES: {valid_responses}")
         return valid_responses
     
     except Exception as e:
