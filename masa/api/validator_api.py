@@ -17,14 +17,17 @@ class ValidatorAPI:
             self.get_twitter_profile,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
-            response_description="Get the Twitter profile for the given username"
+            response_description="Get the Twitter profile for the given username",
+            tags=["data"]
         )
         
         self.app.add_api_route(
             "/axons",
             self.get_axons,
-            methods=["POST"],
+            methods=["GET"],
             dependencies=[Depends(self.get_self)],
+            response_description="Get the axons for the given metagraph",
+            tags=["metagraph"]
         )
         
         self.start_server()
