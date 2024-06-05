@@ -2,8 +2,9 @@ import os
 from fastapi import FastAPI
 import asyncio
 import uvicorn
-from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, Depends
+from masa.api.request import RequestType
+from masa.miner.twitter.tweets import RecentTweetsQuery
 
 class ValidatorAPI:
     def __init__(self, validator, config=None):
@@ -19,7 +20,25 @@ class ValidatorAPI:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Twitter profile for the given username",
-            tags=["data"]
+            tags=["twitter"]
+        )
+
+        self.app.add_api_route(
+            "/data/twitter/followers/{username}",
+            self.get_twitter_followers,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get the Twitter followers for the given username",
+            tags=["twitter"]
+        )
+
+        self.app.add_api_route(
+            "/data/twitter/tweets/recent",
+            self.get_recent_tweets,
+            methods=["POST"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get recent tweets given a query",
+            tags=["twitter"]
         )
         
         self.app.add_api_route(
@@ -35,9 +54,15 @@ class ValidatorAPI:
         
         
     async def get_twitter_profile(self, username: str):
-        return await self.validator.forward(username)
-
+        return await self.validator.forward(request=username, type=RequestType.TWITTER_PROFILE.value)
     
+
+    async def get_twitter_followers(self, username: str):
+        return await self.validator.forward(request=username, type=RequestType.TWITTER_FOLLOWERS.value)
+    
+    async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
+        return await self.validator.forward(request=tweet_query, type=RequestType.TWITTER_TWEETS.value)
+
     def get_axons(self):
         return self.validator.metagraph.axons
         

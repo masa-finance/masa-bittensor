@@ -19,13 +19,14 @@
 
 
 import time
-import uvicorn
-# Bittensor
 import bittensor as bt
+from masa.api.request import RequestType
 
 # Bittensor Validator Template:
 from masa.base.validator import BaseValidatorNeuron
-from masa.validator.forward import query_and_score
+from masa.validator.twitter.profile.forward import ProfileForwarder
+from masa.validator.twitter.followers.forward import FollowersForwarder
+from masa.validator.twitter.tweets.forward import TweetsForwarder
 from masa.api.validator_api import ValidatorAPI
 
 class Validator(BaseValidatorNeuron):
@@ -35,14 +36,20 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info("Validator initialized with config: {}".format(config))
 
 
-    async def forward(self, profile = 'brendanplayford'):
-        return await query_and_score(self, profile)
+    async def forward(self, request = 'brendanplayford', type = RequestType.TWITTER_PROFILE.value):
+        if type == RequestType.TWITTER_PROFILE.value:
+            return await ProfileForwarder(self).query_and_score(request)
+        elif type == RequestType.TWITTER_FOLLOWERS.value:
+            return await FollowersForwarder(self).query_and_score(request)
+        elif type == RequestType.TWITTER_TWEETS.value:
+            return await TweetsForwarder(self).query_and_score(request)
+        
 
-def update_weights(self, scores):
-    # Example: Update weights (this is a placeholder for actual weight update logic)
-    for score in scores:
-        # TODO Update logic here
-        pass
+    def update_weights(self, scores):
+        # Example: Update weights (this is a placeholder for actual weight update logic)
+        for score in scores:
+            # TODO Update logic here
+            pass
 
 if __name__ == "__main__":
     with Validator() as validator:
