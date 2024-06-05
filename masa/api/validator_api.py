@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI
+import asyncio
 import uvicorn
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, Depends
@@ -7,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Depends
 class ValidatorAPI:
     def __init__(self, validator, config=None):
         self.host = os.getenv('VALIDATOR_API_HOST', "0.0.0.0")
-        self.port = os.getenv('VALIDATOR_API_PORT', 8000)
+        self.port = int(os.getenv('VALIDATOR_API_PORT', "8000"))
         
         self.validator = validator
         self.app = FastAPI()
@@ -41,10 +42,20 @@ class ValidatorAPI:
         return self.validator.metagraph.axons
         
     def start_server(self):
-        self.executor = ThreadPoolExecutor(max_workers=1)
-        self.executor.submit(
-            uvicorn.run, self.app, host=self.host, port=self.port
-    )
+        config = uvicorn.Config(app=self.app, host=self.host, port=self.port)
+        server = uvicorn.Server(config)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            loop.run_until_complete(server.serve())
+        except KeyboardInterrupt:
+            # Handle the keyboard interrupt to shutdown the server
+            loop.run_until_complete(server.shutdown())
+        finally:
+            # Close the loop to clean up properly
+            loop.close()
+            asyncio.set_event_loop(None)  # Reset the event loop
  
     async def get_self(self):
         return self
