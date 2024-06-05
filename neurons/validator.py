@@ -26,6 +26,7 @@ from masa.api.request import RequestType
 from masa.base.validator import BaseValidatorNeuron
 from masa.validator.twitter.profile.forward import ProfileForwarder
 from masa.validator.twitter.followers.forward import FollowersForwarder
+from masa.validator.twitter.tweets.forward import TweetsForwarder
 from masa.api.validator_api import ValidatorAPI
 
 class Validator(BaseValidatorNeuron):
@@ -40,6 +41,8 @@ class Validator(BaseValidatorNeuron):
             return await ProfileForwarder(self).query_and_score(query)
         elif type == RequestType.TWITTER_FOLLOWERS.value:
             return await FollowersForwarder(self).query_and_score(query)
+        elif type == RequestType.TWITTER_TWEETS.value:
+            return await TweetsForwarder(self).query_and_score(query)
         
 
     def update_weights(self, scores):
