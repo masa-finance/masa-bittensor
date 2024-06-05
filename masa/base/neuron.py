@@ -120,6 +120,7 @@ class BaseNeuron(ABC):
         """
         Wrapper for synchronizing the state of the network for the given miner or validator.
         """
+        print("Syncing...")
         # Ensure miner or validator hotkey is still registered on the network.
         self.check_registered()
 
@@ -133,7 +134,6 @@ class BaseNeuron(ABC):
                 print("Setting weights failed")
 
         # Always save state.
-        self.save_state()
 
     def check_registered(self):
         # --- Check for registration.
