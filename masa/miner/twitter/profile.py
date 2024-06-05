@@ -1,10 +1,10 @@
 import os
 import requests
 import bittensor as bt
-from masa.miner.protocol import ProtocolRequest
+from masa.miner.masa_protocol_request import MasaProtocolRequest
 from masa.types.twitter import TwitterProfileObject
 
-class TwitterProfileRequest(ProtocolRequest):
+class TwitterProfileRequest(MasaProtocolRequest):
     def __init__(self):
         super().__init__()
     
