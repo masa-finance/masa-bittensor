@@ -17,38 +17,15 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import bittensor as bt
-from masa.api.request import Request, RequestType
-from masa.validator.reward import get_rewards
 from masa.utils.uids import get_random_uids
-from masa.types.twitter import TwitterProfileObject
 
-async def query_and_score(validator, profile):
-    try:
-        # Select miners to query
-        miner_uids = get_random_uids(validator, k=validator.config.neuron.sample_size)
+# this forwarder needs to able to handle multiple requests, driven off of an API request
+class Forwarder:
+    def __init__(self, validator):
+        self.validator = validator
+        self.miner_uids = get_random_uids(validator, k=validator.config.neuron.sample_size)
 
-        # Query miners
-        responses = await validator.dendrite(
-            axons=[validator.metagraph.axons[uid] for uid in miner_uids],
-            synapse=Request(request=profile, type=RequestType.TWITTER_PROFILE.value),
-            deserialize=True,
-        )
-    
-        # Filter and parse valid responses
+    def sanitize_responses_and_uids(self, responses):
         valid_responses = [response for response in responses if response is not None]
-        valid_miner_uids = [miner_uids[i] for i, response in enumerate(responses) if response is not None]
-        parsed_responses = [TwitterProfileObject(**response) for response in valid_responses]
-
-        # Score responses
-        rewards = get_rewards(validator, query=profile, responses=parsed_responses)
-
-        # Update the scores based on the rewards
-        validator.update_scores(rewards, valid_miner_uids)
-
-        # Return the valid responses
-        return valid_responses
-    
-    except Exception as e:
-        bt.logging.error(f"Error during the query and score process: {str(e)}")
-        return []
+        valid_miner_uids = [self.miner_uids[i] for i, response in enumerate(responses) if response is not None]
+        return valid_responses, valid_miner_uids

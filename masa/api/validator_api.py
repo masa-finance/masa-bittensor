@@ -4,6 +4,7 @@ import asyncio
 import uvicorn
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, Depends
+from masa.api.request import RequestType
 
 class ValidatorAPI:
     def __init__(self, validator, config=None):
@@ -19,7 +20,16 @@ class ValidatorAPI:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Twitter profile for the given username",
-            tags=["data"]
+            tags=["twitter"]
+        )
+
+        self.app.add_api_route(
+            "/data/twitter/followers/{username}",
+            self.get_twitter_followers,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get the Twitter followers for the given username",
+            tags=["twitter"]
         )
         
         self.app.add_api_route(
@@ -35,7 +45,11 @@ class ValidatorAPI:
         
         
     async def get_twitter_profile(self, username: str):
-        return await self.validator.forward(username)
+        return await self.validator.forward(query=username, type=RequestType.TWITTER_PROFILE.value)
+    
+
+    async def get_twitter_followers(self, username: str):
+        return await self.validator.forward(query=username, type=RequestType.TWITTER_FOLLOWERS.value)
 
     
     def get_axons(self):
