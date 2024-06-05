@@ -3,7 +3,7 @@ LOCAL_ENDPOINT = ws://127.0.0.1:9945
 LOCAL_ENVIRONMENT = chain_endpoint $(LOCAL_ENDPOINT)
 
 # AWS_ENDPOINT = ws://54.144.144.227:9945 # DEV
-AWS_ENDPOINT = ws://54.166.139.8:9945 # MAIN
+AWS_ENDPOINT = ws://54.205.45.3:9945 # MAIN
 AWS_ENVIRONMENT = chain_endpoint $(AWS_ENDPOINT)
 
 TEST_ENVIRONMENT = network test
@@ -78,10 +78,10 @@ set-weights:
 
 ## Run miner and validator
 run-miner:
-	python neurons/miner.py --netuid $(NETUID) --subtensor.$(ENVIRONMENT) --wallet.name miner --wallet.hotkey default --logging.debug
+	python neurons/miner.py --netuid $(NETUID) --subtensor.$(ENVIRONMENT) --wallet.name miner --wallet.hotkey default --logging.debug --axon.port 8091
 
 run-validator:
-	python neurons/validator.py --netuid $(NETUID) --subtensor.$(ENVIRONMENT) --wallet.name validator --wallet.hotkey default --logging.debug
+	python neurons/validator.py --netuid $(NETUID) --subtensor.$(ENVIRONMENT) --wallet.name validator --wallet.hotkey default --logging.debug --axon.port 8092
 
 ## Docker commands
 docker-build:
