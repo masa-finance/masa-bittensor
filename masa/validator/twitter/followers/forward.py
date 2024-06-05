@@ -29,12 +29,12 @@ class FollowersForwarder(Forwarder):
         super(FollowersForwarder, self).__init__(validator)
 
 
-    async def query_and_score(self, profile):
+    async def query_and_score(self, query):
         try:
             # Query miners
             responses = await self.validator.dendrite(
                 axons=[self.validator.metagraph.axons[uid] for uid in self.miner_uids],
-                synapse=Request(request=profile, type=RequestType.TWITTER_FOLLOWERS.value),
+                synapse=Request(query=query, type=RequestType.TWITTER_FOLLOWERS.value),
                 deserialize=True,
             )
 
@@ -46,7 +46,7 @@ class FollowersForwarder(Forwarder):
             ]
 
             # Score responses
-            rewards = get_rewards(self.validator, query=profile, responses=parsed_responses)
+            rewards = get_rewards(self.validator, query=query, responses=parsed_responses)
 
             # Update the scores based on the rewards
             self.validator.update_scores(rewards, valid_miner_uids)

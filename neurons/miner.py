@@ -38,31 +38,30 @@ class Miner(BaseMinerNeuron):
     ) -> Request:
         print(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
-        # print(f"Miner needs to fetch Twitter profile {synapse.request}")
         try:
             request_type = synapse.type
             
             if request_type == RequestType.TWITTER_PROFILE.value:
-                profile = TwitterProfileRequest().get_profile(synapse.request)
+                profile = TwitterProfileRequest().get_profile(synapse.query)
                 if profile != None:
                     profile_dict = dict(profile)
                     synapse.response = profile_dict
                 else:
-                    bt.logging.error(f"Failed to fetch Twitter profile for {synapse.request}.")
+                    bt.logging.error(f"Failed to fetch Twitter profile for {synapse.query}.")
         
             elif request_type == RequestType.TWITTER_FOLLOWERS.value:
-                followers = TwitterFollowersRequest().get_followers(synapse.request)
+                followers = TwitterFollowersRequest().get_followers(synapse.query)
                 if followers != None:
                     synapse.response = followers
                 else:
-                    bt.logging.error(f"Failed to fetch Twitter followers for {synapse.request}.")
+                    bt.logging.error(f"Failed to fetch Twitter followers for {synapse.query}.")
 
             elif request_type == RequestType.TWITTER_TWEETS.value:
-                tweets = TwitterTweetsRequest().get_tweets(synapse.request)
+                tweets = TwitterTweetsRequest().get_tweets(synapse.query)
                 if tweets != None:
                     synapse.response = tweets
                 else:
-                    bt.logging.error(f"Failed to fetch Twitter tweets for {synapse.request}.")
+                    bt.logging.error(f"Failed to fetch Twitter tweets for {synapse.query}.")
 
         except Exception as e:
             bt.logging.error(f"Exception occurred while fetching Twitter profile for {synapse.response}: {str(e)}")
