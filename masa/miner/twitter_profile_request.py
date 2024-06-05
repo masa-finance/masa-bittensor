@@ -5,8 +5,8 @@ from masa.types.twitter import TwitterProfileObject
 
 class TwitterProfileRequest():
     def __init__(self):
-        self.base_url = os.getenv('BASE_URL', "http://localhost:8080/api/v1")
-        self.authorization = os.getenv('AUTHORIZATION', "Bearer 1234")
+        self.base_url = os.getenv('ORACLE_BASE_URL', "http://localhost:8080/api/v1")
+        self.authorization = os.getenv('ORACLE_AUTHORIZATION', "Bearer 1234")
         self.headers = {"Authorization": self.authorization }
         
     def get(self, path) -> requests.Response:

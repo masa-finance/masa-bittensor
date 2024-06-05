@@ -3,7 +3,7 @@ LOCAL_ENDPOINT = ws://127.0.0.1:9945
 LOCAL_ENVIRONMENT = chain_endpoint $(LOCAL_ENDPOINT)
 
 # AWS_ENDPOINT = ws://54.144.144.227:9945 # DEV
-AWS_ENDPOINT = ws://54.157.190.36:9945 # MAIN
+AWS_ENDPOINT = ws://54.166.139.8:9945 # MAIN
 AWS_ENVIRONMENT = chain_endpoint $(AWS_ENDPOINT)
 
 TEST_ENVIRONMENT = network test
@@ -92,6 +92,14 @@ docker-run:
 
 docker-run-remote:
 	docker run -d --name masa-subtensor -p 30333:30333 -p 9933:9933 -p 9944:9944 -p 9945:9945 -p 9946:9946 ghcr.io/masa-finance/subtensor:arm-latest
+
+
+########################################################################
+#####                       VALIDATOR API                          #####
+########################################################################
+
+test-profile:
+	curl -X GET "http://localhost:8000/data/twitter/brendanplayford" -H "Authorization: Bearer 1234"
 
 ########################################################################
 ########################################################################
