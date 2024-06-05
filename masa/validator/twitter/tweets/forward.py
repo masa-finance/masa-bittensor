@@ -20,33 +20,33 @@
 import bittensor as bt
 from masa.api.request import Request, RequestType
 from masa.validator.forwarder import Forwarder
-from masa.validator.twitter.followers.reward import get_rewards
-from masa.types.twitter import TwitterFollowerObject
+from masa.validator.twitter.tweets.reward import get_rewards
+from masa.types.twitter import TwitterTweetObject
 
-class FollowersForwarder(Forwarder):
+class TweetsForwarder(Forwarder):
 
     def __init__(self, validator):
-        super(FollowersForwarder, self).__init__(validator)
+        super(TweetsForwarder, self).__init__(validator)
 
 
-    async def query_and_score(self, profile):
+    async def query_and_score(self, query):
         try:
             # Query miners
             responses = await self.validator.dendrite(
                 axons=[self.validator.metagraph.axons[uid] for uid in self.miner_uids],
-                synapse=Request(request=profile, type=RequestType.TWITTER_FOLLOWERS.value),
+                synapse=Request(request=query, type=RequestType.TWITTER_TWEETS.value),
                 deserialize=True,
             )
 
             # Filter and parse valid responses
             valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(responses)
             parsed_responses = [
-                [TwitterFollowerObject(**follower) for follower in response]
+                [TwitterTweetObject(**tweet) for tweet in response]
                 for response in valid_responses  # Each response is a list of dictionaries
             ]
 
             # Score responses
-            rewards = get_rewards(self.validator, query=profile, responses=parsed_responses)
+            rewards = get_rewards(self.validator, query=query, responses=parsed_responses)
 
             # Update the scores based on the rewards
             self.validator.update_scores(rewards, valid_miner_uids)

@@ -6,7 +6,7 @@ from typing import Optional, Any
 class RequestType(Enum):
     TWITTER_PROFILE = "twitter_profile"
     TWITTER_FOLLOWERS = "twitter_followers"
-    TWITTER_TWEETS_RECENT = "twitter_tweets_recent"
+    TWITTER_TWEETS = "TWITTER_TWEETS"
 
 class Request(bt.Synapse):
     request: str

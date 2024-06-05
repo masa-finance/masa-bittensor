@@ -31,6 +31,15 @@ class ValidatorAPI:
             response_description="Get the Twitter followers for the given username",
             tags=["twitter"]
         )
+
+        self.app.add_api_route(
+            "/data/twitter/tweets/recent/{query}",
+            self.get_recent_tweets,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get recent tweets given a query",
+            tags=["twitter"]
+        )
         
         self.app.add_api_route(
             "/axons",
@@ -50,6 +59,10 @@ class ValidatorAPI:
 
     async def get_twitter_followers(self, username: str):
         return await self.validator.forward(query=username, type=RequestType.TWITTER_FOLLOWERS.value)
+    
+
+    async def get_recent_tweets(self, query: str):
+        return await self.validator.forward(query=query, type=RequestType.TWITTER_TWEETS.value)
 
     
     def get_axons(self):
