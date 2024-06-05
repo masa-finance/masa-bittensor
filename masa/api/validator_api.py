@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Depends
 class ValidatorAPI:
     def __init__(self, validator, config=None):
         self.host = os.getenv('VALIDATOR_API_HOST', "0.0.0.0")
-        self.port = os.getenv('VALIDATOR_API_PORT', 8000)
+        self.port = int(os.getenv('VALIDATOR_API_PORT', "8000"))
         
         self.validator = validator
         self.app = FastAPI()
