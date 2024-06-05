@@ -26,7 +26,7 @@ from masa.base.miner import BaseMinerNeuron
 from masa.api.request import Request, RequestType
 from masa.miner.twitter.profile import TwitterProfileRequest
 from masa.miner.twitter.followers import TwitterFollowersRequest
-from masa.miner.twitter.tweets import TwitterTweetsRequest
+from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
 
 delay = 0
 class Miner(BaseMinerNeuron):
@@ -57,7 +57,7 @@ class Miner(BaseMinerNeuron):
                     bt.logging.error(f"Failed to fetch Twitter followers for {synapse.query}.")
 
             elif request_type == RequestType.TWITTER_TWEETS.value:
-                tweets = TwitterTweetsRequest().get_tweets(synapse.query)
+                tweets = TwitterTweetsRequest().get_recent_tweets(RecentTweetsQuery(query=synapse.query, count=synapse.count))
                 if tweets != None:
                     synapse.response = tweets
                 else:

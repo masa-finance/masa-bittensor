@@ -2,9 +2,9 @@ import os
 from fastapi import FastAPI
 import asyncio
 import uvicorn
-from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, Depends
 from masa.api.request import RequestType
+from masa.miner.twitter.tweets import RecentTweetsQuery
 
 class ValidatorAPI:
     def __init__(self, validator, config=None):
@@ -33,9 +33,9 @@ class ValidatorAPI:
         )
 
         self.app.add_api_route(
-            "/data/twitter/tweets/recent/{query}",
+            "/data/twitter/tweets/recent",
             self.get_recent_tweets,
-            methods=["GET"],
+            methods=["POST"],
             dependencies=[Depends(self.get_self)],
             response_description="Get recent tweets given a query",
             tags=["twitter"]
@@ -60,11 +60,9 @@ class ValidatorAPI:
     async def get_twitter_followers(self, username: str):
         return await self.validator.forward(query=username, type=RequestType.TWITTER_FOLLOWERS.value)
     
+    async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
+        return await self.validator.forward(query=tweet_query, type=RequestType.TWITTER_TWEETS.value)
 
-    async def get_recent_tweets(self, query: str):
-        return await self.validator.forward(query=query, type=RequestType.TWITTER_TWEETS.value)
-
-    
     def get_axons(self):
         return self.validator.metagraph.axons
         
