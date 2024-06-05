@@ -64,9 +64,8 @@ class Miner(BaseMinerNeuron):
                     bt.logging.error(f"Failed to fetch Twitter tweets for {synapse.query}.")
 
         except Exception as e:
-            bt.logging.error(f"Exception occurred while fetching Twitter profile for {synapse.response}: {str(e)}")
+            bt.logging.error(f"Exception occurred while doing work for {synapse.query}: {str(e)}")
             
-        print("Returning synapse: ", synapse.response)
         return synapse
 
     async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
