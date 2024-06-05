@@ -24,7 +24,8 @@ import bittensor as bt
 # import base miner class which takes care of most of the boilerplate
 from masa.base.miner import BaseMinerNeuron
 from masa.api.request import Request, RequestType
-from masa.miner.twitter_profile_request import TwitterProfileRequest
+from masa.miner.twitter.profile import TwitterProfileRequest
+from masa.miner.twitter.followers import TwitterFollowersRequest
 
 delay = 0
 class Miner(BaseMinerNeuron):
@@ -39,14 +40,22 @@ class Miner(BaseMinerNeuron):
         # print(f"Miner needs to fetch Twitter profile {synapse.request}")
         try:
             request_type = synapse.type
+            
             if request_type == RequestType.TWITTER_PROFILE.value:
                 profile = TwitterProfileRequest().get_profile(synapse.request)
                 if profile != None:
                     profile_dict = dict(profile)
                     synapse.response = profile_dict
                 else:
-                    bt.logging.error(f"Failed to fetch Twitter profile for {synapse.response}.")
+                    bt.logging.error(f"Failed to fetch Twitter profile for {synapse.request}.")
         
+            elif request_type == RequestType.TWITTER_FOLLOWERS.value:
+                followers = TwitterFollowersRequest().get_followers(synapse.request)
+                if followers != None:
+                    synapse.response = followers
+                else:
+                    bt.logging.error(f"Failed to fetch Twitter followers for {synapse.request}.")
+
         except Exception as e:
             bt.logging.error(f"Exception occurred while fetching Twitter profile for {synapse.response}: {str(e)}")
             

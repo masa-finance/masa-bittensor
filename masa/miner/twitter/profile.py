@@ -1,17 +1,12 @@
 import os
 import requests
 import bittensor as bt
+from masa.miner.protocol import ProtocolRequest
 from masa.types.twitter import TwitterProfileObject
 
-class TwitterProfileRequest():
+class TwitterProfileRequest(ProtocolRequest):
     def __init__(self):
-        self.base_url = os.getenv('ORACLE_BASE_URL', "http://localhost:8080/api/v1")
-        self.authorization = os.getenv('ORACLE_AUTHORIZATION', "Bearer 1234")
-        self.headers = {"Authorization": self.authorization }
-        
-    def get(self, path) -> requests.Response:
-        timeout_duration = 1
-        return requests.get(f"{self.base_url}{path}", headers=self.headers, timeout=timeout_duration)
+        super().__init__()
     
     def get_profile(self, profile) -> TwitterProfileObject:
         bt.logging.info(f"Getting profile from worker {profile}")
