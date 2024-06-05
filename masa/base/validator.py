@@ -66,6 +66,8 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Init sync with the network. Updates the metagraph.
         self.sync()
+        
+        self.load_state()
 
         # Serve axon to enable external connections.
         if not self.config.neuron.axon_off:
@@ -338,6 +340,9 @@ class BaseValidatorNeuron(BaseNeuron):
             1 - alpha
         ) * self.scores.to(self.device)
         print(f"Updated moving avg scores: {self.scores}")
+        
+        
+        self.save_state()
 
     def save_state(self):
         """Saves the state of the validator to a file."""
@@ -356,6 +361,7 @@ class BaseValidatorNeuron(BaseNeuron):
     def load_state(self):
         """Loads the state of the validator from a file."""
         bt.logging.info("Loading validator state.")
+        
 
         # Load the state of the validator from file.
         state = torch.load(self.config.neuron.full_path + "/state.pt")
