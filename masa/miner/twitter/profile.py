@@ -22,28 +22,7 @@ class TwitterProfileRequest(ProtocolRequest):
     def format_profile(self, data: requests.Response) -> TwitterProfileObject:
         bt.logging.info(f"Formatting twitter profile data: {data}")
         profile_data = data.json()['data']
-        twitter_profile = TwitterProfileObject(
-                    UserID=profile_data.get("UserID", None),
-                    Avatar=profile_data.get("Avatar", None),
-                    Banner=profile_data.get("Banner", None),
-                    Biography=profile_data.get("Biography", None),
-                    Birthday=profile_data.get("Birthday", None),
-                    FollowersCount=profile_data.get("FollowersCount", None),
-                    FollowingCount=profile_data.get("FollowingCount", None),
-                    FriendsCount=profile_data.get("FriendsCount", None),
-                    IsPrivate=profile_data.get("IsPrivate", None),
-                    IsVerified=profile_data.get("IsVerified", None),
-                    Joined=profile_data.get("Joined", None),
-                    LikesCount=profile_data.get("LikesCount", None),
-                    ListedCount=profile_data.get("ListedCount", None),
-                    Location=profile_data.get("Location", None),
-                    Name=profile_data.get("Name", None),
-                    PinnedTweetIDs=profile_data.get("PinnedTweetIDs", None),
-                    TweetsCount=profile_data.get("TweetsCount", None),
-                    URL=profile_data.get("URL", None),
-                    Username=profile_data.get("Username", None),
-                    Website=profile_data.get("Website", None)
-                )
+        twitter_profile = TwitterProfileObject(**profile_data)
         
         return twitter_profile
             
