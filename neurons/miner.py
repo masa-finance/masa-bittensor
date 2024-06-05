@@ -27,7 +27,7 @@ from masa.api.request import Request
 from masa.miner.twitter_profile_request import TwitterProfileRequest
 from masa.api.request import Request
 
-delay = 10
+delay = 0
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
