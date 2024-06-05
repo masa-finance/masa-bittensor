@@ -27,7 +27,7 @@ pip install -r requirements.txt
 ### 4. Finish setup
 
 ```bash
-export PYTHONPATH=$PYTHONPATH:<path_to_this_repo>
+make set-python-path
 ```
 
 For more details on how to install Bittensor and set up the virtual environment, please refer to the [official Bittensor installation guide](https://github.com/opentensor/bittensor#install).
