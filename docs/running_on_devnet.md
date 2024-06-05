@@ -27,10 +27,6 @@ pip install -r requirements.txt
 ### 4. Finish setup
 
 ```bash
-python setup.py install
-```
-
-```bash
 export PYTHONPATH=$PYTHONPATH:<path_to_this_repo>
 ```
 
