@@ -34,7 +34,7 @@ class TweetsForwarder(Forwarder):
             # Query miners
             responses = await self.validator.dendrite(
                 axons=[self.validator.metagraph.axons[uid] for uid in self.miner_uids],
-                synapse=Request(request=query, type=RequestType.TWITTER_TWEETS.value),
+                synapse=Request(query=query, type=RequestType.TWITTER_TWEETS.value),
                 deserialize=True,
             )
 
