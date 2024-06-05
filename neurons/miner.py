@@ -23,9 +23,8 @@ import bittensor as bt
 
 # import base miner class which takes care of most of the boilerplate
 from masa.base.miner import BaseMinerNeuron
-from masa.api.request import Request
+from masa.api.request import Request, RequestType
 from masa.miner.twitter_profile_request import TwitterProfileRequest
-from masa.api.request import Request
 
 delay = 0
 class Miner(BaseMinerNeuron):
@@ -37,20 +36,21 @@ class Miner(BaseMinerNeuron):
     ) -> Request:
         print(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
-        print(f"Miner needs to fetch Twitter profile {synapse.request}")
+        # print(f"Miner needs to fetch Twitter profile {synapse.request}")
         try:
-            profile = TwitterProfileRequest().get_profile(synapse.request)
-            print(f"Profile: {profile}")
-            if profile != None:
-                profile_dict = dict(profile)
-                synapse.twitter_object = profile_dict
-            else:
-                bt.logging.error(f"Failed to fetch Twitter profile for {synapse.twitter_object}.")
+            request_type = synapse.type
+            if request_type == RequestType.TWITTER_PROFILE.value:
+                profile = TwitterProfileRequest().get_profile(synapse.request)
+                if profile != None:
+                    profile_dict = dict(profile)
+                    synapse.response = profile_dict
+                else:
+                    bt.logging.error(f"Failed to fetch Twitter profile for {synapse.response}.")
         
         except Exception as e:
-            bt.logging.error(f"Exception occurred while fetching Twitter profile for {synapse.twitter_object}: {str(e)}")
+            bt.logging.error(f"Exception occurred while fetching Twitter profile for {synapse.response}: {str(e)}")
             
-        print("Returning synapse: ", synapse.twitter_object)
+        print("Returning synapse: ", synapse.response)
         return synapse
 
     async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:

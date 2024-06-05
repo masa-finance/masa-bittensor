@@ -18,7 +18,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
-from masa.api.request import Request
+from masa.api.request import Request, RequestType
 from masa.validator.reward import get_rewards
 from masa.utils.uids import get_random_uids
 from masa.types.twitter import TwitterProfileObject
@@ -31,7 +31,7 @@ async def query_and_score(validator, profile):
         # Query miners
         responses = await validator.dendrite(
             axons=[validator.metagraph.axons[uid] for uid in miner_uids],
-            synapse=Request(request=profile),
+            synapse=Request(request=profile, type=RequestType.TWITTER_PROFILE.value),
             deserialize=True,
         )
     
