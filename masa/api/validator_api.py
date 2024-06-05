@@ -54,14 +54,14 @@ class ValidatorAPI:
         
         
     async def get_twitter_profile(self, username: str):
-        return await self.validator.forward(query=username, type=RequestType.TWITTER_PROFILE.value)
+        return await self.validator.forward(request=username, type=RequestType.TWITTER_PROFILE.value)
     
 
     async def get_twitter_followers(self, username: str):
-        return await self.validator.forward(query=username, type=RequestType.TWITTER_FOLLOWERS.value)
+        return await self.validator.forward(request=username, type=RequestType.TWITTER_FOLLOWERS.value)
     
     async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
-        return await self.validator.forward(query=tweet_query, type=RequestType.TWITTER_TWEETS.value)
+        return await self.validator.forward(request=tweet_query, type=RequestType.TWITTER_TWEETS.value)
 
     def get_axons(self):
         return self.validator.metagraph.axons

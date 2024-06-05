@@ -36,13 +36,13 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info("Validator initialized with config: {}".format(config))
 
 
-    async def forward(self, query = 'brendanplayford', type = RequestType.TWITTER_PROFILE.value):
+    async def forward(self, request = 'brendanplayford', type = RequestType.TWITTER_PROFILE.value):
         if type == RequestType.TWITTER_PROFILE.value:
-            return await ProfileForwarder(self).query_and_score(query)
+            return await ProfileForwarder(self).query_and_score(request)
         elif type == RequestType.TWITTER_FOLLOWERS.value:
-            return await FollowersForwarder(self).query_and_score(query)
+            return await FollowersForwarder(self).query_and_score(request)
         elif type == RequestType.TWITTER_TWEETS.value:
-            return await TweetsForwarder(self).query_and_score(query)
+            return await TweetsForwarder(self).query_and_score(request)
         
 
     def update_weights(self, scores):
