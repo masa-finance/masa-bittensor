@@ -22,6 +22,8 @@ from masa.api.request import Request, RequestType
 from masa.validator.forwarder import Forwarder
 from masa.validator.twitter.tweets.reward import get_rewards
 from masa.types.twitter import TwitterTweetObject
+from masa.miner.twitter.tweets import RecentTweetsQuery
+
 
 class TweetsForwarder(Forwarder):
 
@@ -29,12 +31,12 @@ class TweetsForwarder(Forwarder):
         super(TweetsForwarder, self).__init__(validator)
 
 
-    async def query_and_score(self, query):
+    async def query_and_score(self, tweet_query: RecentTweetsQuery):
         try:
             # Query miners
             responses = await self.validator.dendrite(
                 axons=[self.validator.metagraph.axons[uid] for uid in self.miner_uids],
-                synapse=Request(query=query, type=RequestType.TWITTER_TWEETS.value),
+                synapse=Request(query=tweet_query.query, count=tweet_query.count, type=RequestType.TWITTER_TWEETS.value),
                 deserialize=True,
             )
 
@@ -46,7 +48,7 @@ class TweetsForwarder(Forwarder):
             ]
 
             # Score responses
-            rewards = get_rewards(self.validator, query=query, responses=parsed_responses)
+            rewards = get_rewards(self.validator, query=tweet_query.query, responses=parsed_responses)
 
             # Update the scores based on the rewards
             self.validator.update_scores(rewards, valid_miner_uids)

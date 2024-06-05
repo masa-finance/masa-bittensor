@@ -10,6 +10,7 @@ class RequestType(Enum):
 class Request(bt.Synapse):
     query: str
     type: str
+    count: Optional[int] = None
     response: Optional[Any] = None
 
 
