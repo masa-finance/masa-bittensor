@@ -118,7 +118,3 @@ build-binary:
 
 run-localnet:
 	BUILD_BINARY=0 ./scripts/localnet.sh
-########################################################################
-
-set-python-path:
-	export PYTHONPATH=$PYTHONPATH:$(shell pwd)
