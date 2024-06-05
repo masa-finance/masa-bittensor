@@ -118,4 +118,3 @@ build-binary:
 
 run-localnet:
 	BUILD_BINARY=0 ./scripts/localnet.sh
-########################################################################
