@@ -23,9 +23,10 @@ import bittensor as bt
 
 # import base miner class which takes care of most of the boilerplate
 from masa.base.miner import BaseMinerNeuron
-from masa.api.request import Request
-from masa.miner.twitter_profile_request import TwitterProfileRequest
-from masa.api.request import Request
+from masa.api.request import Request, RequestType
+from masa.miner.twitter.profile import TwitterProfileRequest
+from masa.miner.twitter.followers import TwitterFollowersRequest
+from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
 
 delay = 0
 class Miner(BaseMinerNeuron):
@@ -37,20 +38,34 @@ class Miner(BaseMinerNeuron):
     ) -> Request:
         print(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
-        print(f"Miner needs to fetch Twitter profile {synapse.request}")
         try:
-            profile = TwitterProfileRequest().get_profile(synapse.request)
-            print(f"Profile: {profile}")
-            if profile != None:
-                profile_dict = dict(profile)
-                synapse.twitter_object = profile_dict
-            else:
-                bt.logging.error(f"Failed to fetch Twitter profile for {synapse.twitter_object}.")
-        
-        except Exception as e:
-            bt.logging.error(f"Exception occurred while fetching Twitter profile for {synapse.twitter_object}: {str(e)}")
+            request_type = synapse.type
             
-        print("Returning synapse: ", synapse.twitter_object)
+            if request_type == RequestType.TWITTER_PROFILE.value:
+                profile = TwitterProfileRequest().get_profile(synapse.query)
+                if profile != None:
+                    profile_dict = dict(profile)
+                    synapse.response = profile_dict
+                else:
+                    bt.logging.error(f"Failed to fetch Twitter profile for {synapse.query}.")
+        
+            elif request_type == RequestType.TWITTER_FOLLOWERS.value:
+                followers = TwitterFollowersRequest().get_followers(synapse.query)
+                if followers != None:
+                    synapse.response = followers
+                else:
+                    bt.logging.error(f"Failed to fetch Twitter followers for {synapse.query}.")
+
+            elif request_type == RequestType.TWITTER_TWEETS.value:
+                tweets = TwitterTweetsRequest().get_recent_tweets(RecentTweetsQuery(query=synapse.query, count=synapse.count))
+                if tweets != None:
+                    synapse.response = tweets
+                else:
+                    bt.logging.error(f"Failed to fetch Twitter tweets for {synapse.query}.")
+
+        except Exception as e:
+            bt.logging.error(f"Exception occurred while doing work for {synapse.query}: {str(e)}")
+            
         return synapse
 
     async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:

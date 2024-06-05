@@ -1,12 +1,18 @@
-import typing
 import bittensor as bt
-from ..types.twitter import TwitterProfileObject 
-from typing import Optional
+from enum import Enum
+from typing import Optional, Any
+
+class RequestType(Enum):
+    TWITTER_PROFILE = "twitter_profile"
+    TWITTER_FOLLOWERS = "twitter_followers"
+    TWITTER_TWEETS = "twitter_tweets"
 
 class Request(bt.Synapse):
-    request: str
-    twitter_object: Optional[TwitterProfileObject] = None
+    query: str
+    type: str
+    count: Optional[int] = None
+    response: Optional[Any] = None
 
 
     def deserialize(self) -> int:
-        return self.twitter_object
+        return self.response

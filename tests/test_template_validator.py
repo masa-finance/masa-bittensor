@@ -26,7 +26,7 @@ from neurons.miner import Neuron as Miner
 
 from masa.api.dummy import Dummy
 from masa.utils.uids import get_random_uids
-from masa.validator.reward import get_rewards
+from masa.validator.twitter.profile.reward import get_rewards
 from masa.base.validator import BaseValidatorNeuron
 
 
