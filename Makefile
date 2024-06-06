@@ -1,13 +1,12 @@
 
 LOCAL_ENDPOINT = ws://127.0.0.1:9945
-LOCAL_ENVIRONMENT = chain_endpoint $(LOCAL_ENDPOINT)
+LOCAL = chain_endpoint $(LOCAL_ENDPOINT)
 
-AWS_ENDPOINT = ws://54.205.45.3:9945 # DEVNET
-AWS_ENVIRONMENT = chain_endpoint $(AWS_ENDPOINT)
+DEVNET_ENDPOINT = ws://54.205.45.3:9945
+DEVNET = chain_endpoint $(DEVNET_ENDPOINT)
 
-TEST_ENVIRONMENT = network test
+TEST = network test
 
-BITTENSOR_PATH=/Users/juam/Projects/masa-finance/bittensor/bittensor-1
 NETUID = 1
 # NETUID = 165 # Testnet subnet created by Mati
 
@@ -15,9 +14,9 @@ NETUID = 1
 ########################################################################
 #####                       SELECT YOUR ENV                        #####
 ########################################################################
-# ENVIRONMENT = $(LOCAL_ENVIRONMENT)
-ENVIRONMENT = $(AWS_ENVIRONMENT)
-# ENVIRONMENT = $(TEST_ENVIRONMENT)
+# SUBTENSOR_ENVIRONMENT = $(LOCAL)
+SUBTENSOR_ENVIRONMENT = $(DEVNET)
+# SUBTENSOR_ENVIRONMENT = $(TEST)
 
 
 ########################################################################
@@ -26,61 +25,61 @@ ENVIRONMENT = $(AWS_ENVIRONMENT)
 
 ## Wallet funding
 fund-owner-wallet:
-	btcli wallet faucet --wallet.name owner --subtensor.$(ENVIRONMENT)
+	btcli wallet faucet --wallet.name owner --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 fund-validator-wallet:
-	btcli wallet faucet --wallet.name validator --subtensor.$(ENVIRONMENT)
+	btcli wallet faucet --wallet.name validator --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 fund-miner-wallet:
-	btcli wallet faucet --wallet.name miner --subtensor.$(ENVIRONMENT)
+	btcli wallet faucet --wallet.name miner --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 ## Subnet creation
 create-subnet:
-	btcli subnet create --wallet.name owner --subtensor.$(ENVIRONMENT)
+	btcli subnet create --wallet.name owner --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 ## Subnet and wallet info
 list-wallets:
 	btcli wallet list
 
 overview-all:
-	btcli wallet overview --all --subtensor.$(ENVIRONMENT)
+	btcli wallet overview --all --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 balance-all:
-	btcli wallet balance --all --subtensor.$(ENVIRONMENT)
+	btcli wallet balance --all --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 list-subnets:
-	btcli subnets list --subtensor.$(ENVIRONMENT)
+	btcli subnets list --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 ## Validator setup
 stake-validator:
-	btcli stake add --wallet.name validator --wallet.hotkey default --subtensor.$(ENVIRONMENT)
+	btcli stake add --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 register-validator:
-	btcli subnet register --wallet.name validator --wallet.hotkey default --subtensor.$(ENVIRONMENT)
+	btcli subnet register --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 register-validator-root:
-	btcli root register --wallet.name validator --wallet.hotkey default --subtensor.$(ENVIRONMENT)
+	btcli root register --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 ## Register miner + Key Registration Validation
 register-miner:
-	btcli subnet register --wallet.name miner --wallet.hotkey default --subtensor.$(ENVIRONMENT)
+	btcli subnet register --wallet.name miner --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 validate-key-registration:
-	btcli subnet list --subtensor.$(ENVIRONMENT)
+	btcli subnet list --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 ## Setup weights
 boost-root:
-	btcli root boost --netuid $(NETUID) --increase 1 --wallet.name validator --wallet.hotkey default --subtensor.$(ENVIRONMENT)
+	btcli root boost --netuid $(NETUID) --increase 1 --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 set-weights:
-	btcli root weights --subtensor.$(ENVIRONMENT)
+	btcli root weights --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 ## Run miner and validator
 run-miner:
-	python neurons/miner.py --netuid $(NETUID) --subtensor.$(ENVIRONMENT) --wallet.name miner --wallet.hotkey default --logging.debug --axon.port 8091
+	python neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --logging.debug --axon.port 8091
 
 run-validator:
-	python neurons/validator.py --netuid $(NETUID) --subtensor.$(ENVIRONMENT) --wallet.name validator --wallet.hotkey default --logging.debug --axon.port 8092
+	python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --logging.debug --axon.port 8092
 
 ## Docker commands
 docker-build:
