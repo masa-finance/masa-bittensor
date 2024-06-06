@@ -9,7 +9,7 @@ This guide provides a comprehensive walkthrough for setting up a local miner and
 
 ### 1. Create virtual environment
 
-If you do not already have a dedicated virtual envionment for Bittensor, you can create one using conda:
+If you do not already have a dedicated virtual envionment for Bittensor, you can create one using [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html):
 
 ```bash
 conda create --name bittensor python
@@ -17,7 +17,7 @@ conda create --name bittensor python
 
 ### 2. Activate virtual environment
 
-Please remember to always activate the environment when opening a new terminal!
+Activate the environment. Remember this step when opening a new terminal!
 
 ```bash
 conda activate bittensor
@@ -39,7 +39,7 @@ export PYTHONPATH=$PYTHONPATH:<path_to_this_repo>
 
 ### 5. Verify Subtensor Environment
 
-In the `Makefile`, ensure `SUBTENSOR_ENVIRONMENT` is set to `DEVNET`. If you are interested in running subtensor locally, set `SUBTENSOR_ENVIRONMENT` to `LOCAL`, and verify `LOCAL_ENDPOINT` is set correctly.
+In the `Makefile`, ensure `SUBTENSOR_ENVIRONMENT` is set to `DEVNET`. If you are interested in running subtensor locally, see [here](./running_on_staging.md). Be sure to set `SUBTENSOR_ENVIRONMENT` to `LOCAL`.
 
 ## Wallet Setup
 
@@ -80,7 +80,7 @@ make fund-validator-wallet
 
 ### 10. Register Wallets to Subnet
 
-Register your `miner` and `validator` to the subnet `1`:
+Register your `miner` and `validator` to the default subnet (`1`):
 
 ```bash
 make register-validator
@@ -91,7 +91,7 @@ make register-miner
 
 ### 11. Stake on Validator
 
-Stake TAO on the `validator` hotkey to finish registration:
+Stake TAO to the `validator`'s hotkey to establish it as a validator:
 
 ```bash
 make stake-validator
@@ -113,11 +113,17 @@ Then, set your weights:
 make boost-root
 ```
 
-**Note:** You may encounter an error like 'setting weights too fast', which also means wait for another hour.
+**Note:** You may encounter an error like 'setting weights too fast'. This is also normal; wait for one tempo (approximately 1 hour).
 
-## Run Masa Protocol
+## Run Masa Protocol Node
 
-### 14. Run Miner and Validator
+### 14. Setup Local Masa Protocol Node
+
+Follow the instructions [here](https://github.com/masa-finance/masa-oracle) to setup a local Masa protocol node. This node is what the miner uses to do its work.
+
+## Run Miner and Validator
+
+### 15. Run Miner and Validator
 
 Finally, in two seperate terminals, run the `miner` and `validator`:
 
@@ -131,7 +137,7 @@ and
 make run-validator
 ```
 
-### 15. Interact with Validator API
+### 16. Interact with Validator API
 
 Head to `http://localhost:8000/docs` to interact with the Validator API.
 

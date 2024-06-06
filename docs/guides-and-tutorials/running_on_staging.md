@@ -2,7 +2,7 @@
 
 This tutorial will guide you through:
 
-- Setting up a local blockchain that is not connected to either Bittensor testchain or mainchain, or the Masa Protocol devchain.
+- Setting up a local blockchain that is _not_ connected to Bittensor testchain, mainchain, or the Masa Protocol devchain.
 - Creating a subnet
 - Run your incentive mechanism on the subnet.
 
@@ -44,8 +44,7 @@ docker run -d --name masa-subtensor -p 30333:30333 30334:30334 30335:30335 9615:
 
 (just switch to amd-latest if you are running on ubuntu)
 
-You should now have a locally running version of the subtensor, AKA, your own private local devnet.
-You can now continue to the next part, setting up a wallet, and using your local subtensor's faucet to get test TAO.
+You should now have a locally running version of the subtensor, AKA, your own private local devnet. You can now continue to the [next part](./running_on_devnet.md#wallet-setup), setting up a wallet, and using your local subtensor's faucet to get test TAO.
 
 ## Prerequisites to build bittensor locally
 
