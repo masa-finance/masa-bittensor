@@ -3,8 +3,10 @@ from fastapi import FastAPI
 import asyncio
 import uvicorn
 from fastapi import FastAPI, Depends
-from masa.api.request import RequestType
 from masa.miner.twitter.tweets import RecentTweetsQuery
+from masa.validator.twitter.profile.forward import ProfileForwarder
+from masa.validator.twitter.followers.forward import FollowersForwarder
+from masa.validator.twitter.tweets.forward import TweetsForwarder
 
 class ValidatorAPI:
     def __init__(self, validator, config=None):
@@ -54,14 +56,13 @@ class ValidatorAPI:
         
         
     async def get_twitter_profile(self, username: str):
-        return await self.validator.forward(request=username, type=RequestType.TWITTER_PROFILE.value)
-    
+        return await ProfileForwarder(self.validator).forward_query(query=username)
 
     async def get_twitter_followers(self, username: str):
-        return await self.validator.forward(request=username, type=RequestType.TWITTER_FOLLOWERS.value)
+        return await FollowersForwarder(self.validator).forward_query(query=username)
     
     async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
-        return await self.validator.forward(request=tweet_query, type=RequestType.TWITTER_TWEETS.value)
+        return await TweetsForwarder(self.validator).forward_query(tweet_query=tweet_query)
 
     def get_axons(self):
         return self.validator.metagraph.axons
