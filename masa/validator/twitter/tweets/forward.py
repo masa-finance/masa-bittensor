@@ -21,40 +21,16 @@ import bittensor as bt
 from masa.api.request import Request, RequestType
 from masa.validator.forwarder import Forwarder
 from masa.validator.twitter.tweets.reward import get_rewards
-from masa.types.twitter import TwitterTweetObject
-from masa.miner.twitter.tweets import RecentTweetsQuery
-
+from masa.validator.twitter.tweets.parser import tweets_parser
 
 class TweetsForwarder(Forwarder):
 
     def __init__(self, validator):
         super(TweetsForwarder, self).__init__(validator)
 
-
-    async def query_and_score(self, tweet_query: RecentTweetsQuery):
-        try:
-            # Query miners
-            responses = await self.validator.dendrite(
-                axons=[self.validator.metagraph.axons[uid] for uid in self.miner_uids],
-                synapse=Request(query=tweet_query.query, count=tweet_query.count, type=RequestType.TWITTER_TWEETS.value),
-                deserialize=True,
-            )
-
-            # Filter and parse valid responses
-            valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(responses)
-            parsed_responses = [
-                [TwitterTweetObject(**tweet) for tweet in response]
-                for response in valid_responses  # Each response is a list of dictionaries
-            ]
-
-            # Score responses
-            rewards = get_rewards(self.validator, query=tweet_query.query, responses=parsed_responses)
-
-            # Update the scores based on the rewards
-            self.validator.update_scores(rewards, valid_miner_uids)
-
-            # Return the valid responses
-            return valid_responses
+    async def forward_query(self, tweet_query):
+        try:          
+            return await self.forward(request=Request(query=tweet_query.query, count=tweet_query.count, type=RequestType.TWITTER_TWEETS.value), get_rewards=get_rewards, query=tweet_query.query, parser_method=tweets_parser)
 
         except Exception as e:
             bt.logging.error(f"Error during the handle responses process: {str(e)}")
