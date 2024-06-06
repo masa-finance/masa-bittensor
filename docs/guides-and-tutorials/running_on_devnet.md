@@ -1,4 +1,9 @@
-# Run a Local Validator / Miner on Devnet
+---
+id: devnet-guide
+title: Devnet Guide
+---
+
+This guide provides a comprehensive walkthrough for setting up a local miner and validator on the Masa Devnet.
 
 ## Environment Setup
 
@@ -110,6 +115,8 @@ make boost-root
 
 **Note:** You may encounter an error like 'setting weights too fast', which also means wait for another hour.
 
+## Run Masa Protocol
+
 ### 14. Run Miner and Validator
 
 Finally, in two seperate terminals, run the `miner` and `validator`:
@@ -123,5 +130,9 @@ and
 ```bash
 make run-validator
 ```
+
+### 15. Interact with Validator API
+
+Head to `http://localhost:8000/docs` to interact with the Validator API.
 
 **Important:** If using the `btcli` directly and not `make` commands, remember to add the flags `--subtensor.chain_endpoint ws://54.157.190.36:9945` and `--netuid 1` to each command. These flags point to our devnet and specify the subnet ID, respectively.
