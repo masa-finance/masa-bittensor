@@ -21,38 +21,17 @@ import bittensor as bt
 from masa.api.request import Request, RequestType
 from masa.validator.forwarder import Forwarder
 from masa.validator.twitter.followers.reward import get_rewards
-from masa.types.twitter import TwitterFollowerObject
+from masa.validator.twitter.followers.parser import followers_parser
 
 class FollowersForwarder(Forwarder):
 
     def __init__(self, validator):
         super(FollowersForwarder, self).__init__(validator)
-
-
-    async def query_and_score(self, query):
-        try:
-            # Query miners
-            responses = await self.validator.dendrite(
-                axons=[self.validator.metagraph.axons[uid] for uid in self.miner_uids],
-                synapse=Request(query=query, type=RequestType.TWITTER_FOLLOWERS.value),
-                deserialize=True,
-            )
-
-            # Filter and parse valid responses
-            valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(responses)
-            parsed_responses = [
-                [TwitterFollowerObject(**follower) for follower in response]
-                for response in valid_responses  # Each response is a list of dictionaries
-            ]
-
-            # Score responses
-            rewards = get_rewards(self.validator, query=query, responses=parsed_responses)
-
-            # Update the scores based on the rewards
-            self.validator.update_scores(rewards, valid_miner_uids)
-
-            # Return the valid responses
-            return valid_responses
+        
+        
+    async def forward_query(self, query):
+        try:          
+            return await self.forward(request=Request(query=query, type=RequestType.TWITTER_FOLLOWERS.value), get_rewards=get_rewards, query=query, parser_method=followers_parser)
 
         except Exception as e:
             bt.logging.error(f"Error during the handle responses process: {str(e)}")
