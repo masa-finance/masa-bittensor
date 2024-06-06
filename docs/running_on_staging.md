@@ -2,7 +2,7 @@
 
 This tutorial will guide you through:
 
-- Setting up a local blockchain that is not connected to either Bittensor testchain or mainchain
+- Setting up a local blockchain that is not connected to either Bittensor testchain or mainchain, or the Masa Protocol devchain.
 - Creating a subnet
 - Run your incentive mechanism on the subnet.
 
@@ -14,7 +14,36 @@ A local subtensor node will connect to the mainchain and sync with the mainchain
 
 Running a local blockchain spins up two authority nodes locally, not connected to any other nodes or testchain or mainchain. This tutorial is for running a local blockchain. 
 
-## Prerequisites
+You can either build on your machine, or you can pull one of two prebuilt Docker images, one for arm64 machines (built and tested on macbook pro M3), or the image built for amd64 (built and tested on ubuntu).
+
+## Prerequisites for running bittensor locally with a Docker image
+
+- [Install `docker`](https://docs.docker.com/engine/install/).
+
+With docker installed, proceed as below:
+
+## 1. Pull the image for your platform:
+
+For ARM (mac):
+```bash
+docker pull ghcr.io/masa-finance/subtensor/development:arm-latest
+```
+
+For AMD (ubuntu):
+```bash
+docker pull ghcr.io/masa-finance/subtensor/development:amd-latest
+```
+## 2. Run the image:
+
+```bash
+docker run -d --name masa-subtensor -p 30333:30333 30334:30334 30335:30335 9615:9615 9944:9944 9946:9946 9945:9945 -v /tmp:/tmp ghcr.io/masa-finance/subtensor/development:arm-latest
+```
+(just switch to amd-latest if you are running on ubuntu)
+
+You should now have a locally running version of the subtensor, AKA, your own private local devnet.
+You can now continue to the next part, setting up a wallet, and using your local subtensor's faucet to get test TAO.
+
+## Prerequisites to build bittensor locally
 
 Before proceeding further, make sure that you have installed Bittensor. See the below instructions:
 
