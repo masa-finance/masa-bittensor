@@ -1,11 +1,11 @@
 
 LOCAL_ENDPOINT = ws://127.0.0.1:9945
-LOCAL = chain_endpoint $(LOCAL_ENDPOINT)
+LOCALNET = chain_endpoint $(LOCAL_ENDPOINT)
 
 DEVNET_ENDPOINT = ws://54.205.45.3:9945
 DEVNET = chain_endpoint $(DEVNET_ENDPOINT)
 
-TEST = network test
+TESTNET = network test
 
 NETUID = 1
 # NETUID = 165 # Testnet subnet created by Mati
@@ -14,9 +14,9 @@ NETUID = 1
 ########################################################################
 #####                       SELECT YOUR ENV                        #####
 ########################################################################
-# SUBTENSOR_ENVIRONMENT = $(LOCAL)
+# SUBTENSOR_ENVIRONMENT = $(LOCALNET)
 SUBTENSOR_ENVIRONMENT = $(DEVNET)
-# SUBTENSOR_ENVIRONMENT = $(TEST)
+# SUBTENSOR_ENVIRONMENT = $(TESTNET)
 
 
 ########################################################################
