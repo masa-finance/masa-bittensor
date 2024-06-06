@@ -29,27 +29,9 @@ class ProfileForwarder(Forwarder):
         super(ProfileForwarder, self).__init__(validator)
 
 
-    async def query_and_score(self, query):
-        try:
-            # Query miners
-            responses = await self.validator.dendrite(
-                axons=[self.validator.metagraph.axons[uid] for uid in self.miner_uids],
-                synapse=Request(query=query, type=RequestType.TWITTER_PROFILE.value),
-                deserialize=True,
-            )
-
-            # Filter and parse valid responses
-            valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(responses)
-            parsed_responses = [TwitterProfileObject(**response) for response in valid_responses]
-
-            # Score responses
-            rewards = get_rewards(self.validator, query=query, responses=parsed_responses)
-
-            # Update the scores based on the rewards
-            self.validator.update_scores(rewards, valid_miner_uids)
-
-            # Return the valid responses
-            return valid_responses
+    async def forward_query(self, query):
+        try:          
+            return self.forward(request=Request(query=query, type=RequestType.TWITTER_PROFILE.value), get_rewards=get_rewards, query=query, parser=TwitterProfileObject)
 
         except Exception as e:
             bt.logging.error(f"Error during the handle responses process: {str(e)}")

@@ -24,6 +24,28 @@ class Forwarder:
     def __init__(self, validator):
         self.validator = validator
         self.miner_uids = get_random_uids(validator, k=validator.config.neuron.sample_size)
+        
+        
+    async def forward(self, request, get_rewards, query, parser = None):
+        responses = await self.validator.dendrite(
+            axons=[self.validator.metagraph.axons[uid] for uid in self.miner_uids],
+            synapse=request,
+            deserialize=True,
+        )
+
+        # Filter and parse valid responses
+        valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(responses)
+        parsed_responses = responses
+        
+        if parser:
+            parsed_responses = [parser(**response) for response in valid_responses]
+
+        # Score responses
+        rewards = get_rewards(self.validator, query=query, responses=parsed_responses)
+
+        # Update the scores based on the rewards
+        self.validator.update_scores(rewards, valid_miner_uids)
+        
 
     def sanitize_responses_and_uids(self, responses):
         valid_responses = [response for response in responses if response is not None]
