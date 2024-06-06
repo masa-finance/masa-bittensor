@@ -73,7 +73,7 @@ Before you proceed with the installation of the subnet, note the following:
 ### Install
 
 - **Running locally**: Follow the step-by-step instructions described in this section: [Running Subnet Locally](./docs/running_on_staging.md).
-- **Running on Masa Protocol devnet**: Follow the step-by-step instructions described in this section: [Running on Masa Devnet](./docs/running_on_masa_devnet.md).
+- **Running on Masa Protocol devnet**: Follow the step-by-step instructions described in this section: [Running on Masa Devnet](./docs/running_on_devnet.md).
 - **Running on Bittensor testnet**: Follow the step-by-step instructions described in this section: [Running on the Test Network](./docs/running_on_testnet.md).
 - **Running on Bittensor mainnet**: Follow the step-by-step instructions described in this section: [Running on the Main Network](./docs/running_on_mainnet.md).
 
