@@ -21,12 +21,17 @@ import typing
 import bittensor as bt
 
 from abc import ABC, abstractmethod
+from dotenv import load_dotenv
 
 # Sync calls set weights and also resyncs the metagraph.
 from masa.utils.config import check_config, add_args, config
 from masa.utils.misc import ttl_get_block
 from masa import __spec_version__ as spec_version
 from masa.mock import MockSubtensor, MockMetagraph
+
+
+# Load the .env file for each neuron that tries to run the code
+load_dotenv()
 
 
 class BaseNeuron(ABC):
