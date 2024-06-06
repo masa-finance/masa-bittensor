@@ -31,7 +31,7 @@ class FollowersForwarder(Forwarder):
         
     async def forward_query(self, query):
         try:          
-            return await self.forward(request=Request(query=query, type=RequestType.TWITTER_FOLLOWERS.value), get_rewards=get_rewards, query=query, parser_method=followers_parser)
+            return await self.forward(request=Request(query=query, type=RequestType.TWITTER_FOLLOWERS.value), get_rewards=get_rewards, parser_method=followers_parser)
 
         except Exception as e:
             bt.logging.error(f"Error during the handle responses process: {str(e)}")
