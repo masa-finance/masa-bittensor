@@ -23,22 +23,28 @@ from masa.utils.uids import get_random_uids
 class Forwarder:
     def __init__(self, validator):
         self.validator = validator
-        self.miner_uids = get_random_uids(validator, k=validator.config.neuron.sample_size)
         
         
-    async def forward(self, request, get_rewards, query, parser = None):
+    async def forward(self, request, get_rewards, query, parser_object = None, parser_method = None):
+        ### Getting callable UIDS
+        ### TODO: This should live inside each endpoint to enable us to filter miners by diffferent parameters in the future
+        ### like blacklisting miners only on a specific endpoint like profiles or followers
+        miner_uids = get_random_uids(self.validator, k=self.validator.config.neuron.sample_size)
+        
         responses = await self.validator.dendrite(
-            axons=[self.validator.metagraph.axons[uid] for uid in self.miner_uids],
+            axons=[self.validator.metagraph.axons[uid] for uid in miner_uids],
             synapse=request,
             deserialize=True,
         )
 
         # Filter and parse valid responses
-        valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(responses)
+        valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(responses, miner_uids=miner_uids)
         parsed_responses = responses
         
-        if parser:
-            parsed_responses = [parser(**response) for response in valid_responses]
+        if parser_object:
+            parsed_responses = [parser_object(**response) for response in valid_responses]
+        elif parser_method:
+            parsed_responses = parser_method(valid_responses)
 
         # Score responses
         rewards = get_rewards(self.validator, query=query, responses=parsed_responses)
@@ -46,8 +52,11 @@ class Forwarder:
         # Update the scores based on the rewards
         self.validator.update_scores(rewards, valid_miner_uids)
         
+        
+        return parsed_responses
+        
 
-    def sanitize_responses_and_uids(self, responses):
+    def sanitize_responses_and_uids(self, responses, miner_uids):
         valid_responses = [response for response in responses if response is not None]
-        valid_miner_uids = [self.miner_uids[i] for i, response in enumerate(responses) if response is not None]
+        valid_miner_uids = [miner_uids[i] for i, response in enumerate(responses) if response is not None]
         return valid_responses, valid_miner_uids
