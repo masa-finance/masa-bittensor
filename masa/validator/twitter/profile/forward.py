@@ -31,7 +31,7 @@ class ProfileForwarder(Forwarder):
 
     async def forward_query(self, query):
         try:          
-            return self.forward(request=Request(query=query, type=RequestType.TWITTER_PROFILE.value), get_rewards=get_rewards, query=query, parser=TwitterProfileObject)
+            return await self.forward(request=Request(query=query, type=RequestType.TWITTER_PROFILE.value), get_rewards=get_rewards, query=query, parser_object=TwitterProfileObject)
 
         except Exception as e:
             bt.logging.error(f"Error during the handle responses process: {str(e)}")
