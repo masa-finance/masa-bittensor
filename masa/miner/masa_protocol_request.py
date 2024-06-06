@@ -1,6 +1,9 @@
 import os
 import requests
 
+# Set to 2 to fix localhost timeout issue (happening when = 1)
+REQUEST_TIMEOUT_IN_SECONDS = 2
+
 class MasaProtocolRequest():
     def __init__(self):
         self.base_url = os.getenv('ORACLE_BASE_URL', "http://54.160.27.4:8080/api/v1")
@@ -8,9 +11,7 @@ class MasaProtocolRequest():
         self.headers = {"Authorization": self.authorization }
         
     def get(self, path) -> requests.Response:
-        timeout_in_seconds = 1
-        return requests.get(f"{self.base_url}{path}", headers=self.headers, timeout=timeout_in_seconds)
+        return requests.get(f"{self.base_url}{path}", headers=self.headers, timeout=REQUEST_TIMEOUT_IN_SECONDS)
     
     def post(self, path, body) -> requests.Response:
-        timeout_in_seconds = 1
-        return requests.post(f"{self.base_url}{path}", json=body, headers=self.headers, timeout=timeout_in_seconds)
+        return requests.post(f"{self.base_url}{path}", json=body, headers=self.headers, timeout=REQUEST_TIMEOUT_IN_SECONDS)
