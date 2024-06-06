@@ -1,3 +1,5 @@
+# Run a Local Validator / Miner on Devnet
+
 ## Environment Setup
 
 ### 1. Create virtual environment
@@ -24,63 +26,56 @@ In the root of this repository, run:
 pip install -r requirements.txt
 ```
 
-### 4. Finish setup
+### 4. Set Python Path
 
 ```bash
 export PYTHONPATH=$PYTHONPATH:<path_to_this_repo>
 ```
 
-For more details on how to install Bittensor and set up the virtual environment, please refer to the [official Bittensor installation guide](https://github.com/opentensor/bittensor#install).
+### 5. Verify Subtensor Environment
+
+In the `Makefile`, ensure `SUBTENSOR_ENVIRONMENT` is set to `DEVNET`. If you are interested in running subtensor locally, set `SUBTENSOR_ENVIRONMENT` to `LOCAL`, and verify `LOCAL_ENDPOINT` is set correctly.
 
 ## Wallet Setup
 
-### 1. Create cold wallets
+### 6. Create cold wallets
 
-Create wallets for an `owner`, `miner`, and `validator`.
-
-```bash
-btcli wallet new_coldkey --wallet.name <name>
-```
-
-### 2. Create hot wallets
-
-For `miner` and `validator`, also create a hot wallet (`default`).
+Create cold wallets for a `miner` and `validator`.
 
 ```bash
-btcli wallet new_hotkey --wallet.name <name> --wallet.hotkey default
+btcli wallet new_coldkey --wallet.name miner
+btcli wallet new_coldkey --wallet.name validator
 ```
 
-### 3. Verify creation of wallets
+### 7. Create hot wallets
+
+Create hot wallets (`default`) for each cold wallet
+
+```bash
+btcli wallet new_hotkey --wallet.name miner --wallet.hotkey default
+btcli wallet new_hotkey --wallet.name validator --wallet.hotkey default
+```
+
+### 8. Verify creation of wallets
 
 ```bash
 make list-wallets
 ```
 
-You should see your three wallets listed, with `miner` and `validator` also having a hotkey (`default`) assigned to them.
+You should see two wallets listed, each with an associated hotkey (`default`)
 
-### 4. Mint Tokens
+### 9. Mint Tokens
 
-Next, mint tokens for these wallets. **Note:** If you are creating a new subnet, you need at least 1000 tTAO in the `owner` wallet. Otherwise, just fund `miner` and `validator` once.
+Next, mint tokens for these wallets.
 
 ```bash
 make fund-miner-wallet
 make fund-validator-wallet
-
-# if creating a subnet
-make fund-owner-wallet
 ```
 
-## Create Subnet
+### 10. Register Wallets to Subnet
 
-To create a subnet, use the following command. **Note:** there is no need to create a new subnet in this walkthrough.
-
-```bash
-make create-subnet
-```
-
-## Register Wallets to Subnet
-
-Register your `validator` and `miner` to the subnet:
+Register your `miner` and `validator` to the subnet `1`:
 
 ```bash
 make register-validator
@@ -89,21 +84,23 @@ make register-miner
 
 **Note:** You may encounter an error about exceeding blocks. This is normal; wait for one tempo (approximately 1 hour).
 
-## Stake on Validator
+### 11. Stake on Validator
 
-Stake TAO on the `validator` hotkey to enable the ability to set weights:
+Stake TAO on the `validator` hotkey to finish registration:
 
 ```bash
 make stake-validator
 ```
 
-## Register Validator on Root Subnet
+### 12. Register Validator on Root Subnet
 
 Register your `validator` on the root subnet:
 
 ```bash
 make register-validator-root
 ```
+
+### 13. Set Weights
 
 Then, set your weights:
 
@@ -113,15 +110,15 @@ make boost-root
 
 **Note:** You may encounter an error like 'setting weights too fast', which also means wait for another hour.
 
-## Run Miner and/or Validator
+### 14. Run Miner and Validator
 
-Finally, run the `miner` and/or `validator`:
+Finally, in two seperate terminals, run the `miner` and `validator`:
 
 ```bash
 make run-miner
 ```
 
-or
+and
 
 ```bash
 make run-validator
