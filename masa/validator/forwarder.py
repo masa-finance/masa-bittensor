@@ -26,7 +26,6 @@ class Forwarder:
         
         
     async def forward(self, request, get_rewards, query, parser_object = None, parser_method = None):
-        ### Getting callable UIDS
         ### TODO: This should live inside each endpoint to enable us to filter miners by diffferent parameters in the future
         ### like blacklisting miners only on a specific endpoint like profiles or followers
         miner_uids = get_random_uids(self.validator, k=self.validator.config.neuron.sample_size)
