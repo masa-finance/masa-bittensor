@@ -25,7 +25,7 @@ class Forwarder:
         self.validator = validator
         
         
-    async def forward(self, request, get_rewards, query, parser_object = None, parser_method = None):
+    async def forward(self, request, get_rewards, parser_object = None, parser_method = None):
         ### TODO: This should live inside each endpoint to enable us to filter miners by diffferent parameters in the future
         ### like blacklisting miners only on a specific endpoint like profiles or followers
         miner_uids = get_random_uids(self.validator, k=self.validator.config.neuron.sample_size)
@@ -46,7 +46,7 @@ class Forwarder:
             parsed_responses = parser_method(valid_responses)
 
         # Score responses
-        rewards = get_rewards(self.validator, query=query, responses=parsed_responses)
+        rewards = get_rewards(self.validator, query=request.query, responses=parsed_responses)
 
         # Update the scores based on the rewards
         self.validator.update_scores(rewards, valid_miner_uids)

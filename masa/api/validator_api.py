@@ -10,7 +10,7 @@ from masa.validator.twitter.tweets.forward import TweetsForwarder
 
 class ValidatorAPI:
     def __init__(self, validator, config=None):
-        self.host = os.getenv('VALIDATOR_API_HOST', "0.0.0.0")
+        self.host = os.getenv('VALIDATOR_API_HOST', "localhost")
         self.port = int(os.getenv('VALIDATOR_API_PORT', "8000"))
         
         self.validator = validator
