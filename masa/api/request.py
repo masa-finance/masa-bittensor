@@ -9,8 +9,8 @@ class RequestType(Enum):
     WEB_SCRAPER = "web_scraper"
 
 class Request(bt.Synapse):
-    query: str
-    type: str
+    query: Optional[str] = None
+    type: Optional[str] = None
     url: Optional[str] = None
     depth: Optional[int] = None
     count: Optional[int] = None
