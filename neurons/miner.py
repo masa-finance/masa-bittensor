@@ -27,6 +27,7 @@ from masa.api.request import Request, RequestType
 from masa.miner.twitter.profile import TwitterProfileRequest
 from masa.miner.twitter.followers import TwitterFollowersRequest
 from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
+from masa.miner.web.scraper import WebScraperQuery, WebScraperRequest
 
 delay = 0
 class Miner(BaseMinerNeuron):
@@ -62,6 +63,13 @@ class Miner(BaseMinerNeuron):
                     synapse.response = tweets
                 else:
                     bt.logging.error(f"Failed to fetch Twitter tweets for {synapse.query}.")
+            
+            elif request_type == RequestType.WEB_SCRAPER.value:
+                web_scraped_data = WebScraperRequest().scrape_web(WebScraperQuery(url=synapse.url, depth=synapse.depth))
+                if web_scraped_data != None:
+                    synapse.response = web_scraped_data
+                else:
+                    bt.logging.error(f"Failed to scrape for {synapse.url}.")
 
         except Exception as e:
             bt.logging.error(f"Exception occurred while doing work for {synapse.query}: {str(e)}")
