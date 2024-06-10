@@ -6,10 +6,13 @@ class RequestType(Enum):
     TWITTER_PROFILE = "twitter_profile"
     TWITTER_FOLLOWERS = "twitter_followers"
     TWITTER_TWEETS = "twitter_tweets"
+    WEB_SCRAPER = "web_scraper"
 
 class Request(bt.Synapse):
-    query: str
-    type: str
+    query: Optional[str] = None
+    type: RequestType
+    url: Optional[str] = None
+    depth: Optional[int] = None
     count: Optional[int] = None
     response: Optional[Any] = None
 
