@@ -72,7 +72,7 @@ class Miner(BaseMinerNeuron):
                     bt.logging.error(f"Failed to scrape for {synapse.url}.")
 
         except Exception as e:
-            bt.logging.error(f"Exception occurred while doing work for {synapse.query}: {str(e)}")
+            bt.logging.error(f"Exception occurred while doing work for {synapse.query}: {str(e)}", exc_info=True)
             
         return synapse
 
