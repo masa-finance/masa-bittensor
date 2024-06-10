@@ -42,6 +42,15 @@ class ValidatorAPI:
             response_description="Get recent tweets given a query",
             tags=["twitter"]
         )
+
+        self.app.add_api_route(
+            "/data/discord/profile/{user_id}",
+            self.get_recent_tweets,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get recent tweets given a query",
+            tags=["twitter"]
+        )
         
         self.app.add_api_route(
             "/axons",
@@ -62,6 +71,9 @@ class ValidatorAPI:
         return await FollowersForwarder(self.validator).forward_query(query=username)
     
     async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
+        return await TweetsForwarder(self.validator).forward_query(tweet_query=tweet_query)
+    
+    async def get_discord_profile(self, user_id: str):
         return await TweetsForwarder(self.validator).forward_query(tweet_query=tweet_query)
 
     def get_axons(self):
