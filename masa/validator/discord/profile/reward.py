@@ -29,11 +29,11 @@ def reward(query: str, response: List[DiscordProfileObject]) -> float:
         return 0.0 
     bt.logging.info(f"Getting discord response from {response}")
     # Extract length of response
-    length = len(response)
-    bt.logging.info(f"Calculating reward for discord response {length}")
+    user_id = response.get("ID", "")
+    bt.logging.info(f"Calculating reward for discord response {user_id}")
     
     # Return a reward of 1 if the response is not empty and has a length
-    if length > 0:
+    if user_id == query:
         return 1
     else:
         return 0
