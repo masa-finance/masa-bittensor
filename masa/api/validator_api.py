@@ -4,9 +4,11 @@ import asyncio
 import uvicorn
 from fastapi import FastAPI, Depends
 from masa.miner.twitter.tweets import RecentTweetsQuery
+from masa.miner.web.scraper import WebScraperQuery
 from masa.validator.twitter.profile.forward import ProfileForwarder
 from masa.validator.twitter.followers.forward import FollowersForwarder
 from masa.validator.twitter.tweets.forward import TweetsForwarder
+from masa.validator.web.forward import WebScraperForwarder
 
 class ValidatorAPI:
     def __init__(self, validator, config=None):
@@ -42,6 +44,15 @@ class ValidatorAPI:
             response_description="Get recent tweets given a query",
             tags=["twitter"]
         )
+
+        self.app.add_api_route(
+            "/data/web",
+            self.scrape_web,
+            methods=["POST"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get recent tweets given a query",
+            tags=["twitter"]
+        )
         
         self.app.add_api_route(
             "/axons",
@@ -63,6 +74,9 @@ class ValidatorAPI:
     
     async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
         return await TweetsForwarder(self.validator).forward_query(tweet_query=tweet_query)
+    
+    async def scrape_web(self, web_scraper_query: WebScraperQuery):
+        return await WebScraperForwarder(self.validator).forward_query(web_scraper_query=web_scraper_query)
 
     def get_axons(self):
         return self.validator.metagraph.axons
