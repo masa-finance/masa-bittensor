@@ -10,7 +10,7 @@ class RequestType(Enum):
 
 class Request(bt.Synapse):
     query: Optional[str] = None
-    type: Optional[str] = None
+    type: RequestType
     url: Optional[str] = None
     depth: Optional[int] = None
     count: Optional[int] = None
