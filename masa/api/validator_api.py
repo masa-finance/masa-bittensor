@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI
 import asyncio
+from masa.validator.discord.profile.forward import DiscordForwarder
 import uvicorn
 from fastapi import FastAPI, Depends
 from masa.miner.twitter.tweets import RecentTweetsQuery
@@ -53,7 +54,16 @@ class ValidatorAPI:
             response_description="Get recent tweets given a query",
             tags=["twitter"]
         )
-        
+
+        self.app.add_api_route(
+            "/data/discord/profile/{user_id}",
+            self.get_discord_profile,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get the Discord profile for the given user ID",
+            tags=["discord"]
+        )
+
         self.app.add_api_route(
             "/axons",
             self.get_axons,
@@ -74,9 +84,12 @@ class ValidatorAPI:
     
     async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
         return await TweetsForwarder(self.validator).forward_query(tweet_query=tweet_query)
-    
+
     async def scrape_web(self, web_scraper_query: WebScraperQuery):
         return await WebScraperForwarder(self.validator).forward_query(web_scraper_query=web_scraper_query)
+
+    async def get_discord_profile(self, user_id: str):
+        return await DiscordForwarder(self.validator).forward_query(query=user_id)
 
     def get_axons(self):
         return self.validator.metagraph.axons
