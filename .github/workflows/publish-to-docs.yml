@@ -12,12 +12,10 @@ jobs:
     container: pandoc/latex
     steps:
       - uses: actions/checkout@v4
-      - name: Copy Readme
+      - name: Copy Docs
         run: |
           mkdir pub-docs
-          cp -r docs/welcome-to-masa-bittensor-subnet pub-docs/
-          cp -r docs/guides-and-tutorials pub-docs/
-          cp -r docs/known-issues pub-docs/
+          cp -r docs/* pub-docs/
       - name: Pushes to another repository
         uses: cpina/github-action-push-to-another-repository@main
         env:
