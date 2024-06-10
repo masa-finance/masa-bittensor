@@ -60,8 +60,8 @@ class ValidatorAPI:
             self.get_discord_profile,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
-            response_description="Get recent tweets given a query",
-            tags=["twitter"]
+            response_description="Get the Discord profile for the given user ID",
+            tags=["discord"]
         )
 
         self.app.add_api_route(
