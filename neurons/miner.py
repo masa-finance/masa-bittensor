@@ -73,9 +73,9 @@ class Miner(BaseMinerNeuron):
                     bt.logging.error(f"Failed to scrape for {synapse.url}.")
 
             elif request_type == RequestType.DISCORD_PROFILE.value:
-                web_scraped_data = DiscordProfileRequest().get_profile(synapse.query)
-                if web_scraped_data != None:
-                    synapse.response = web_scraped_data
+                discord_profile = DiscordProfileRequest().get_profile(synapse.query)
+                if discord_profile != None:
+                    synapse.response = discord_profile
                 else:
                     bt.logging.error(f"Failed to scrape for {synapse.url}.")
 
