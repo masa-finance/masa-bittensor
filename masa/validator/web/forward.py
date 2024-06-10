@@ -34,5 +34,5 @@ class WebScraperForwarder(Forwarder):
             return await self.forward(request=Request(url=web_scraper_query.url, depth=web_scraper_query.depth, type=RequestType.WEB_SCRAPER.value), get_rewards=get_rewards, parser_method=web_scraper_parser)
 
         except Exception as e:
-            bt.logging.error(f"Error during the handle responses process: {str(e)}")
+            bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)
             return []
