@@ -15,7 +15,7 @@ jobs:
       - name: Copy Docs
         run: |
           mkdir pub-docs
-          cp -r docs pub-docs/
+          cp -r docs/* pub-docs/
       - name: Pushes to another repository
         uses: cpina/github-action-push-to-another-repository@main
         env:
