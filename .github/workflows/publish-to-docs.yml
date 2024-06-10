@@ -15,11 +15,7 @@ jobs:
       - name: Copy Docs
         run: |
           mkdir pub-docs
-          cp -r docs/advanced pub-docs/
-          cp -r docs/setup pub-docs/
-          cp -r docs/RELEASE_NOTES.md pub-docs/
-          cp -r docs/TODO.md pub-docs/
-          cp -r docs/welcome.md pub-docs/
+          cp -r docs pub-docs/
       - name: Pushes to another repository
         uses: cpina/github-action-push-to-another-repository@main
         env:
