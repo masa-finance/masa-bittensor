@@ -7,6 +7,7 @@ class RequestType(Enum):
     TWITTER_FOLLOWERS = "twitter_followers"
     TWITTER_TWEETS = "twitter_tweets"
     WEB_SCRAPER = "web_scraper"
+    DISCORD_PROFILE = "discord_profile"
 
 class Request(bt.Synapse):
     query: Optional[str] = None

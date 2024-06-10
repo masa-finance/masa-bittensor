@@ -24,6 +24,7 @@ import bittensor as bt
 # import base miner class which takes care of most of the boilerplate
 from masa.base.miner import BaseMinerNeuron
 from masa.api.request import Request, RequestType
+from masa.miner.discord.profile import DiscordProfileRequest
 from masa.miner.twitter.profile import TwitterProfileRequest
 from masa.miner.twitter.followers import TwitterFollowersRequest
 from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
@@ -66,6 +67,13 @@ class Miner(BaseMinerNeuron):
             
             elif request_type == RequestType.WEB_SCRAPER.value:
                 web_scraped_data = WebScraperRequest().scrape_web(WebScraperQuery(url=synapse.url, depth=synapse.depth))
+                if web_scraped_data != None:
+                    synapse.response = web_scraped_data
+                else:
+                    bt.logging.error(f"Failed to scrape for {synapse.url}.")
+
+            elif request_type == RequestType.DISCORD_PROFILE.value:
+                web_scraped_data = DiscordProfileRequest().get_profile(synapse.query)
                 if web_scraped_data != None:
                     synapse.response = web_scraped_data
                 else:
