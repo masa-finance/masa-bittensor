@@ -2,3 +2,4 @@ bittensor
 torch
 python-dotenv
 loguru
+watchfiles
