@@ -33,5 +33,5 @@ class TweetsForwarder(Forwarder):
             return await self.forward(request=Request(query=tweet_query.query, count=tweet_query.count, type=RequestType.TWITTER_TWEETS.value), get_rewards=get_rewards, parser_method=tweets_parser)
 
         except Exception as e:
-            bt.logging.error(f"Error during the handle responses process: {str(e)}")
+            bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)
             return []

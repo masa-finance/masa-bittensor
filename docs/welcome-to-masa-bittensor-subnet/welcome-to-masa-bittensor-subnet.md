@@ -40,7 +40,7 @@ class ProfileForwarder(Forwarder):
             return await self.forward(request=Request(query=query, type=RequestType.TWITTER_PROFILE.value), get_rewards=get_rewards, parser_object=TwitterProfileObject)
 
         except Exception as e:
-            bt.logging.error(f"Error during the handle responses process: {str(e)}")
+            bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)
             return []
 ```
 
