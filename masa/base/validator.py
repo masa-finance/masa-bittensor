@@ -17,7 +17,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-
+import os
 import copy
 import torch
 import asyncio
@@ -364,7 +364,11 @@ class BaseValidatorNeuron(BaseNeuron):
         
 
         # Load the state of the validator from file.
-        state = torch.load(self.config.neuron.full_path + "/state.pt")
-        self.step = state["step"]
-        self.scores = state["scores"]
-        self.hotkeys = state["hotkeys"]
+        state_path = self.config.neuron.full_path + "/state.pt"
+        if os.path.isfile(state_path):
+            state = torch.load(state_path)
+            self.step = state["step"]
+            self.scores = state["scores"]
+            self.hotkeys = state["hotkeys"]
+        else:
+            bt.logging.warning(f"State file not found at {state_path}. Skipping state load.")
