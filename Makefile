@@ -7,8 +7,8 @@ DEVNET = chain_endpoint $(DEVNET_ENDPOINT)
 
 TESTNET = network test
 
-NETUID = 1
-# NETUID = 165
+NETUID = 1 # devnet
+# NETUID = 165 # testnet
 
 
 ########################################################################
