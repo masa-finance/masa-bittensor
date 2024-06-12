@@ -34,6 +34,8 @@ delay = 0
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
+        bt.logging.info("Miner initialized with config: {}".format(config))
+
 
     async def forward(
         self, synapse: Request

@@ -158,6 +158,13 @@ def add_miner_args(cls, parser):
         help="Wandb entity to log to.",
     )
 
+    parser.add_argument(
+        "--neuron.debug",
+        action="store_true",
+        help="Sets debug to true",
+        default=False,
+    )
+
 
 def add_validator_args(cls, parser):
     """Add validator specific arguments to the parser."""
