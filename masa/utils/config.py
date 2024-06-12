@@ -240,6 +240,13 @@ def add_validator_args(cls, parser):
         help="Runs forward method automatically",
         default=False,
     )
+    
+    parser.add_argument(
+        "--neuron.debug",
+        action="store_true",
+        help="Sets debug to true",
+        default=False,
+    )
 
 
 def config(cls):
