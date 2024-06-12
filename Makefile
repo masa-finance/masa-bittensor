@@ -7,7 +7,8 @@ DEVNET = chain_endpoint $(DEVNET_ENDPOINT)
 
 TESTNET = network test
 
-NETUID = 1
+NETUID = 1 # devnet
+# NETUID = 165 # testnet
 
 
 ########################################################################
@@ -78,7 +79,7 @@ run-miner:
 	watchfiles "python neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --logging.debug --axon.port 8091" .
 
 run-validator:
-	watchfiles "python neurons/validator.py --netuid 1 --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --logging.debug --axon.port 8092" .
+	watchfiles "python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --logging.debug --axon.port 8092" .
 
 ## Docker commands
 docker-build:
