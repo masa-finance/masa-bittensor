@@ -41,9 +41,9 @@ class Miner(BaseMinerNeuron):
         print(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
 
-        is_blacklisted = await self.blacklist(synapse)
-        if is_blacklisted[0]:
-            bt.logging.warning(f"Blacklisting un-registered hotkey for reason: {is_blacklisted[1]}")
+        [blacklisted, reason] = await self.blacklist(synapse)
+        if blacklisted:
+            bt.logging.warning(f"Blacklisting un-registered hotkey for reason: {reason}")
             return synapse
         
         try:
