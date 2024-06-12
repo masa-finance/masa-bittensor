@@ -223,7 +223,6 @@ class BaseValidatorNeuron(BaseNeuron):
         """
         Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
         """
-
         # Check if self.scores contains any NaN values and log a warning if it does.
         if torch.isnan(self.scores).any():
             bt.logging.warning(
@@ -242,11 +241,13 @@ class BaseValidatorNeuron(BaseNeuron):
             processed_weights,
         ) = bt.utils.weight_utils.process_weights_for_netuid(
             uids=torch.from_numpy(self.metagraph.uids).to("cpu"),
-            weights=raw_weights.to("cpu"),
+            weights=raw_weights.to("cpu").numpy(),
             netuid=self.config.netuid,
             subtensor=self.subtensor,
             metagraph=self.metagraph,
         )
+    
+        
         bt.logging.debug("processed_weights", processed_weights)
         bt.logging.debug("processed_weight_uids", processed_weight_uids)
 
@@ -270,7 +271,9 @@ class BaseValidatorNeuron(BaseNeuron):
             wait_for_inclusion=False,
             version_key=self.spec_version,
         )
+        
         if result is True:
+            print(f"Weights set on chain successfully!")
             bt.logging.info("set_weights on chain successfully!")
         else:
             bt.logging.error("set_weights failed", msg)

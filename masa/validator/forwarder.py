@@ -51,6 +51,7 @@ class Forwarder:
         # Update the scores based on the rewards
         self.validator.update_scores(rewards, valid_miner_uids)
         
+        self.validator.set_weights()
         
         return parsed_responses
         
