@@ -7,16 +7,16 @@ DEVNET = chain_endpoint $(DEVNET_ENDPOINT)
 
 TESTNET = network test
 
-# NETUID = 1
-NETUID = 165
+NETUID = 1
+# NETUID = 165
 
 
 ########################################################################
 #####                       SELECT YOUR ENV                        #####
 ########################################################################
 # SUBTENSOR_ENVIRONMENT = $(LOCALNET)
-# SUBTENSOR_ENVIRONMENT = $(DEVNET)
-SUBTENSOR_ENVIRONMENT = $(TESTNET)
+SUBTENSOR_ENVIRONMENT = $(DEVNET)
+# SUBTENSOR_ENVIRONMENT = $(TESTNET)
 
 
 ########################################################################
