@@ -92,7 +92,7 @@ If the faucet is empty, you can manually request tokens using our form. First, f
 docker-compose logs -f masa-node
 ```
 
-Then, head to **[our form](xhttps://docs.google.com/forms/d/e/1FAIpQLSc344bmJfWYcjAEyDdfKTorDsylEyNU-YppmhQNV89f90RK0w/viewform)** to request test Masa tokens on Sepolia with your nodes address.
+Then, head to **[our form](https://docs.google.com/forms/d/e/1FAIpQLSc344bmJfWYcjAEyDdfKTorDsylEyNU-YppmhQNV89f90RK0w/viewform)** to request test Masa tokens on Sepolia with your nodes address.
 
 For sepoliaETH, you can use a faucet **[like this one](https://www.alchemy.com/faucets/ethereum-sepolia).** When both transactions have settled, you can stake:
 
