@@ -40,6 +40,12 @@ class Miner(BaseMinerNeuron):
     ) -> Request:
         print(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
+
+        is_blacklisted = await self.blacklist(synapse)
+        if is_blacklisted[0]:
+            bt.logging.warning(f"Blacklisting un-registered hotkey for reason: {is_blacklisted[1]}")
+            return synapse
+        
         try:
             request_type = synapse.type
             
@@ -86,13 +92,14 @@ class Miner(BaseMinerNeuron):
 
     async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
         uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
+        bt.logging.info(f"Validator Permit: {self.metagraph.validator_permit[uid]}")
         if not self.config.blacklist.allow_non_registered and synapse.dendrite.hotkey not in self.metagraph.hotkeys:
-            bt.logging.trace(f"Blacklisting un-registered hotkey {synapse.dendrite.hotkey}")
+            bt.logging.warning(f"Blacklisting un-registered hotkey {synapse.dendrite.hotkey}")
             return True, "Unrecognized hotkey"
         if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
             bt.logging.warning(f"Blacklisting a request from non-validator hotkey {synapse.dendrite.hotkey}")
             return True, "Non-validator hotkey"
-        bt.logging.trace(f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}")
+        bt.logging.info(f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}")
         return False, "Hotkey recognized!"
 
     async def priority(self, synapse: Request) -> float:

@@ -76,7 +76,7 @@ set-weights:
 
 ## Run miner and validator
 run-miner:
-	watchfiles "python neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --logging.debug --axon.port 8091" .
+	watchfiles "python neurons/miner.py --blacklist.force_validator_permit --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --logging.debug --axon.port 8091" .
 
 run-validator:
 	watchfiles "python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --logging.debug --axon.port 8092" .
