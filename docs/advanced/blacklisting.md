@@ -8,6 +8,8 @@ To remove the miner accepting any request warning, pass the following flag to to
 python neurons/miner.py --blacklist.force_validator_permit
 ```
 
+## Stake Filter
+
 Additionally, our blacklisting function extends that of the subnet-template and checks for a certain amount of stake, updated every tempo:
 
 ```python
