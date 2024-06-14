@@ -13,3 +13,16 @@ class DiscordChannelMessageObject(TypedDict):
     Author: DiscordProfileObject
     Content: str
     Timestamp: str
+
+class DiscordGuildChannelObject(TypedDict):
+    ID: str
+    GuildID: str
+    Name: str
+    Type: int
+
+class DiscordGuildObject(TypedDict):
+    ID: str
+    Name: str
+    Icon: str
+    Owner: bool
+    Permissions: int

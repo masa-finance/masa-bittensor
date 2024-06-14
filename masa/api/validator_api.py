@@ -1,7 +1,6 @@
 import os
 from fastapi import FastAPI
 import asyncio
-from masa.validator.discord.profile.forward import DiscordProfileForwarder
 import uvicorn
 from fastapi import FastAPI, Depends
 from masa.miner.twitter.tweets import RecentTweetsQuery
@@ -11,6 +10,9 @@ from masa.validator.twitter.followers.forward import TwitterFollowersForwarder
 from masa.validator.twitter.tweets.forward import TwitterTweetsForwarder
 from masa.validator.web.forward import WebScraperForwarder
 from masa.validator.discord.channel_messages.forward import DiscordChannelMessagesForwarder
+from masa.validator.discord.guild_channels.forward import DiscordGuildChannelsForwarder
+from masa.validator.discord.user_guilds.forward import DiscordUserGuildsForwarder
+from masa.validator.discord.profile.forward import DiscordProfileForwarder
 
 class ValidatorAPI:
     def __init__(self, validator, config=None):
@@ -75,6 +77,24 @@ class ValidatorAPI:
         )
 
         self.app.add_api_route(
+            "/data/discord/guilds/{guild_id}/channels",
+            self.get_discord_guild_channels,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get the Discord channels for the given guild ID",
+            tags=["discord"]
+        )
+
+        self.app.add_api_route(
+            "/data/discord/user/guilds",
+            self.get_discord_user_guilds,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get the Discord guilds for the user",
+            tags=["discord"]
+        )
+
+        self.app.add_api_route(
             "/axons",
             self.get_axons,
             methods=["GET"],
@@ -103,7 +123,13 @@ class ValidatorAPI:
     
     async def get_discord_channel_messages(self, channel_id: str):
         return await DiscordChannelMessagesForwarder(self.validator).forward_query(query=channel_id)
-
+    
+    async def get_discord_guild_channels(self, guild_id: str):
+        return await DiscordGuildChannelsForwarder(self.validator).forward_query(query=guild_id)
+    
+    async def get_discord_user_guilds(self):
+        return await DiscordUserGuildsForwarder(self.validator).forward_query()
+    
     def get_axons(self):
         return self.validator.metagraph.axons
         

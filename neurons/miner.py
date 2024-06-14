@@ -24,7 +24,9 @@ import bittensor as bt
 # import base miner class which takes care of most of the boilerplate
 from masa.base.miner import BaseMinerNeuron
 from masa.api.request import Request, RequestType
+from masa.miner.discord.guild_channels import DiscordGuildChannelsRequest
 from masa.miner.discord.profile import DiscordProfileRequest
+from masa.miner.discord.user_guilds import DiscordUserGuildsRequest
 from masa.miner.twitter.profile import TwitterProfileRequest
 from masa.miner.twitter.followers import TwitterFollowersRequest
 from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
@@ -86,6 +88,20 @@ class Miner(BaseMinerNeuron):
                     synapse.response = discord_channel_messages
                 else:
                     bt.logging.error(f"Failed to fetch channel messages for {synapse.query}.")
+
+            elif request_type == RequestType.DISCORD_GUILD_CHANNELS.value:
+                discord_guild_channels = DiscordGuildChannelsRequest().get_discord_guild_channels(synapse.query)
+                if discord_guild_channels != None:
+                    synapse.response = discord_guild_channels
+                else:
+                    bt.logging.error(f"Failed to fetch guild channels for {synapse.query}.")
+
+            elif request_type == RequestType.DISCORD_USER_GUILDS.value:
+                discord_user_guilds = DiscordUserGuildsRequest().get_discord_user_guilds()
+                if discord_user_guilds != None:
+                    synapse.response = discord_user_guilds
+                else:
+                    bt.logging.error(f"Failed to fetch user guilds for {synapse.query}.")
 
         except Exception as e:
             bt.logging.error(f"Exception occurred while doing work for {synapse.query}: {str(e)}", exc_info=True)
