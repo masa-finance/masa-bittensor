@@ -89,7 +89,7 @@ class Miner(BaseMinerNeuron):
 
     async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
 
-        if await self.check_tempo():
+        if await self.check_tempo(synapse):
             await self.check_stake(synapse)
 
         hotkey = synapse.dendrite.hotkey
@@ -104,7 +104,7 @@ class Miner(BaseMinerNeuron):
         if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
             bt.logging.warning(f"Blacklisting a request from non-validator hotkey {hotkey}")
             return True, "Non-validator hotkey"
-        if hotkey not in self.neurons_permit_stake:
+        if hotkey not in self.neurons_permit_stake.keys():
             bt.logging.warning(f"Blacklisting a request from neuron without enough staked: {hotkey}")
             return True, "Non-staked neuron"
         
@@ -121,27 +121,31 @@ class Miner(BaseMinerNeuron):
         current_stakes = self.metagraph.S
         hotkey = synapse.dendrite.hotkey
         uid = self.metagraph.hotkeys.index(hotkey)
+        current_block = self.subtensor.get_current_block()
+        
         if current_stakes[uid] < self.min_stake_required:
-            if hotkey in self.neurons_permit_stake:
-                self.neurons_permit_stake.remove(hotkey)
+            if hotkey in self.neurons_permit_stake.keys():
+                del self.neurons_permit_stake[hotkey]
                 bt.logging.info(f"Removed neuron {hotkey} from staked list due to insufficient stake.")
         else:
-            if hotkey not in self.neurons_permit_stake:
-                self.neurons_permit_stake.append(hotkey)
+            if hotkey not in self.neurons_permit_stake.keys():
+                self.neurons_permit_stake[hotkey] = current_block
                 bt.logging.info(f"Added neuron {hotkey} to staked list.")
 
     
-    async def check_tempo(self) -> bool:
+    async def check_tempo(self, synapse: Request) -> bool:
+        hotkey = synapse.dendrite.hotkey
         current_block = self.subtensor.get_current_block()
-        if self.last_checked_block is None:
+        last_checked_block = self.neurons_permit_stake.get(hotkey)
+        if last_checked_block is None:
             bt.logging.info(f"There is no block set.  Setting last checked block to {current_block}")
-            self.last_checked_block = current_block
+            self.neurons_permit_stake[hotkey] = current_block
             return True
         
-        blocks_since_last_check = current_block - self.last_checked_block
+        blocks_since_last_check = current_block - last_checked_block
         if blocks_since_last_check >= self.tempo:
             bt.logging.info(f"A tempo has passed.  Blocks since last check: {blocks_since_last_check}")
-            self.last_checked_block = current_block
+            self.neurons_permit_stake[hotkey] = current_block
             return True
         else:
             bt.logging.info(f"Not yet a tempo since last check. Blocks since last check: {blocks_since_last_check}")

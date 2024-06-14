@@ -28,7 +28,7 @@ import bittensor as bt
 from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_miner_args
 
-from typing import List, Union
+from typing import Dict, Union
 
 class BaseMinerNeuron(BaseNeuron):
     """
@@ -73,11 +73,10 @@ class BaseMinerNeuron(BaseNeuron):
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
-        self.neurons_permit_stake: List[str] = [] # list of neurons (hotkeys) that meet min stake requirement
+        self.neurons_permit_stake: Dict[str, int] = {} # dict of neurons (hotkeys) that meet min stake requirement with their respective last fetched block numbers
         self.min_stake_required: int = 10 # note, this will be variable per environment
         # self.tempo: int = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo #note, this breaks on devnet due to hyperparam issue
         self.tempo: int = 360 # note, remove once hyperparam calls are fixed in devnet
-        self.last_checked_block: Union[int, None] = None
 
         self.load_state()
 
@@ -210,7 +209,6 @@ class BaseMinerNeuron(BaseNeuron):
         torch.save(
             {
                 "neurons_permit_stake": self.neurons_permit_stake,
-                "last_checked_block": self.last_checked_block,
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -224,7 +222,6 @@ class BaseMinerNeuron(BaseNeuron):
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
             state = torch.load(state_path)
-            self.neurons_permit_stake = state.get("neurons_permit_stake", [])
-            self.last_checked_block = state.get("last_checked_block", None)
+            self.neurons_permit_stake = state.get("neurons_permit_stake", {})
         else:
             bt.logging.warning(f"State file not found at {state_path}. Skipping state load.")
