@@ -29,6 +29,7 @@ from masa.miner.twitter.profile import TwitterProfileRequest
 from masa.miner.twitter.followers import TwitterFollowersRequest
 from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
 from masa.miner.web.scraper import WebScraperQuery, WebScraperRequest
+from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
 
 delay = 0
 class Miner(BaseMinerNeuron):
@@ -77,7 +78,14 @@ class Miner(BaseMinerNeuron):
                 if discord_profile != None:
                     synapse.response = discord_profile
                 else:
-                    bt.logging.error(f"Failed to scrape for {synapse.url}.")
+                        bt.logging.error(f"Failed to fetch discord profile for {synapse.query}.")
+
+            elif request_type == RequestType.DISCORD_CHANNEL_MESSAGES.value:
+                discord_channel_messages = DiscordChannelMessagesRequest().get_discord_channel_messages(synapse.query)
+                if discord_channel_messages != None:
+                    synapse.response = discord_channel_messages
+                else:
+                    bt.logging.error(f"Failed to fetch channel messages for {synapse.query}.")
 
         except Exception as e:
             bt.logging.error(f"Exception occurred while doing work for {synapse.query}: {str(e)}", exc_info=True)

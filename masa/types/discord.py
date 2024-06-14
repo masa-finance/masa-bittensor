@@ -6,3 +6,10 @@ class DiscordProfileObject(TypedDict):
     Username: str
     Discriminator: str
     Avatar: str
+
+class DiscordChannelMessageObject(TypedDict):
+    ID: str
+    ChannelID: str
+    Author: DiscordProfileObject
+    Content: str
+    Timestamp: str

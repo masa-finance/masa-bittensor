@@ -8,6 +8,7 @@ class RequestType(Enum):
     TWITTER_TWEETS = "twitter_tweets"
     WEB_SCRAPER = "web_scraper"
     DISCORD_PROFILE = "discord_profile"
+    DISCORD_CHANNEL_MESSAGES = "discord_channel_messages"
 
 class Request(bt.Synapse):
     query: Optional[str] = None

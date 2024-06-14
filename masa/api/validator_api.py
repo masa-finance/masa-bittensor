@@ -10,6 +10,7 @@ from masa.validator.twitter.profile.forward import TwitterProfileForwarder
 from masa.validator.twitter.followers.forward import TwitterFollowersForwarder
 from masa.validator.twitter.tweets.forward import TwitterTweetsForwarder
 from masa.validator.web.forward import WebScraperForwarder
+from masa.validator.discord.channel_messages.forward import DiscordChannelMessagesForwarder
 
 class ValidatorAPI:
     def __init__(self, validator, config=None):
@@ -65,6 +66,15 @@ class ValidatorAPI:
         )
 
         self.app.add_api_route(
+            "/data/discord/channels/{channel_id}/messages",
+            self.get_discord_channel_messages,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get the Discord channel messages for the given channel ID",
+            tags=["discord"]
+        )
+
+        self.app.add_api_route(
             "/axons",
             self.get_axons,
             methods=["GET"],
@@ -89,7 +99,10 @@ class ValidatorAPI:
         return await WebScraperForwarder(self.validator).forward_query(web_scraper_query=web_scraper_query)
 
     async def get_discord_profile(self, user_id: str):
-        return await DiscordForwarder(self.validator).forward_query(query=user_id)
+        return await DiscordProfileForwarder(self.validator).forward_query(query=user_id)
+    
+    async def get_discord_channel_messages(self, channel_id: str):
+        return await DiscordChannelMessagesForwarder(self.validator).forward_query(query=channel_id)
 
     def get_axons(self):
         return self.validator.metagraph.axons
