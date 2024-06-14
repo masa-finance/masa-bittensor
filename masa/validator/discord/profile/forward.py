@@ -23,10 +23,10 @@ from masa.types.discord import DiscordProfileObject
 from masa.validator.forwarder import Forwarder
 from masa.validator.discord.profile.reward import get_rewards
 
-class DiscordForwarder(Forwarder):
+class DiscordProfileForwarder(Forwarder):
 
     def __init__(self, validator):
-        super(DiscordForwarder, self).__init__(validator)
+        super(DiscordProfileForwarder, self).__init__(validator)
 
     async def forward_query(self, query):
         try:

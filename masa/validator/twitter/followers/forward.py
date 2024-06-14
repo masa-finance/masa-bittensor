@@ -23,10 +23,10 @@ from masa.validator.forwarder import Forwarder
 from masa.validator.twitter.followers.reward import get_rewards
 from masa.validator.twitter.followers.parser import followers_parser
 
-class FollowersForwarder(Forwarder):
+class TwitterFollowersForwarder(Forwarder):
 
     def __init__(self, validator):
-        super(FollowersForwarder, self).__init__(validator)
+        super(TwitterFollowersForwarder, self).__init__(validator)
         
         
     async def forward_query(self, query):

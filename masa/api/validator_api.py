@@ -1,14 +1,14 @@
 import os
 from fastapi import FastAPI
 import asyncio
-from masa.validator.discord.profile.forward import DiscordForwarder
+from masa.validator.discord.profile.forward import DiscordProfileForwarder
 import uvicorn
 from fastapi import FastAPI, Depends
 from masa.miner.twitter.tweets import RecentTweetsQuery
 from masa.miner.web.scraper import WebScraperQuery
-from masa.validator.twitter.profile.forward import ProfileForwarder
-from masa.validator.twitter.followers.forward import FollowersForwarder
-from masa.validator.twitter.tweets.forward import TweetsForwarder
+from masa.validator.twitter.profile.forward import TwitterProfileForwarder
+from masa.validator.twitter.followers.forward import TwitterFollowersForwarder
+from masa.validator.twitter.tweets.forward import TwitterTweetsForwarder
 from masa.validator.web.forward import WebScraperForwarder
 
 class ValidatorAPI:
@@ -77,13 +77,13 @@ class ValidatorAPI:
         
         
     async def get_twitter_profile(self, username: str):
-        return await ProfileForwarder(self.validator).forward_query(query=username)
+        return await TwitterProfileForwarder(self.validator).forward_query(query=username)
 
     async def get_twitter_followers(self, username: str):
-        return await FollowersForwarder(self.validator).forward_query(query=username)
+        return await TwitterFollowersForwarder(self.validator).forward_query(query=username)
     
     async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
-        return await TweetsForwarder(self.validator).forward_query(tweet_query=tweet_query)
+        return await TwitterTweetsForwarder(self.validator).forward_query(tweet_query=tweet_query)
 
     async def scrape_web(self, web_scraper_query: WebScraperQuery):
         return await WebScraperForwarder(self.validator).forward_query(web_scraper_query=web_scraper_query)

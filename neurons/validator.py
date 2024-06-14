@@ -24,9 +24,9 @@ from masa.api.request import RequestType
 
 # Bittensor Validator Template:
 from masa.base.validator import BaseValidatorNeuron
-from masa.validator.twitter.profile.forward import ProfileForwarder
-from masa.validator.twitter.followers.forward import FollowersForwarder
-from masa.validator.twitter.tweets.forward import TweetsForwarder
+from masa.validator.twitter.profile.forward import TwitterProfileForwarder
+from masa.validator.twitter.followers.forward import TwitterFollowersForwarder
+from masa.validator.twitter.tweets.forward import TwitterTweetsForwarder
 from masa.api.validator_api import ValidatorAPI
 
 class Validator(BaseValidatorNeuron):
