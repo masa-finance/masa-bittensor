@@ -89,7 +89,7 @@ class Miner(BaseMinerNeuron):
 
     async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
 
-        if await self.check_tempo(synapse):
+        if self.check_tempo(synapse):
             await self.check_stake(synapse)
 
         hotkey = synapse.dendrite.hotkey
