@@ -117,3 +117,7 @@ build-binary:
 
 run-localnet:
 	BUILD_BINARY=0 ./scripts/localnet.sh
+
+## Hyperparameters
+hyperparameters:
+	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_ENVIRONMENT)
