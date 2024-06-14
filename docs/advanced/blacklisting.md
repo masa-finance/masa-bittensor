@@ -15,7 +15,7 @@ Additionally, our blacklisting function extends that of the subnet-template and 
 ```python
 async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
 
-    if await self.check_tempo():
+    if await self.check_tempo(synapse):
         await self.check_stake(synapse)
 
     hotkey = synapse.dendrite.hotkey
@@ -30,7 +30,7 @@ async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
     if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
         bt.logging.warning(f"Blacklisting a request from non-validator hotkey {hotkey}")
         return True, "Non-validator hotkey"
-    if hotkey not in self.neurons_permit_stake:
+    if hotkey not in self.neurons_permit_stake.keys():
         bt.logging.warning(f"Blacklisting a request from neuron without enough staked: {hotkey}")
         return True, "Non-staked neuron"
 
