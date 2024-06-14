@@ -90,7 +90,7 @@ class Miner(BaseMinerNeuron):
     async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
 
         if self.check_tempo(synapse):
-            await self.check_stake(synapse)
+            self.check_stake(synapse)
 
         hotkey = synapse.dendrite.hotkey
         uid = self.metagraph.hotkeys.index(hotkey)
@@ -117,7 +117,7 @@ class Miner(BaseMinerNeuron):
         bt.logging.trace(f"Prioritizing {synapse.dendrite.hotkey} with value: ", priority)
         return priority
     
-    async def check_stake(self, synapse: Request):
+    def check_stake(self, synapse: Request):
         current_stakes = self.metagraph.S
         hotkey = synapse.dendrite.hotkey
         uid = self.metagraph.hotkeys.index(hotkey)
@@ -128,24 +128,20 @@ class Miner(BaseMinerNeuron):
                 del self.neurons_permit_stake[hotkey]
                 bt.logging.info(f"Removed neuron {hotkey} from staked list due to insufficient stake.")
         else:
-            if hotkey not in self.neurons_permit_stake.keys():
-                self.neurons_permit_stake[hotkey] = current_block
-                bt.logging.info(f"Added neuron {hotkey} to staked list.")
+            self.neurons_permit_stake[hotkey] = current_block
+            bt.logging.info(f"Added neuron {hotkey} to staked list.")
 
     
-    async def check_tempo(self, synapse: Request) -> bool:
+    def check_tempo(self, synapse: Request) -> bool:
         hotkey = synapse.dendrite.hotkey
-        current_block = self.subtensor.get_current_block()
         last_checked_block = self.neurons_permit_stake.get(hotkey)
         if last_checked_block is None:
-            bt.logging.info(f"There is no block set.  Setting last checked block to {current_block}")
-            self.neurons_permit_stake[hotkey] = current_block
+            bt.logging.info(f"There is no last checked block, starting tempo check...")
             return True
         
-        blocks_since_last_check = current_block - last_checked_block
+        blocks_since_last_check = self.subtensor.get_current_block() - last_checked_block
         if blocks_since_last_check >= self.tempo:
             bt.logging.info(f"A tempo has passed.  Blocks since last check: {blocks_since_last_check}")
-            self.neurons_permit_stake[hotkey] = current_block
             return True
         else:
             bt.logging.info(f"Not yet a tempo since last check. Blocks since last check: {blocks_since_last_check}")

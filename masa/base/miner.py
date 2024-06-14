@@ -76,7 +76,7 @@ class BaseMinerNeuron(BaseNeuron):
         self.neurons_permit_stake: Dict[str, int] = {} # dict of neurons (hotkeys) that meet min stake requirement with their respective last fetched block numbers
         self.min_stake_required: int = 10 # note, this will be variable per environment
         # self.tempo: int = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo #note, this breaks on devnet due to hyperparam issue
-        self.tempo: int = 360 # note, remove once hyperparam calls are fixed in devnet
+        self.tempo: int = 10 # note, remove once hyperparam calls are fixed in devnet
 
         self.load_state()
 
