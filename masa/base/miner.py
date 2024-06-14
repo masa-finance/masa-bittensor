@@ -77,7 +77,7 @@ class BaseMinerNeuron(BaseNeuron):
         self.min_stake_required: int = 10 # note, this will be variable per environment
         # self.tempo: int = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo #note, this breaks on devnet due to hyperparam issue
         self.tempo: int = 360 # note, remove once hyperparam calls are fixed in devnet
-        self.last_checked_block = None
+        self.last_checked_block: Union[int, None] = None
 
         self.load_state()
 
