@@ -15,7 +15,9 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import os
 import time
+import torch
 import asyncio
 import threading
 import argparse
@@ -26,6 +28,7 @@ import bittensor as bt
 from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_miner_args
 
+from typing import List, Union
 
 class BaseMinerNeuron(BaseNeuron):
     """
@@ -69,6 +72,13 @@ class BaseMinerNeuron(BaseNeuron):
         self.is_running: bool = False
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
+
+        self.neurons_permit_stake: List[str] = [] # list of neurons (hotkeys) that meet min stake requirement
+        self.min_stake_required: int = 10 # note, this will be variable per environment
+        self.tempo: int = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+        self.last_checked_block = None
+
+        self.load_state()
 
     def run(self):
         """
@@ -181,11 +191,37 @@ class BaseMinerNeuron(BaseNeuron):
             traceback: A traceback object encoding the stack trace.
                        None if the context was exited without an exception.
         """
+        self.save_state()
         self.stop_run_thread()
 
     def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
-        bt.logging.info("resync_metagraph()")
+        bt.logging.trace("resync_metagraph()")
 
         # Sync the metagraph.
         self.metagraph.sync(subtensor=self.subtensor)
+
+    def save_state(self):
+        """Saves the state of the miner to a file."""
+        bt.logging.info("Saving miner state.")
+
+        # Save the state of the miner to file.
+        torch.save(
+            {
+                "neurons_permit_stake": self.neurons_permit_stake,
+            },
+            self.config.neuron.full_path + "/state.pt",
+        )
+
+    def load_state(self):
+        """Loads the state of the miner from a file."""
+        bt.logging.info("Loading miner state.")
+        
+
+        # Load the state of the miner from file.
+        state_path = self.config.neuron.full_path + "/state.pt"
+        if os.path.isfile(state_path):
+            state = torch.load(state_path)
+            self.neurons_permit_stake = state["neurons_permit_stake"]
+        else:
+            bt.logging.warning(f"State file not found at {state_path}. Skipping state load.")

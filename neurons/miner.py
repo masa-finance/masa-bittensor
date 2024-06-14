@@ -42,11 +42,6 @@ class Miner(BaseMinerNeuron):
     ) -> Request:
         print(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
-
-        [blacklisted, reason] = await self.blacklist(synapse)
-        if blacklisted:
-            bt.logging.warning(f"Blacklisting un-registered hotkey for reason: {reason}")
-            return synapse
         
         try:
             request_type = synapse.type
@@ -93,15 +88,27 @@ class Miner(BaseMinerNeuron):
         return synapse
 
     async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
-        uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
+
+        if await self.check_tempo():
+            await self.check_stake(synapse)
+
+        hotkey = synapse.dendrite.hotkey
+        uid = self.metagraph.hotkeys.index(hotkey)
+
+        bt.logging.info(f"Neurons Staked: {self.neurons_permit_stake}")
         bt.logging.info(f"Validator Permit: {self.metagraph.validator_permit[uid]}")
-        if not self.config.blacklist.allow_non_registered and synapse.dendrite.hotkey not in self.metagraph.hotkeys:
-            bt.logging.warning(f"Blacklisting un-registered hotkey {synapse.dendrite.hotkey}")
+
+        if not self.config.blacklist.allow_non_registered and hotkey not in self.metagraph.hotkeys:
+            bt.logging.warning(f"Blacklisting un-registered hotkey {hotkey}")
             return True, "Unrecognized hotkey"
         if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
-            bt.logging.warning(f"Blacklisting a request from non-validator hotkey {synapse.dendrite.hotkey}")
+            bt.logging.warning(f"Blacklisting a request from non-validator hotkey {hotkey}")
             return True, "Non-validator hotkey"
-        bt.logging.info(f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}")
+        if hotkey not in self.neurons_permit_stake:
+            bt.logging.warning(f"Blacklisting a request from neuron without enough staked: {hotkey}")
+            return True, "Non-staked neuron"
+        
+        bt.logging.info(f"Not Blacklisting recognized hotkey {hotkey}")
         return False, "Hotkey recognized!"
 
     async def priority(self, synapse: Request) -> float:
@@ -110,9 +117,37 @@ class Miner(BaseMinerNeuron):
         bt.logging.trace(f"Prioritizing {synapse.dendrite.hotkey} with value: ", priority)
         return priority
     
+    async def check_stake(self, synapse: Request):
+        current_stakes = self.metagraph.S
+        hotkey = synapse.dendrite.hotkey
+        uid = self.metagraph.hotkeys.index(hotkey)
+        if current_stakes[uid] < self.min_stake_required:
+            if hotkey in self.neurons_permit_stake:
+                self.neurons_permit_stake.remove(hotkey)
+                bt.logging.info(f"Removed neuron {hotkey} from staked list due to insufficient stake.")
+        else:
+            if hotkey not in self.neurons_permit_stake:
+                self.neurons_permit_stake.append(hotkey)
+                bt.logging.info(f"Added neuron {hotkey} to staked list.")
+
     
-    def save_state(state):
-        return None
+    async def check_tempo(self) -> bool:
+        current_block = self.subtensor.get_current_block()
+        if self.last_checked_block is None:
+            bt.logging.info(f"There is no block set.  Setting last checked block to {current_block}")
+            self.last_checked_block = current_block
+            return True
+        
+        blocks_since_last_check = current_block - self.last_checked_block
+        if blocks_since_last_check >= self.tempo:
+            bt.logging.info(f"A tempo has passed or there is no block set.  Blocks since last check: {blocks_since_last_check}")
+            self.last_checked_block = current_block
+            return True
+        else:
+            bt.logging.info(f"Not yet a tempo since last check. Blocks since last check: {blocks_since_last_check}")
+            return False
+        
+
 
 if __name__ == "__main__":
     with Miner() as miner:

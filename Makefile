@@ -7,16 +7,16 @@ DEVNET = chain_endpoint $(DEVNET_ENDPOINT)
 
 TESTNET = network test
 
-NETUID = 1 # devnet
-# NETUID = 165 # testnet
+# NETUID = 1 # devnet
+NETUID = 165 # testnet
 
 
 ########################################################################
 #####                       SELECT YOUR ENV                        #####
 ########################################################################
 # SUBTENSOR_ENVIRONMENT = $(LOCALNET)
-SUBTENSOR_ENVIRONMENT = $(DEVNET)
-# SUBTENSOR_ENVIRONMENT = $(TESTNET)
+# SUBTENSOR_ENVIRONMENT = $(DEVNET)
+SUBTENSOR_ENVIRONMENT = $(TESTNET)
 
 
 ########################################################################
@@ -76,10 +76,10 @@ set-weights:
 
 ## Run miner and validator
 run-miner:
-	watchfiles "python neurons/miner.py --blacklist.force_validator_permit --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug" .
+	watchfiles "python neurons/miner.py --blacklist.force_validator_permit --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug" .
 
 run-validator:
-	watchfiles "python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug" .
+	watchfiles "python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug" .
 
 ## Docker commands
 docker-build:
@@ -120,4 +120,4 @@ run-localnet:
 
 ## Hyperparameters
 hyperparameters:
-	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_ENVIRONMENT)
+	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)
