@@ -224,7 +224,7 @@ class BaseMinerNeuron(BaseNeuron):
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
             state = torch.load(state_path)
-            self.neurons_permit_stake = state["neurons_permit_stake"]
-            self.last_checked_block = state["last_checked_block"]
+            self.neurons_permit_stake = state.get("neurons_permit_stake", [])
+            self.last_checked_block = state.get("last_checked_block", None)
         else:
             bt.logging.warning(f"State file not found at {state_path}. Skipping state load.")
