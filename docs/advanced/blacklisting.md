@@ -8,15 +8,6 @@ Current blacklisting logic is implemented by passing a flag to the miner:
 python neurons/miner.py --blacklist.force_validator_permit
 ```
 
-The above toggles the blacklisting logic, which is currently configured to filter out requests from neuron uid's that do _not_ have a valid permit.
-
-```python
-[blacklisted, reason] = await self.blacklist(synapse)
-if blacklisted:
-    bt.logging.warning(f"Blacklisting un-registered hotkey for reason: {reason}")
-    return synapse
-```
-
 The blacklisting function extends that of the subnet-template:
 
 ```python
