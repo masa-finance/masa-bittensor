@@ -2,13 +2,13 @@
 
 ## VPermit Filter
 
-Current blacklisting logic is implemented by passing a flag to the miner:
+To remove the miner accepting any request warning, pass the following flag to toggle on checking for a `vpermit` in the blacklisting function:
 
 ```bash
 python neurons/miner.py --blacklist.force_validator_permit
 ```
 
-The blacklisting function extends that of the subnet-template:
+Additionally, our blacklisting function extends that of the subnet-template and checks for a certain amount of stake, updated every tempo:
 
 ```python
 async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
