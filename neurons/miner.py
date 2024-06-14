@@ -140,7 +140,7 @@ class Miner(BaseMinerNeuron):
         
         blocks_since_last_check = current_block - self.last_checked_block
         if blocks_since_last_check >= self.tempo:
-            bt.logging.info(f"A tempo has passed or there is no block set.  Blocks since last check: {blocks_since_last_check}")
+            bt.logging.info(f"A tempo has passed.  Blocks since last check: {blocks_since_last_check}")
             self.last_checked_block = current_block
             return True
         else:
