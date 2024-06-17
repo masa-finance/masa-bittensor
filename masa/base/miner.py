@@ -74,7 +74,7 @@ class BaseMinerNeuron(BaseNeuron):
         self.lock = asyncio.Lock()
 
         self.neurons_permit_stake: Dict[str, int] = {} # dict of neurons (hotkeys) that meet min stake requirement with their respective last fetched block numbers
-        self.min_stake_required: int = 10 # note, this will be variable per environment
+        self.min_stake_required: int = self.config.blacklist.min_stake_required # note, this will be variable per environment
         # self.tempo: int = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo #note, this breaks on devnet due to hyperparam issue
         self.tempo: int = 10 # note, remove once hyperparam calls are fixed in devnet
 
