@@ -136,6 +136,13 @@ def add_miner_args(cls, parser):
         help="If set, we will force incoming requests to have a permit.",
         default=False,
     )
+    
+    parser.add_argument(
+        "--blacklist.min_stake_required",
+        type=int,
+        help="Staked TAO required for validators to be considered valid.",
+        default=10,
+    )
 
     parser.add_argument(
         "--blacklist.allow_non_registered",
@@ -156,6 +163,13 @@ def add_miner_args(cls, parser):
         type=str,
         default="opentensor-dev",
         help="Wandb entity to log to.",
+    )
+
+    parser.add_argument(
+        "--neuron.debug",
+        action="store_true",
+        help="Sets debug to true",
+        default=False,
     )
 
 
