@@ -14,13 +14,14 @@ RUN apt-get update && \
     python3 \
     python3-pip \
     python3-venv \
+    expect \
     && rm -rf /var/lib/apt/lists/*
 
 # Create and activate a virtual environment, then install Bittensor
 RUN python3 -m venv /opt/bittensor-venv && \
     /opt/bittensor-venv/bin/pip install --upgrade pip && \
-    /opt/bittensor-venv/bin/pip install bittensor
-
+    /opt/bittensor-venv/bin/pip install bittensor==7.2.0 && \
+    /opt/bittensor-venv/bin/pip install bittensor[torch]
 # Copy the wallet creation script
 COPY scripts/create_wallet.sh /usr/local/bin/create_wallet.sh
 
