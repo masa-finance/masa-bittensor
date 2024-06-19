@@ -47,6 +47,14 @@ echo -e "$HOTKEY_PASSWORD\n$HOTKEY_PASSWORD" | btcli wallet new_hotkey --wallet.
 run_faucet owner || { echo "Faucet 1 failed for owner wallet"; exit 1; }
 run_faucet owner || { echo "Faucet 2 failed for owner wallet"; exit 1; }
 run_faucet owner || { echo "Faucet 3 failed for owner wallet"; exit 1; }
+run_faucet owner || { echo "Faucet 4 failed for owner wallet"; exit 1; }
+
+echo -e "Owner faucet has run 4 times, now has 1200 τTAO"
+
+# Register / Create a Subnet
+echo -e "Registering a new subnet"
+
+btcli subnet create --wallet.name owner --subtensor.chain_endpoint ws://127.0.0.1:9946 
 
 # Create and fund miner wallets
 #
