@@ -27,6 +27,32 @@ services:
       - COLDKEY_PASSWORD=your_coldkey_password
       - HOTKEY_PASSWORD=your_hotkey_password
 
+  miner:
+    build:
+      context: .
+      dockerfile: Dockerfile.miner
+    container_name: miner_machine
+    depends_on:
+      - subnet
+    networks:
+      - subtensor_network
+    environment:
+      - COLDKEY_PASSWORD=your_coldkey_password
+      - HOTKEY_PASSWORD=your_hotkey_password
+
+  validator:
+    build:
+      context: .
+      dockerfile: Dockerfile.validator
+    container_name: validator_machine
+    depends_on:
+      - subnet
+    networks:
+      - subtensor_network
+    environment:
+      - COLDKEY_PASSWORD=your_coldkey_password
+      - HOTKEY_PASSWORD=your_hotkey_password
+
 networks:
   subtensor_network:
     driver: bridge
