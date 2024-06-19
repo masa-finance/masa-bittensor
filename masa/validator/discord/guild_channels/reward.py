@@ -28,10 +28,10 @@ def reward(query: str, response: List[DiscordChannelMessageObject]) -> float:
     if response is None:
         return 0.0 
     bt.logging.info(f"Getting discord response from {response}")
-    channel_id = response[0].get("ChannelID", "")
-    bt.logging.info(f"Calculating reward for discord response {channel_id}")
+    guild_id = response.get("guild_id", "")
+    bt.logging.info(f"Calculating reward for discord response {guild_id}")
     
-    if channel_id == query:
+    if guild_id == query:
         return 1
     else:
         return 0
