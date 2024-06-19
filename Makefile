@@ -76,10 +76,10 @@ set-weights:
 
 ## Run miner and validator
 run-miner:
-	watchfiles "python neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --logging.debug --axon.port 8091" .
+	watchfiles "python neurons/miner.py --blacklist.force_validator_permit --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug" .
 
 run-validator:
-	watchfiles "python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --logging.debug --axon.port 8092" .
+	watchfiles "python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug" .
 
 ## Docker commands
 docker-build:
@@ -117,3 +117,7 @@ build-binary:
 
 run-localnet:
 	BUILD_BINARY=0 ./scripts/localnet.sh
+
+## Hyperparameters
+hyperparameters:
+	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)
