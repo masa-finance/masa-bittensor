@@ -10,7 +10,7 @@ run_faucet() {
     expect << EOF
 set timeout 180
 log_user 1
-spawn btcli wallet faucet --wallet.name $WALLET_NAME --subtensor.chain_endpoint ws://subnet_machine:9945 --wallet.password
+spawn btcli wallet faucet --wallet.name $WALLET_NAME --subtensor.chain_endpoint ws://subtensor_machine:9945 --wallet.password
 expect {
     "Run Faucet ?" {
         send "y\r"

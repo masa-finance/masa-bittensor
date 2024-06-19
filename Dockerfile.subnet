@@ -23,14 +23,14 @@ RUN python3 -m venv /opt/bittensor-venv && \
     /opt/bittensor-venv/bin/pip install --upgrade pip && \
     /opt/bittensor-venv/bin/pip install bittensor==7.2.0 && \
     /opt/bittensor-venv/bin/pip install bittensor[torch]
-# Copy the wallet creation script
-COPY scripts/create_wallet.sh /usr/local/bin/create_wallet.sh
+# Copy the subnet creation script
+COPY scripts/create_subnet.sh /usr/local/bin/create_subnet.sh
 
 # Make the script executable
-RUN chmod +x /usr/local/bin/create_wallet.sh
+RUN chmod +x /usr/local/bin/create_subnet.sh
 
 # Set the entry point to run the script
-ENTRYPOINT ["/usr/local/bin/create_wallet.sh"]
+ENTRYPOINT ["/usr/local/bin/create_subnet.sh"]
 
 # Set the PATH to include the virtual environment
 ENV PATH="/opt/bittensor-venv/bin:$PATH"
