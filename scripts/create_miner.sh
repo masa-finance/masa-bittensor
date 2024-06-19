@@ -5,7 +5,7 @@ COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-'default_coldkey_password'}
 HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-'default_hotkey_password'}
 
 # Import the run_faucet function
-source ./run_faucet.sh
+source run_faucet.sh
 
 # Create and fund miner wallets
 #

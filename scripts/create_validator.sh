@@ -5,7 +5,7 @@ COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-'default_coldkey_password'}
 HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-'default_hotkey_password'}
 
 # Import run_faucet()
-source ./run_faucet.sh
+source run_faucet.sh
 
 # Create and fund validator wallets
 #

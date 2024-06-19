@@ -25,6 +25,7 @@ RUN python3 -m venv /opt/bittensor-venv && \
     /opt/bittensor-venv/bin/pip install bittensor[torch]
 
 # Copy the miner creation script
+COPY scripts/run_faucet.sh /usr/local/bin/run_faucet.sh
 COPY scripts/create_miner.sh /usr/local/bin/create_miner.sh
 
 # Make the script executable
