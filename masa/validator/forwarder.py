@@ -18,6 +18,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 from masa.utils.uids import get_random_uids
+from masa.miner.masa_protocol_request import REQUEST_TIMEOUT_IN_SECONDS  # Import the constant
 
 # this forwarder needs to able to handle multiple requests, driven off of an API request
 class Forwarder:
@@ -34,7 +35,7 @@ class Forwarder:
             axons=[self.validator.metagraph.axons[uid] for uid in miner_uids],
             synapse=request,
             deserialize=True,
-            timeout=90
+            timeout=REQUEST_TIMEOUT_IN_SECONDS
         )
 
         # Filter and parse valid responses
