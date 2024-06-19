@@ -25,7 +25,7 @@ class DiscordAllGuildsRequest(MasaProtocolRequest):
 
     def format_all_guilds(self, data: requests.Response) -> List[DiscordGuildObject]:
         bt.logging.info(f"Formatting discord all guilds data: {data}")
-        guild_channels_data = data['guild']
+        guild_channels_data = data['guilds']
         discord_all_guilds = [
             DiscordGuildObject(**guild) for guild in guild_channels_data
         ]        
