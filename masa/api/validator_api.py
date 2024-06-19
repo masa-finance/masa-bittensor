@@ -1,4 +1,5 @@
 import os
+import time
 from fastapi import FastAPI
 import asyncio
 import uvicorn
@@ -13,6 +14,7 @@ from masa.validator.discord.channel_messages.forward import DiscordChannelMessag
 from masa.validator.discord.guild_channels.forward import DiscordGuildChannelsForwarder
 from masa.validator.discord.user_guilds.forward import DiscordUserGuildsForwarder
 from masa.validator.discord.profile.forward import DiscordProfileForwarder
+from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
 
 class ValidatorAPI:
     def __init__(self, validator, config=None):
@@ -95,6 +97,15 @@ class ValidatorAPI:
         )
 
         self.app.add_api_route(
+            "/data/discord/guilds/all",
+            self.get_discord_all_guilds,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get all guilds that all the Discord workers are apart of",
+            tags=["discord"]
+        )
+
+        self.app.add_api_route(
             "/axons",
             self.get_axons,
             methods=["GET"],
@@ -129,12 +140,15 @@ class ValidatorAPI:
     
     async def get_discord_user_guilds(self):
         return await DiscordUserGuildsForwarder(self.validator).forward_query()
-    
+
+    async def get_discord_all_guilds(self):
+        return await DiscordAllGuildsForwarder(self.validator).forward_query()
+
     def get_axons(self):
         return self.validator.metagraph.axons
         
     def start_server(self):
-        config = uvicorn.Config(app=self.app, host=self.host, port=self.port)
+        config = uvicorn.Config(app=self.app, host=self.host, port=self.port, timeout_keep_alive=90)
         server = uvicorn.Server(config)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

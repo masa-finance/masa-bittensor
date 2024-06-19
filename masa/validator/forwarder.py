@@ -34,6 +34,7 @@ class Forwarder:
             axons=[self.validator.metagraph.axons[uid] for uid in miner_uids],
             synapse=request,
             deserialize=True,
+            timeout=90
         )
 
         # Filter and parse valid responses

@@ -32,6 +32,7 @@ from masa.miner.twitter.followers import TwitterFollowersRequest
 from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
 from masa.miner.web.scraper import WebScraperQuery, WebScraperRequest
 from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
+from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
 
 delay = 0
 class Miner(BaseMinerNeuron):
@@ -101,7 +102,14 @@ class Miner(BaseMinerNeuron):
                 if discord_user_guilds != None:
                     synapse.response = discord_user_guilds
                 else:
-                    bt.logging.error(f"Failed to fetch user guilds for {synapse.query}.")
+                    bt.logging.error(f"Failed to fetch user guilds.")
+
+            elif request_type == RequestType.DISCORD_ALL_GUILDS.value:
+                discord_all_guilds = DiscordAllGuildsRequest().get_discord_all_guilds()
+                if discord_all_guilds != None:
+                    synapse.response = discord_all_guilds
+                else:
+                    bt.logging.error(f"Failed to fetch all guilds.")
 
         except Exception as e:
             bt.logging.error(f"Exception occurred while doing work for {synapse.query}: {str(e)}", exc_info=True)
