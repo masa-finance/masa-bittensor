@@ -1,0 +1,56 @@
+name: Docker Compose CI
+
+on:
+  push:
+    branches:
+      - main
+      - dockerize
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Run Docker Compose
+        run: |
+          docker compose build
+          docker compose up -d
+          docker compose logs -f > docker-compose.log &
+          LOG_PID=$!
+
+          # Wait for the services to start
+          sleep 60
+
+          # Scan for specific strings in the log file
+          REQUIRED_STRINGS=("String1" "String2" "String3")
+          for string in "${REQUIRED_STRINGS[@]}"; do
+            if grep -q "$string" docker-compose.log; then
+              echo "Matched: $string"
+            else
+              echo "Error: $string not found in logs"
+              exit 1
+            fi
+          done
+
+          # Clean up
+          kill $LOG_PID
+          docker compose down
+
+      - name: Upload Docker Compose logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-compose-logs
+          path: docker-compose.log
