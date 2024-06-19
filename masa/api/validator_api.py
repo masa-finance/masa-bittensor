@@ -148,7 +148,7 @@ class ValidatorAPI:
         return self.validator.metagraph.axons
         
     def start_server(self):
-        config = uvicorn.Config(app=self.app, host=self.host, port=self.port, timeout_keep_alive=90)
+        config = uvicorn.Config(app=self.app, host=self.host, port=self.port)
         server = uvicorn.Server(config)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
