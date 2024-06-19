@@ -18,7 +18,15 @@ done
 
 echo -e "Owner faucet has run 4 times, now has 1200 τTAO"
 
-# Register / Create a Subnet
-echo -e "Registering a new subnet"
-
-btcli subnet create --wallet.name owner --subtensor.chain_endpoint ws://subtensor_machine:9946 
+# Register / Create a Subnet using expect to handle the interactive prompt
+expect << EOF
+log_user 1
+spawn btcli subnet create --wallet.name owner --subtensor.chain_endpoint ws://subtensor_machine:9946
+expect {
+    "Do you want to register a subnet for" {
+        send "y\r"
+        exp_continue
+    }
+    eof
+}
+EOF
