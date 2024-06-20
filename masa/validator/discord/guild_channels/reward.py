@@ -17,22 +17,32 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import torch
 import bittensor as bt
-from masa.api.request import Request, RequestType
-from masa.validator.forwarder import Forwarder
-from masa.validator.twitter.profile.reward import get_rewards
-from masa.types.twitter import TwitterProfileObject
-
-class TwitterProfileForwarder(Forwarder):
-
-    def __init__(self, validator):
-        super(TwitterProfileForwarder, self).__init__(validator)
+from typing import List
+from masa.types.discord import DiscordChannelMessageObject
 
 
-    async def forward_query(self, query):
-        try:
-            return await self.forward(request=Request(query=query, type=RequestType.TWITTER_PROFILE.value), get_rewards=get_rewards, parser_object=TwitterProfileObject)
+def reward(query: str, response: List[DiscordChannelMessageObject]) -> float:
+    # Return a reward of 0.0 if the response is None
+    if response is None:
+        return 0.0 
+    bt.logging.info(f"Getting discord response from {response}")
+    guild_id = response.get("guild_id", "")
+    bt.logging.info(f"Calculating reward for discord response {guild_id}")
+    
+    if guild_id == query:
+        return 1
+    else:
+        return 0
 
-        except Exception as e:
-            bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)
-            return []
+def get_rewards(
+    self,
+    query: str,
+    responses: DiscordChannelMessageObject,
+) -> torch.FloatTensor:
+    bt.logging.info(f"Getting rewards...")
+    return torch.FloatTensor(
+        [reward(query, response) for response in responses]
+    ).to(self.device) 
+

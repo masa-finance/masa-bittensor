@@ -20,17 +20,17 @@
 import bittensor as bt
 from masa.api.request import Request, RequestType
 from masa.validator.forwarder import Forwarder
-from masa.validator.twitter.tweets.reward import get_rewards
-from masa.validator.twitter.tweets.parser import tweets_parser
+from masa.validator.discord.user_guilds.parser import user_guilds_parser
+from masa.validator.discord.user_guilds.reward import get_rewards
 
-class TwitterTweetsForwarder(Forwarder):
+class DiscordUserGuildsForwarder(Forwarder):
 
     def __init__(self, validator):
-        super(TwitterTweetsForwarder, self).__init__(validator)
+        super(DiscordUserGuildsForwarder, self).__init__(validator)
 
-    async def forward_query(self, tweet_query):
-        try:          
-            return await self.forward(request=Request(query=tweet_query.query, count=tweet_query.count, type=RequestType.TWITTER_TWEETS.value), get_rewards=get_rewards, parser_method=tweets_parser)
+    async def forward_query(self):
+        try:
+            return await self.forward(request=Request(type=RequestType.DISCORD_USER_GUILDS.value), get_rewards=get_rewards, parser_method=user_guilds_parser)
 
         except Exception as e:
             bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)

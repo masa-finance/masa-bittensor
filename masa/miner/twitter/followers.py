@@ -8,7 +8,6 @@ class TwitterFollowersRequest(MasaProtocolRequest):
     def __init__(self):
         super().__init__()
 
-
     def get_followers(self, username) -> List[TwitterFollowerObject]:
         bt.logging.info(f"Getting followers from worker {username}")
         response = self.get(f"/data/twitter/followers/{username}")
@@ -19,8 +18,7 @@ class TwitterFollowersRequest(MasaProtocolRequest):
         twitter_followers = self.format_followers(response)
         
         return twitter_followers
-        
-        
+
     def format_followers(self, data: requests.Response) -> List[TwitterFollowerObject]:
         bt.logging.info(f"Formatting twitter followers data: {data}")
         followers_data = data.json()['data']
