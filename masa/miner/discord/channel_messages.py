@@ -13,16 +13,14 @@ class DiscordChannelMessagesRequest(MasaProtocolRequest):
 
         response = self.get(f"/data/discord/channels/{channel_id}/messages")
 
-        response_data = response.json()
-        print(response_data)
+        response_json = response.json()
         
-        if response.status_code == 504:
+        if 'error' in response_json:
             bt.logging.error("Worker request failed")
             return None
-        discord_channel_messages = self.format_channel_messages(response_data)
-
-        print(discord_channel_messages)
         
+        discord_channel_messages = self.format_channel_messages(response_json)
+
         return discord_channel_messages
 
     def format_channel_messages(self, data: requests.Response) -> List[DiscordChannelMessageObject]:

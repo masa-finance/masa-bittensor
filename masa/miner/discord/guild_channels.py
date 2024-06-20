@@ -13,16 +13,14 @@ class DiscordGuildChannelsRequest(MasaProtocolRequest):
 
         response = self.get(f"/data/discord/guilds/{guild_id}/channels")
 
-        response_data = response.json()
-        print(response_data)
+        response_json = response.json()
         
-        if response.status_code == 504:
+        if 'error' in response_json:
             bt.logging.error("Worker request failed")
             return None
-        discord_guild_channels = self.format_guild_channels(response_data)
-
-        print(discord_guild_channels)
         
+        discord_guild_channels = self.format_guild_channels(response_json)
+
         return discord_guild_channels
 
     def format_guild_channels(self, data: requests.Response) -> List[DiscordGuildChannelObject]:

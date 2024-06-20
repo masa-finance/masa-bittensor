@@ -13,16 +13,14 @@ class DiscordUserGuildsRequest(MasaProtocolRequest):
 
         response = self.get("/data/discord/user/guilds")
 
-        response_data = response.json()
-        print(response_data)
+        response_json = response.json()
         
-        if response.status_code == 504:
+        if 'error' in response_json:
             bt.logging.error("Worker request failed")
             return None
-        discord_user_guilds = self.format_user_guilds(response_data)
-
-        print(discord_user_guilds)
         
+        discord_user_guilds = self.format_user_guilds(response_json)
+
         return discord_user_guilds
 
     def format_user_guilds(self, data: requests.Response) -> List[DiscordGuildObject]:

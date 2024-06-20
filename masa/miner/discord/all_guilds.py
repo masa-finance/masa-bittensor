@@ -13,13 +13,14 @@ class DiscordAllGuildsRequest(MasaProtocolRequest):
 
         response = self.get("/data/discord/guilds/all")
 
-        response_data = response.json()
-        print(response_data)
+        response_json = response.json()
+        print(response_json)
         
-        if response.status_code == 504:
+        if 'error' in response_json:
             bt.logging.error("Worker request failed")
             return None
-        discord_all_guilds = self.format_all_guilds(response_data)
+        
+        discord_all_guilds = self.format_all_guilds(response_json)
 
         return discord_all_guilds
 

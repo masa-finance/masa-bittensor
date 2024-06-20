@@ -12,20 +12,20 @@ class DiscordProfileRequest(MasaProtocolRequest):
         bt.logging.info(f"Getting profile from worker {user_id}")
         response = self.get(f"/data/discord/profile/{user_id}")
 
-        response_data = response.json()
+        response_json = response.json()
         
-        if 'error' in response_data:
-            error_message = response_data['error']
+        if 'error' in response_json:
+            error_message = response_json['error']
             bt.logging.error(f"Error fetching profile: {error_message}")
             return None
         
-        discord_profile = self.format_profile(response)
+        discord_profile = self.format_profile(response_json)
         
         return discord_profile
         
     def format_profile(self, data: requests.Response) -> DiscordProfileObject:
         bt.logging.info(f"Formatting discord profile data: {data}")
-        profile_data = data.json()['data']
+        profile_data = data['data']
         discord_profile = DiscordProfileObject(**profile_data)
         
         return discord_profile
