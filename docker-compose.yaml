@@ -2,7 +2,7 @@ services:
   subtensor:
     build:
       context: .
-      dockerfile: Dockerfile.subtensor
+      dockerfile: docker/subtensor/Dockerfile
     container_name: subtensor_machine
     volumes:
       - ./scripts/localnet.sh:/usr/local/bin/localnet.sh
@@ -17,7 +17,7 @@ services:
   subnet:
     build:
       context: .
-      dockerfile: Dockerfile.subnet
+      dockerfile: docker/subnet/Dockerfile
     container_name: subnet_machine
     depends_on:
       - subtensor
@@ -30,7 +30,7 @@ services:
   miner:
     build:
       context: .
-      dockerfile: Dockerfile.miner
+      dockerfile: docker/miner/Dockerfile
     container_name: miner_machine
     depends_on:
       - subnet
@@ -43,7 +43,7 @@ services:
   validator:
     build:
       context: .
-      dockerfile: Dockerfile.validator
+      dockerfile: docker/validator/Dockerfile
     container_name: validator_machine
     depends_on:
       - subnet
