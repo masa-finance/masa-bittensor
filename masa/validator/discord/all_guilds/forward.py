@@ -22,6 +22,7 @@ from masa.api.request import Request, RequestType
 from masa.validator.forwarder import Forwarder
 from masa.validator.discord.all_guilds.parser import all_guilds_parser
 from masa.validator.discord.all_guilds.reward import get_rewards
+from masa.miner.masa_protocol_request import REQUEST_TIMEOUT_IN_SECONDS
 
 class DiscordAllGuildsForwarder(Forwarder):
 
@@ -30,7 +31,7 @@ class DiscordAllGuildsForwarder(Forwarder):
 
     async def forward_query(self):
         try:
-            return await self.forward(request=Request(type=RequestType.DISCORD_ALL_GUILDS.value), get_rewards=get_rewards, parser_method=all_guilds_parser)
+            return await self.forward(request=Request(type=RequestType.DISCORD_ALL_GUILDS.value), get_rewards=get_rewards, parser_method=all_guilds_parser, timeout=REQUEST_TIMEOUT_IN_SECONDS)
 
         except Exception as e:
             bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)
