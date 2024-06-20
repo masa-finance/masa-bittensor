@@ -1,8 +1,8 @@
 import os
 import requests
 
-# Set to 2 to fix localhost timeout issue (happening when = 1)
-REQUEST_TIMEOUT_IN_SECONDS = 2
+# Set to 90 to account for discord/guilds/all on oracle node taking around 1 minute
+REQUEST_TIMEOUT_IN_SECONDS = 90
 
 class MasaProtocolRequest():
     def __init__(self):
