@@ -1,4 +1,3 @@
-import os
 import requests
 import bittensor as bt
 from masa.api.masa_protocol_request import MasaProtocolRequest

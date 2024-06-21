@@ -6,7 +6,7 @@ import uvicorn
 from fastapi import FastAPI, Depends
 from masa.miner.twitter.tweets import RecentTweetsQuery
 from masa.miner.web.scraper import WebScraperQuery
-from masa.validator.twitter.profile.forward import ProfileForwarder
+from masa.tasks.twitter.profile.validator.forward import TwitterProfileForwarder
 from masa.validator.twitter.followers.forward import FollowersForwarder
 from masa.validator.twitter.tweets.forward import TweetsForwarder
 from masa.validator.web.forward import WebScraperForwarder
@@ -77,7 +77,7 @@ class ValidatorAPI:
         
         
     async def get_twitter_profile(self, username: str):
-        return await ProfileForwarder(self.validator).forward_query(query=username)
+        return await TwitterProfileForwarder(self.validator).forward_query(query=username)
 
     async def get_twitter_followers(self, username: str):
         return await FollowersForwarder(self.validator).forward_query(query=username)

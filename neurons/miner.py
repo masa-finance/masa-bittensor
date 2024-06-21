@@ -26,6 +26,8 @@ from masa.base.miner import BaseMinerNeuron
 from masa.api.request import Request, RequestType
 from masa.miner.discord.profile import DiscordProfileRequest
 from masa.miner.twitter.profile import TwitterProfileRequest
+from masa.tasks.twitter.profile.miner.forward import forward_twitter_profile
+
 from masa.miner.twitter.followers import TwitterFollowersRequest
 from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
 from masa.miner.web.scraper import WebScraperQuery, WebScraperRequest
@@ -34,6 +36,9 @@ delay = 0
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
+        
+        self.axon.attach(forward_fn=forward_twitter_profile)
+        
         bt.logging.info("Miner initialized with config: {}".format(config))
 
 

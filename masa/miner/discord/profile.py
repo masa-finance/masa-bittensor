@@ -1,7 +1,7 @@
 import os
 import requests
 import bittensor as bt
-from masa.miner.masa_protocol_request import MasaProtocolRequest
+from masa.api.masa_protocol_request import MasaProtocolRequest
 from masa.types.discord import DiscordProfileObject
 
 class DiscordProfileRequest(MasaProtocolRequest):
