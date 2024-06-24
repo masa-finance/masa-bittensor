@@ -8,7 +8,7 @@ HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-'default_hotkey_password'}
 run_faucet() {
     WALLET_NAME=$1
     expect << EOF
-set timeout 180
+set timeout 360
 log_user 1
 spawn btcli wallet faucet --wallet.name $WALLET_NAME --subtensor.chain_endpoint ws://subtensor_machine:9945 --wallet.password
 expect {
