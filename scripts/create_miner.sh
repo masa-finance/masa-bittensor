@@ -17,3 +17,7 @@ echo -e "$HOTKEY_PASSWORD\n$HOTKEY_PASSWORD" | btcli wallet new_hotkey --wallet.
 
 # Use the faucet for the miner wallet
 run_faucet miner || { echo "Faucet failed for miner wallet"; exit 1; }
+
+echo "Wallets for miner created, and faucet used successfully."
+
+tail -f /dev/null

@@ -37,5 +37,3 @@ ENTRYPOINT ["/usr/local/bin/create_subnet.sh"]
 # Set the PATH to include the virtual environment
 ENV PATH="/opt/bittensor-venv/bin:$PATH"
 
-# Add a command to keep the container running
-CMD ["tail", "-f", "/dev/null"]

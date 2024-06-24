@@ -39,3 +39,4 @@ EOF
 btcli subnets hyperparameters --subtensor.network ws://subtensor_machine:9945 --netuid 1
 echo -e "Subnet netuid 1 is created successfully."
 
+tail -f /dev/null
