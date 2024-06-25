@@ -94,41 +94,43 @@ def filter_duplicated_axon_ips_for_uids(uids, metagraph):
             miner_ip_filtered_uids.append(uid)
     return miner_ip_filtered_uids
 
-def get_random_uids(
+async def get_random_uids(
     self, k: int, exclude: List[int] = None
 ) -> torch.LongTensor:
-    """Returns k available random uids from the metagraph.
+    """
+    Returns at most k available random uids from the metagraph.
+
     Args:
         k (int): Number of uids to return.
         exclude (List[int]): List of uids to exclude from the random sampling.
     Returns:
         uids (torch.LongTensor): Randomly sampled available uids.
     Notes:
-        If `k` is larger than the number of available `uids`, set `k` to the number of available `uids`.
+        If `k` is larger than the number of available `uids`, set `k` to the number of
+        available `uids`.
     """
-    candidate_uids = []
-    avail_uids = []
+    dendrite = bt.dendrite(wallet=bt.wallet)
     
     print("get random uids")
 
-    avail_uids = get_available_uids(self.metagraph, self.config.neuron.vpermit_tao_limit)
-    candidate_uids = remove_excluded_uids(avail_uids, exclude)
-    # If k is larger than the number of available uids, set k to the number of available uids.
-    k = min(k, len(avail_uids))
-    # Check if candidate_uids contain enough for querying, if not grab all avaliable uids
-    available_uids = candidate_uids
-    
-    
-    print("AVAIL UIDS: ", avail_uids)
-    if len(candidate_uids) < k:
-        available_uids += random.sample(
-            [uid for uid in avail_uids if uid not in candidate_uids],
-            k - len(candidate_uids),
-        )
+    try:
+        # Generic sanitation
+        avail_uids = get_available_uids(self.metagraph, self.config.neuron.vpermit_tao_limit)
+        candidate_uids = remove_excluded_uids(avail_uids, exclude)
+
+        healthy_uids, _ = await ping_uids(dendrite, self.metagraph, candidate_uids)
+        filtered_uids = filter_duplicated_axon_ips_for_uids(healthy_uids, self.metagraph)
+
+
+        k = min(k, len(filtered_uids))
+        # Random sampling
+        random_sample = random.sample(filtered_uids, k)
+        print(f"Random sample: {random_sample}")
         
-    print("AVAILABLE UIDS: ", available_uids)    
-    
-    random_sample = random.sample(available_uids, k)
-    print(f"Random sample: {random_sample}")
-    uids = torch.tensor(random_sample)
-    return uids
+        uids = torch.tensor(random_sample)
+        return uids
+    except Exception as e:
+        bt.logging.error(message=f"Failed to get random miner uids: {e}")
+        return None
+    finally:
+        dendrite.close_session()
