@@ -25,7 +25,7 @@ RUN python3 -m venv /opt/bittensor-venv && \
     /opt/bittensor-venv/bin/pip install bittensor[torch]
 
 # Copy the subnet creation script
-COPY scripts/run_faucet.sh /usr/local/bin/run_faucet.sh
+COPY scripts/functions.sh /usr/local/bin/functions.sh
 COPY scripts/create_subnet.sh /usr/local/bin/create_subnet.sh
 
 # Make the script executable

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Import run_faucet()
-source run_faucet.sh
+# Import shared functions
+source functions.sh
 
 # Create and fund owner wallets
 #
