@@ -7,63 +7,66 @@ HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-'default_hotkey_password'}
 # Import run_faucet()
 source run_faucet.sh
 
-# Create and fund validator wallets
-#
-# Create a new coldkey with the specified password
-echo -e "$COLDKEY_PASSWORD\n$COLDKEY_PASSWORD" | btcli wallet new_coldkey --wallet.name validator --wallet.password
+# Function to check if subnet 1 exists
+check_subnet_exists() {
+    local output
+    output=$(btcli subnet list --subtensor.chain_endpoint ws://subtensor_machine:9945)
+    echo "Current subnet list:"
+    echo "$output"
+    echo "$output" | awk 'NR>1 {print $1, $2}' | grep -q "*1 "
+}
 
-# Create a new hotkey with the specified password
+
+# Create and fund validator wallets
+echo -e "$COLDKEY_PASSWORD\n$COLDKEY_PASSWORD" | btcli wallet new_coldkey --wallet.name validator --wallet.password
 echo -e "$HOTKEY_PASSWORD\n$HOTKEY_PASSWORD" | btcli wallet new_hotkey --wallet.name validator --wallet.hotkey validator_hotkey --wallet.password
 
 # Use the faucet for the validator wallet
 run_faucet validator || { echo "Faucet failed for validator wallet"; exit 1; }
-
 echo "Wallets for validator created, and faucet used successfully."
 
-# Expect script to handle the interactive prompts
-expect << EOF
-log_user 1
-set timeout -1
+# Wait for subnet 1 to be created
+echo "Waiting for subnet 1 to be created..."
+while ! check_subnet_exists; do
+    echo "Subnet 1 not found. Waiting 15 seconds before checking again..."
+    sleep 15
+done
+echo "Subnet 1 has been created. Proceeding with registration."
 
-# Loop until the correct netuid prompt is seen
-while {1} {
-    spawn btcli subnet register --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9946
-    expect {
-        "Enter netuid \\[0/3\\] (0):" {
-            puts "Waiting for subnet creation..."
-            sleep 5
-            exp_continue
-        }
-        "Enter netuid \\[0/1/3\\] (0):" {
-            puts "Correct netuid prompt received."
-            send "1\r"
-            exp_continue
-        }
-        "Do you want to continue? \\[y/n\\] (n)" {
-            puts "Confirming continuation..."
-            send "y\r"
-            exp_continue
-        }
-        "Enter password to unlock key:" {
-            puts "Entering password..."
-            send "$COLDKEY_PASSWORD\r"
-            exp_continue
-        }
-        "Recycle τ" {
-            puts "Recycling τ..."
-            send "y\r"
-            exp_continue
-        }
-        "✅ Registered" {
-            puts "Successfully registered."
-            exit
-        }
-        eof {
-            puts "Retrying registration..."
-            sleep 1
-        }
-    }
-}
+# Function to register validator
+register_validator() {
+    local attempt=1
+    local max_attempts=5
+
+    while [ $attempt -le $max_attempts ]; do
+        echo "Attempt $attempt to register validator..."
+        
+        output=$(btcli subnet register --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9946 2>&1)
+        
+        if echo "$output" | grep -q "Enter netuid \[0/1/3\] (0):"; then
+            echo "1" | btcli subnet register --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9946 <<EOF
+1
+y
+$COLDKEY_PASSWORD
+y
 EOF
+            if [ $? -eq 0 ]; then
+                echo "Successfully registered validator."
+                return 0
+            fi
+        fi
 
+        echo "Registration attempt failed. Waiting 15 seconds before retrying..."
+        sleep 15
+        ((attempt++))
+    done
+
+    echo "Failed to register validator after $max_attempts attempts."
+    return 1
+}
+
+# Attempt to register the validator
+register_validator
+
+# Keep the container running
 tail -f /dev/null
