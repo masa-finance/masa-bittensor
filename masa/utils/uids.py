@@ -36,6 +36,13 @@ def check_uid_availability(
     # Available otherwise.
     return True
 
+def get_available_uids(
+    metagraph: "bt.metagraph.Metagraph", vpermit_tao_limit: int
+) -> List[int]:
+    return [uid for uid in range(metagraph.n.item()) if check_uid_availability(metagraph, uid, vpermit_tao_limit)]
+
+def remove_excluded_uids(uids: List[int], exclude: List[int]) -> List[int]:
+    return [uid for uid in uids if uid not in exclude]
 
 def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor:
     """Returns k available random uids from the metagraph.
@@ -52,16 +59,8 @@ def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor
 
     print("get random uids")
 
-    for uid in range(self.metagraph.n.item()):
-        uid_is_available = check_uid_availability(
-            self.metagraph, uid, self.config.neuron.vpermit_tao_limit
-        )
-        uid_is_not_excluded = exclude is None or uid not in exclude
-
-        if uid_is_available:
-            avail_uids.append(uid)
-            if uid_is_not_excluded:
-                candidate_uids.append(uid)
+    avail_uids = get_available_uids(self.metagraph, self.config.neuron.vpermit_tao_limit)
+    candidate_uids = remove_excluded_uids(avail_uids, exclude)
     # If k is larger than the number of available uids, set k to the number of available uids.
     k = min(k, len(avail_uids))
     # Check if candidate_uids contain enough for querying, if not grab all avaliable uids
