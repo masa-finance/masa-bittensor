@@ -56,7 +56,7 @@ class ValidatorAPI:
             self.scrape_web,
             methods=["POST"],
             dependencies=[Depends(self.get_self)],
-            response_description="Get recent tweets given a query",
+            response_description="Scrape data from a given website url",
             tags=["web"]
         )
 
