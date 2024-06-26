@@ -6,6 +6,7 @@ source /opt/bittensor-venv/bin/activate
 # Use environment variables for passwords
 COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-'default_coldkey_password'}
 HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-'default_hotkey_password'}
+ORACLE_BASE_URL="http://34.72.224.59:8080/api/v1"
 
 # Import the shared functions
 source functions.sh
@@ -35,6 +36,7 @@ echo "Subnet 1 has been created. Proceeding with registration."
 if register_node miner; then
     echo "Miner registration successful. Starting the miner..."
     # Start the miner
+
     python /app/neurons/miner.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name miner --wallet.hotkey miner_hotkey --axon.port 8091
 else
     echo "Miner registration failed. Not starting the validator."
