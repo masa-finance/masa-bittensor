@@ -31,7 +31,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
 RUN git clone https://github.com/opentensor/subtensor.git
 
 # Copy the entyrpoint script into container
-COPY docker/entrypoint.sh /app/entrypoint.sh
+COPY docker/subtensor/entrypoint.sh /subtensor/entrypoint.sh
 
 # Set the working directory
 WORKDIR /subtensor
@@ -42,7 +42,7 @@ RUN git checkout main && \
     cargo build --release --features runtime-benchmarks,pow-faucet"
 
 # Make entrypoint executable
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /subtensor/entrypoint.sh
 
 # Set the entry point 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/subtensor/entrypoint.sh"]

@@ -50,3 +50,7 @@ ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Add a command to keep the container running
 CMD ["tail", "-f", "/dev/null"]
+
+# Check and consider healthy when serving on port 8000
+HEALTHCHECK --interval=5s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000 || exit 1

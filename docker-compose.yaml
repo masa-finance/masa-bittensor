@@ -4,8 +4,6 @@ services:
       context: .
       dockerfile: docker/subtensor/Dockerfile
     container_name: subtensor_machine
-    volumes:
-      - ./scripts/localnet.sh:/usr/local/bin/localnet.sh
     ports:
       - "9945:9945"  # Expose port 9945
       - "9946:9946"  # Expose port 9946
@@ -32,8 +30,11 @@ services:
       context: .
       dockerfile: docker/miner/Dockerfile
     container_name: miner_machine
+    ports:
+      - "8093:8093"
     depends_on:
-      - subnet
+      validator:
+        condition: service_healthy
     networks:
       - subtensor_network
     environment:
@@ -45,6 +46,9 @@ services:
       context: .
       dockerfile: docker/validator/Dockerfile
     container_name: validator_machine
+    ports:
+      - "8000:8000"
+      - "8092:8092"
     depends_on:
       - subnet
     networks:
