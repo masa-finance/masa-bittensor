@@ -10,23 +10,6 @@ HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-'default_hotkey_password'}
 # Import the shared functions
 source functions.sh
 
-# Function to check if validator is ready
-check_validator_ready() {
-    local max_attempts=180  # 15 minutes (180 * 5 seconds)
-    local attempt=0
-    while [ $attempt -lt $max_attempts ]; do
-        if curl -s -o /dev/null -w "%{http_code}" http://validator_machine:8000/docs | grep -qE "^[2-5][0-9][0-9]$"; then
-            echo "Validator is ready."
-            return 0
-        fi
-        attempt=$((attempt+1))
-        echo "Validator not ready. Attempt $attempt of $max_attempts. Waiting 5 seconds..."
-        sleep 5
-    done
-    echo "Validator did not become ready within the timeout period."
-    return 1
-}
-
 # Create and fund miner wallets
 #
 # Create a new coldkey with the specified password
@@ -40,14 +23,16 @@ run_faucet miner || { echo "Faucet failed for miner wallet"; exit 1; }
 
 echo "Wallets for miner created, and faucet used successfully."
 
-# Wait for validator to be ready
-echo "Waiting for validator to be ready..."
-if check_validator_ready; then
-    echo "Validator is ready. Proceeding with miner registration."
-else
-    echo "Validator did not become ready within the timeout period. Exiting."
-    exit 1
-fi
+# Wait for subnet 1 to be created
+echo "Waiting for subnet 1 to be created..."
+while ! check_subnet_exists; do
+    echo "Subnet 1 not found. Waiting 15 seconds before checking again..."
+    sleep 15
+done
+echo "Subnet 1 has been created. Proceeding with registration."
+
+# Wait two minutes for validator to register
+sleep 120
 
 # Attempt to register the validator and start it
 if register_node miner; then

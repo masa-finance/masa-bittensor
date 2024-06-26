@@ -45,10 +45,6 @@ ENV PATH="/opt/bittensor-venv/bin:$PATH"
 # Make the entrypoint script executable
 RUN chmod +x /app/entrypoint.sh
 
-# Check and consider healthy when serving on port 8000
-HEALTHCHECK --interval=5s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000 || exit 1
-
 # Set the entry point to run the script
 ENTRYPOINT ["/app/entrypoint.sh"]
 
