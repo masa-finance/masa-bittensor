@@ -15,13 +15,15 @@ check_validator_ready() {
     local max_attempts=180  # 15 minutes (180 * 5 seconds)
     local attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if curl -s http://validator_machine:8000/healthcheck | grep -q "OK"; then
+        if curl -s -o /dev/null -w "%{http_code}" http://validator_machine:8000/ | grep -qE "^[2-5][0-9][0-9]$"; then
+            echo "Validator is ready."
             return 0
         fi
         attempt=$((attempt+1))
         echo "Validator not ready. Attempt $attempt of $max_attempts. Waiting 5 seconds..."
         sleep 5
     done
+    echo "Validator did not become ready within the timeout period."
     return 1
 }
 
