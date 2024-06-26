@@ -26,6 +26,9 @@ while ! check_subnet_exists; do
 done
 echo "Subnet 1 has been created. Proceeding with registration."
 
+# Wait two minutes for miner to register
+sleep 120
+
 # Attempt to register the validator and start it
 if register_node validator; then
     echo "Validator registration successful. Starting the validator..."
