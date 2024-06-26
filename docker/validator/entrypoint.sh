@@ -29,6 +29,18 @@ echo "Subnet 1 has been created. Proceeding with registration."
 # Wait two minutes for miner to register
 sleep 120
 
+# Register validator on the root subnet
+echo "1" | btcli root register --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
+$COLDKEY_PASSWORD
+y
+EOF
+
+# Boost subnet on the root subnet
+echo "1" | btcli root boost --netuid 1 --increase 1 --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
+$COLDKEY_PASSWORD
+y
+EOF
+
 # Attempt to register the validator and start it
 if register_node validator; then
     echo "Validator registration successful. Starting the validator..."

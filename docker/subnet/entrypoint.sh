@@ -9,7 +9,7 @@ source /app/functions.sh
 echo -e "$COLDKEY_PASSWORD\n$COLDKEY_PASSWORD" | btcli wallet new_coldkey --wallet.name owner --wallet.password
 
 # Create a new hotkey with the specified password
-echo -e "$HOTKEY_PASSWORD\n$HOTKEY_PASSWORD" | btcli wallet new_hotkey --wallet.name owner --wallet.hotkey miner_hotkey --wallet.password
+echo -e "$HOTKEY_PASSWORD\n$HOTKEY_PASSWORD" | btcli wallet new_hotkey --wallet.name owner --wallet.hotkey owner_hotkey --wallet.password
 
 # Spawn 4 faucet operations
 for i in {1..4}; do
@@ -45,5 +45,16 @@ EOF
 sleep 10
 btcli subnet list --subtensor.chain_endpoint ws://subtensor_machine:9945
 
+# Set weights_rate_limit hyperparam to 1
+echo "1" | btcli sudo set --param weights_rate_limit --value 1 --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
+owner
+1
+$COLDKEY_PASSWORD
+EOF
+
+if [ $? -eq 0 ]; then
+    echo "Successfully  set weights_rate_limit."
+    return 0
+fi
 
 tail -f /dev/null
