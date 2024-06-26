@@ -15,7 +15,7 @@ check_validator_ready() {
     local max_attempts=180  # 15 minutes (180 * 5 seconds)
     local attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if curl -s -o /dev/null -w "%{http_code}" http://validator_machine:8000/ | grep -qE "^[2-5][0-9][0-9]$"; then
+        if curl -s -o /dev/null -w "%{http_code}" http://validator_machine:8000/docs | grep -qE "^[2-5][0-9][0-9]$"; then
             echo "Validator is ready."
             return 0
         fi
