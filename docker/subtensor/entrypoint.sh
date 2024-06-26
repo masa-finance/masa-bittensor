@@ -1,7 +1,6 @@
 #!/bin/bash
 
 : "${CHAIN:=local}"
-: "${BUILD_BINARY:=1}"
 : "${SPEC_PATH:=specs/}"
 : "${FEATURES:=pow-faucet}"
 
@@ -10,12 +9,6 @@ FULL_PATH="$SPEC_PATH$CHAIN.json"
 if [ ! -d "$SPEC_PATH" ]; then
 	echo "*** Creating directory ${SPEC_PATH}..."
 	mkdir $SPEC_PATH
-fi
-
-if [[ $BUILD_BINARY == "1" ]]; then
-	echo "*** Building substrate binary..."
-	cargo build --release --features "$FEATURES"
-	echo "*** Binary compiled"
 fi
 
 echo "*** Building chainspec..."

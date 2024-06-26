@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Import shared functions
-source functions.sh
+source /app/functions.sh
 
 # Create and fund owner wallets
 #
@@ -11,9 +11,17 @@ echo -e "$COLDKEY_PASSWORD\n$COLDKEY_PASSWORD" | btcli wallet new_coldkey --wall
 # Create a new hotkey with the specified password
 echo -e "$HOTKEY_PASSWORD\n$HOTKEY_PASSWORD" | btcli wallet new_hotkey --wallet.name owner --wallet.hotkey miner_hotkey --wallet.password
 
-# Use the faucet for the owner wallet multiple times to get enough tTAO to register a subnet
+# Spawn 4 faucet operations
 for i in {1..4}; do
     run_faucet owner || { echo "Faucet $i failed for owner wallet"; exit 1; }
+done
+
+# Wait for all background processes to finish
+wait
+
+# Check if any of the faucet operations failed
+for job in $(jobs -p); do
+    wait $job || { echo "A faucet operation failed"; exit 1; }
 done
 
 echo -e "Owner faucet has run 4 times, now has 1200 τTAO"
