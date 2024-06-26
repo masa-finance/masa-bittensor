@@ -57,7 +57,7 @@ class ValidatorAPI:
             methods=["POST"],
             dependencies=[Depends(self.get_self)],
             response_description="Get recent tweets given a query",
-            tags=["twitter"]
+            tags=["web"]
         )
 
         self.app.add_api_route(
