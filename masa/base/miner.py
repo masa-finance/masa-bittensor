@@ -80,9 +80,6 @@ class BaseMinerNeuron(BaseNeuron):
         self.min_stake_required: int = (
             self.config.blacklist.min_stake_required
         )  # note, this will be variable per environment
-        self.tempo: int = self.subtensor.get_subnet_hyperparameters(
-            self.config.netuid
-        ).tempo  # note, this breaks on devnet due to hyperparam issue
 
         self.load_state()
 
