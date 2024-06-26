@@ -40,14 +40,6 @@ run_faucet miner || { echo "Faucet failed for miner wallet"; exit 1; }
 
 echo "Wallets for miner created, and faucet used successfully."
 
-# Wait for subnet 1 to be created
-echo "Waiting for subnet 1 to be created..."
-while ! check_subnet_exists; do
-    echo "Subnet 1 not found. Waiting 15 seconds before checking again..."
-    sleep 15
-done
-echo "Subnet 1 has been created. Proceeding with registration."
-
 # Wait for validator to be ready
 echo "Waiting for validator to be ready..."
 if check_validator_ready; then
