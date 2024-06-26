@@ -11,10 +11,8 @@ echo -e "$COLDKEY_PASSWORD\n$COLDKEY_PASSWORD" | btcli wallet new_coldkey --wall
 # Create a new hotkey with the specified password
 echo -e "$HOTKEY_PASSWORD\n$HOTKEY_PASSWORD" | btcli wallet new_hotkey --wallet.name owner --wallet.hotkey owner_hotkey --wallet.password
 
-# Spawn 4 faucet operations
-for i in {1..4}; do
-    run_faucet owner || { echo "Faucet $i failed for owner wallet"; exit 1; }
-done
+# Run upgraded faucet once (gives 1000TAO)
+run_faucet owner || { echo "Faucet failed for owner wallet"; exit 1; }
 
 # Wait for all background processes to finish
 wait
