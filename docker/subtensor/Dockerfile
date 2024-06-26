@@ -31,7 +31,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
 RUN git clone https://github.com/opentensor/subtensor.git
 
 # Copy the localnet.sh script into the subtensor/scripts directory
-COPY scripts/localnet.sh /subtensor/scripts/localnet.sh
+COPY docker/entrypoint.sh /app/entrypoint.sh
 
 # Set the working directory
 WORKDIR /subtensor
@@ -41,8 +41,8 @@ RUN git checkout main && \
     /bin/bash -c "source $HOME/.cargo/env && \
     cargo build --release --features runtime-benchmarks,pow-faucet"
 
-# Make localnet.sh executable
-RUN chmod +x /subtensor/scripts/localnet.sh
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
 
-# Set the entry point to run localnet.sh
-ENTRYPOINT ["/subtensor/scripts/localnet.sh"]
+# Set the entry point 
+ENTRYPOINT ["/app/entrypoint.sh"]

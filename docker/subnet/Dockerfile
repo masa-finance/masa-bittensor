@@ -25,14 +25,14 @@ RUN python3 -m venv /opt/bittensor-venv && \
     /opt/bittensor-venv/bin/pip install bittensor[torch]
 
 # Copy the subnet creation script
-COPY scripts/functions.sh /usr/local/bin/functions.sh
-COPY scripts/create_subnet.sh /usr/local/bin/create_subnet.sh
+COPY docker/functions.sh /app/functions.sh
+COPY docker/subnet/entrypoint.sh /app/entrypoint.sh
 
 # Make the script executable
-RUN chmod +x /usr/local/bin/create_subnet.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Set the entry point to run the script
-ENTRYPOINT ["/usr/local/bin/create_subnet.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Set the PATH to include the virtual environment
 ENV PATH="/opt/bittensor-venv/bin:$PATH"

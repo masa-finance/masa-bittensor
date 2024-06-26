@@ -26,8 +26,8 @@ RUN python3 -m venv /opt/bittensor-venv && \
     /opt/bittensor-venv/bin/pip install python-dotenv
 
 # Copy the validator creation script
-COPY scripts/functions.sh /usr/local/bin/functions.sh
-COPY scripts/create_validator.sh /usr/local/bin/create_validator.sh
+COPY docker/functions.sh /app/functions.sh
+COPY docker/validator/entrypoint.sh /app/entrypoint.sh
 
 # Copy the neurons and masa directories
 COPY neurons /app/neurons
@@ -42,11 +42,11 @@ WORKDIR /app
 ENV PYTHONPATH="/opt/bittensor-venv/bin:/app:$PYTHONPATH"
 ENV PATH="/opt/bittensor-venv/bin:$PATH"
 
-# Make the script executable
-RUN chmod +x /usr/local/bin/create_validator.sh
+# Make the entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
 
 # Set the entry point to run the script
-ENTRYPOINT ["/usr/local/bin/create_validator.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Add a command to keep the container running
 CMD ["tail", "-f", "/dev/null"]

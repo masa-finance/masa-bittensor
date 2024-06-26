@@ -25,12 +25,14 @@ RUN python3 -m venv /opt/bittensor-venv && \
     /opt/bittensor-venv/bin/pip install bittensor[torch]  && \
     /opt/bittensor-venv/bin/pip install python-dotenv
 
-# Copy the scripts
-COPY scripts/functions.sh /usr/local/bin/functions.sh
-COPY scripts/create_miner.sh /usr/local/bin/create_miner.sh
+# Copy the shared functions 
+COPY docker/functions.sh /app/functions.sh
+
+# Copy the entrypoint script
+COPY docker/miner/entrypoint.sh /app/entrypoint.sh
 
 # Make the script executable
-RUN chmod +x /usr/local/bin/create_miner.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Copy the neurons and masa directories
 COPY neurons /app/neurons
@@ -46,7 +48,7 @@ ENV PYTHONPATH="/opt/bittensor-venv/bin:/app:$PYTHONPATH"
 ENV PATH="/opt/bittensor-venv/bin:$PATH"
 
 # Set the entry point to run the script
-ENTRYPOINT ["/usr/local/bin/create_miner.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Add a command to keep the container running
 CMD ["tail", "-f", "/dev/null"]
