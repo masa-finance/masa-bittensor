@@ -7,6 +7,7 @@ source /opt/bittensor-venv/bin/activate
 COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-'default_coldkey_password'}
 HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-'default_hotkey_password'}
 ORACLE_BASE_URL="http://34.72.224.59:8080/api/v1"
+DOCKER_SELF_IP=$(getent hosts miner_machine | awk '{ print $1 }')
 
 # Import the shared functions
 source functions.sh
@@ -32,14 +33,12 @@ while ! check_subnet_exists; do
 done
 echo "Subnet 1 has been created. Proceeding with registration."
 
-docker_self_IP=$(getent hosts miner_machine | awk '{ print $1 }')
-
 # Attempt to register the miner and start it
 if register_node miner; then
     echo "Miner registration successful. Starting the miner..."
     # Start the miner
     # Set ORACLE_BASE_URL to the masa protocol (oracle) node the miner uses
-    ORACLE_BASE_URL=$ORACLE_BASE_URL; python /app/neurons/miner.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name miner --wallet.hotkey miner_hotkey --axon.external_ip "$docker_self_IP" --axon.port 8093
+    ORACLE_BASE_URL=$ORACLE_BASE_URL; python /app/neurons/miner.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name miner --wallet.hotkey miner_hotkey --axon.port 8093 --axon.external_ip "$DOCKER_SELF_IP"
 else
     echo "Miner registration failed. Not starting the validator."
 fi

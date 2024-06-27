@@ -6,6 +6,8 @@ source /opt/bittensor-venv/bin/activate
 # Use environment variables for passwords
 COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-'default_coldkey_password'}
 HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-'default_hotkey_password'}
+DOCKER_SELF_IP=$(getent hosts miner_machine | awk '{ print $1 }')
+
 # Import shared functions
 source functions.sh
 
@@ -43,11 +45,9 @@ $COLDKEY_PASSWORD
 y
 EOF
 
-docker_self_IP=$(getent hosts miner_machine | awk '{ print $1 }')
-
 # Define a function to start the validator
 start_validator() {
-    python /app/neurons/validator.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name validator --wallet.hotkey validator_hotkey --axon.external_ip "$docker_self_IP" --axon.port 8092
+    python /app/neurons/validator.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name validator --wallet.hotkey validator_hotkey --axon.port 8092  --axon.external_ip "$DOCKER_SELF_IP"
 }
 
 # Attempt to register the validator and start it
