@@ -25,8 +25,8 @@ RUN python3 -m venv /opt/bittensor-venv && \
     /opt/bittensor-venv/bin/pip install bittensor[torch]
 
 # Copy the subnet creation script
-COPY docker/functions.sh /app/functions.sh
-COPY docker/subnet/entrypoint.sh /app/entrypoint.sh
+COPY ../functions.sh /app/functions.sh
+COPY ./entrypoint.sh /app/entrypoint.sh
 
 # Make the script executable
 RUN chmod +x /app/entrypoint.sh

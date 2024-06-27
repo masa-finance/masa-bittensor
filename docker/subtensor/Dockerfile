@@ -31,7 +31,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
 RUN git clone https://github.com/opentensor/subtensor.git
 
 # Copy the entyrpoint script into container
-COPY docker/subtensor/entrypoint.sh /subtensor/entrypoint.sh
+COPY ./entrypoint.sh /subtensor/entrypoint.sh
 
 # Set the working directory
 WORKDIR /subtensor
@@ -69,7 +69,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
 RUN git clone https://github.com/opentensor/subtensor.git
 
 # Copy the entrypoint script into container
-COPY docker/subtensor/entrypoint.sh /subtensor/entrypoint.sh
+COPY ./entrypoint.sh /subtensor/entrypoint.sh
 
 # Set the working directory
 WORKDIR /subtensor
