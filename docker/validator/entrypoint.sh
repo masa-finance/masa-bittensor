@@ -34,8 +34,8 @@ $COLDKEY_PASSWORD
 y
 EOF
 
-echo "Wait 200s before boost"
-sleep 200
+echo "Wait 2250s before boost"
+sleep 2250
 
 echo "# Boost subnet on the root subnet"
 echo "1" | btcli root boost --netuid 1 --increase 1 --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
