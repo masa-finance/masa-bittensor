@@ -32,12 +32,8 @@ jobs:
             echo "ENV_TAG=prod" >> $GITHUB_ENV
           fi
 
-      - name: Log in to the Container registry
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
+      - name: Log in to GitHub Container Registry
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Build and push Docker images
         run: |
@@ -45,70 +41,14 @@ jobs:
           
           for service in "${services[@]}"; do
             echo "Building and pushing $service"
-            docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/$service:${{ env.ENV_TAG }} -f docker/$service/Dockerfile ./docker/$service
-            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/$service:${{ env.ENV_TAG }}
+            docker build -t ghcr.io/masa-bittensor/$service:${{ env.ENV_TAG }} -f docker/$service/Dockerfile ./docker/$service
+            docker push ghcr.io/masa-bittensor/$service:${{ env.ENV_TAG }}
           done
 
-      - name: Generate docker-compose file
+      - name: Display image tags
         run: |
-          cat << EOF > docker-compose.${{ env.ENV_TAG }}.yml
-          services:
-            subtensor:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/subtensor:${{ env.ENV_TAG }}
-              container_name: subtensor_machine
-              ports:
-                - "9945:9945"
-                - "9946:9946"
-                - "30334:30334"
-                - "30335:30335"
-              networks:
-                - subtensor_network
-
-            subnet:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/subnet:${{ env.ENV_TAG }}
-              container_name: subnet_machine
-              depends_on:
-                - subtensor
-              networks:
-                - subtensor_network
-              environment:
-                - COLDKEY_PASSWORD=your_coldkey_password
-                - HOTKEY_PASSWORD=your_hotkey_password
-
-            miner:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/miner:${{ env.ENV_TAG }}
-              container_name: miner_machine
-              ports:
-                - "8093:8093"
-              depends_on:
-                - subnet
-              networks:
-                - subtensor_network
-              environment:
-                - COLDKEY_PASSWORD=your_coldkey_password
-                - HOTKEY_PASSWORD=your_hotkey_password
-
-            validator:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/validator:${{ env.ENV_TAG }}
-              container_name: validator_machine
-              ports:
-                - "8000:8000"
-                - "8092:8092"
-              depends_on:
-                - subnet
-              networks:
-                - subtensor_network
-              environment:
-                - COLDKEY_PASSWORD=your_coldkey_password
-                - HOTKEY_PASSWORD=your_hotkey_password
-
-          networks:
-            subtensor_network:
-              driver: bridge
-          EOF
-
-      - name: Upload docker-compose file as artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: docker-compose-${{ env.ENV_TAG }}
-          path: docker-compose.${{ env.ENV_TAG }}.yml
+          echo "The following images have been built and pushed:"
+          echo "ghcr.io/masa-bittensor/subtensor:${{ env.ENV_TAG }}"
+          echo "ghcr.io/masa-bittensor/subnet:${{ env.ENV_TAG }}"
+          echo "ghcr.io/masa-bittensor/miner:${{ env.ENV_TAG }}"
+          echo "ghcr.io/masa-bittensor/validator:${{ env.ENV_TAG }}"
