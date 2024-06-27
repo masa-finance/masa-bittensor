@@ -26,18 +26,18 @@ RUN python3 -m venv /opt/bittensor-venv && \
     /opt/bittensor-venv/bin/pip install python-dotenv
 
 # Copy the shared functions 
-COPY ../functions.sh /app/functions.sh
+COPY docker/functions.sh /app/functions.sh
 
 # Copy the entrypoint script
-COPY ./entrypoint.sh /app/entrypoint.sh
+COPY docker/miner/entrypoint.sh /app/entrypoint.sh
 
 # Make the script executable
 RUN chmod +x /app/entrypoint.sh
 
 # Copy the neurons and masa directories
-COPY ../../neurons /app/neurons
-COPY ../../masa /app/masa
-COPY ../../requirements.txt /app/requirements.txt
+COPY neurons /app/neurons
+COPY masa /app/masa
+COPY requirements.txt /app/requirements.txt
 RUN /opt/bittensor-venv/bin/pip install -r /app/requirements.txt
 
 # Set the working directory
