@@ -13,7 +13,7 @@ env:
 jobs:
   build-and-push:
     name: Build and Push Docker images
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -25,13 +25,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set environment-specific variables
-        run: |
-          echo "ENV_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "ENV_TAG=prod" >> $GITHUB_ENV
-          fi
-
       - name: Log in to GitHub Container Registry
         run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
@@ -41,14 +34,14 @@ jobs:
           
           for service in "${services[@]}"; do
             echo "Building and pushing $service"
-            docker build -t ghcr.io/masa-bittensor/$service:${{ env.ENV_TAG }} -f docker/$service/Dockerfile ./docker/$service
-            docker push ghcr.io/masa-bittensor/$service:${{ env.ENV_TAG }}
+            docker build -t ghcr.io/masa-bittensor/$service:${{ github.ref_name }} -f docker/$service/Dockerfile ./docker/$service
+            docker push ghcr.io/masa-bittensor/$service:${{ github.ref_name }}
           done
 
       - name: Display image tags
         run: |
           echo "The following images have been built and pushed:"
-          echo "ghcr.io/masa-bittensor/subtensor:${{ env.ENV_TAG }}"
-          echo "ghcr.io/masa-bittensor/subnet:${{ env.ENV_TAG }}"
-          echo "ghcr.io/masa-bittensor/miner:${{ env.ENV_TAG }}"
-          echo "ghcr.io/masa-bittensor/validator:${{ env.ENV_TAG }}"
+          echo "ghcr.io/masa-bittensor/subtensor:${{ github.ref_name }}"
+          echo "ghcr.io/masa-bittensor/subnet:${{ github.ref_name }}"
+          echo "ghcr.io/masa-bittensor/miner:${{ github.ref_name }}"
+          echo "ghcr.io/masa-bittensor/validator:${{ github.ref_name }}"
