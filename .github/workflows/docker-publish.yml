@@ -4,10 +4,6 @@ on:
   push:
     branches: [ "dev", "test", "main", "dockerize" ]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
   build-and-push:
     name: Build and Push Docker images
@@ -32,8 +28,8 @@ jobs:
           
           for service in "${services[@]}"; do
             echo "Building and pushing $service"
-            docker build -t ghcr.io/masa-bittensor/$service:${{ github.ref_name }} -f docker/$service/Dockerfile ./docker/$service
-            docker push ghcr.io/masa-bittensor/$service:${{ github.ref_name }}
+            docker build -t ghcr.io/masa-finance/masa-bittensor/$service:${{ github.ref_name }} -f docker/$service/Dockerfile ./docker/$service
+            docker push ghcr.io/masa-finance/masa-bittensor/$service:${{ github.ref_name }}
           done
 
       - name: Display image tags
