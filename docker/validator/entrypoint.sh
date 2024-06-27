@@ -43,11 +43,13 @@ $COLDKEY_PASSWORD
 y
 EOF
 
+docker_self_IP=$(getent hosts miner_machine | awk '{ print $1 }')
+
 # Attempt to register the validator and start it
 if register_node validator; then
     echo "Validator registration successful. Starting the validator..."
     # Start the validator
-    python /app/neurons/validator.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name validator --wallet.hotkey validator_hotkey --axon.port 8092
+    python /app/neurons/validator.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name validator --wallet.hotkey validator_hotkey --axon.external_ip "$docker_self_IP" --axon.port 8092
 else
     echo "Validator registration failed. Not starting the validator."
 fi
