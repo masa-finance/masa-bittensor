@@ -14,8 +14,8 @@ services:
 
   subnet:
     build:
-      context: ./docker/subnet
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./docker/subnet/Dockerfile
     container_name: subnet_machine
     depends_on:
       - subtensor
@@ -27,8 +27,8 @@ services:
 
   miner:
     build:
-      context: ./docker/miner
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./docker/miner/Dockerfile
     container_name: miner_machine
     ports:
       - "8093:8093"
@@ -42,8 +42,8 @@ services:
 
   validator:
     build:
-      context: ./docker/validator
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./docker/validator/Dockerfile
     container_name: validator_machine
     ports:
       - "8000:8000"
