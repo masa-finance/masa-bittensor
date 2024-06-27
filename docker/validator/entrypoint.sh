@@ -6,7 +6,6 @@ source /opt/bittensor-venv/bin/activate
 # Use environment variables for passwords
 COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-'default_coldkey_password'}
 HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-'default_hotkey_password'}
-
 # Import shared functions
 source functions.sh
 
@@ -26,20 +25,23 @@ while ! check_subnet_exists; do
 done
 echo "Subnet 1 has been created. Proceeding with registration."
 
-# Wait two minutes for miner to register
-sleep 120
+echo "Wait 30s for miner to register and start"
+sleep 30
 
-# Register validator on the root subnet
-#echo "1" | btcli root register --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
-#$COLDKEY_PASSWORD
-#y
-#EOF
+echo"Register validator on the root subnet."
+echo "1" | btcli root register --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
+$COLDKEY_PASSWORD
+y
+EOF
 
-# Boost subnet on the root subnet
-#echo "1" | btcli root boost --netuid 1 --increase 1 --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
-#$COLDKEY_PASSWORD
-#y
-#EOF
+echo "Wait 10s before boost"
+sleep 10
+
+echo "# Boost subnet on the root subnet"
+echo "1" | btcli root boost --netuid 1 --increase 1 --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
+$COLDKEY_PASSWORD
+y
+EOF
 
 # Attempt to register the validator and start it
 if register_node validator; then

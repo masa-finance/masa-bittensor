@@ -22,7 +22,7 @@ for job in $(jobs -p); do
     wait $job || { echo "A faucet operation failed"; exit 1; }
 done
 
-echo -e "Owner faucet has run 4 times, now has 1200 τTAO"
+echo -e "faucet to owner wallet has run, now has 3000 τTAO"
 
 # Register / Create a Subnet using expect to handle the interactive prompt and password
 expect << EOF
@@ -43,16 +43,13 @@ EOF
 sleep 10
 btcli subnet list --subtensor.chain_endpoint ws://subtensor_machine:9945
 
-# Set weights_rate_limit hyperparam to 1
-echo "1" | btcli sudo set --param weights_rate_limit --value 1 --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
-owner
-1
-$COLDKEY_PASSWORD
-EOF
+echo "Wait 10s before setting hyperparam"
+sleep 10
 
-if [ $? -eq 0 ]; then
-    echo "Successfully  set weights_rate_limit."
-    return 0
-fi
+echo "Set hyperparam to allow setting weights now"
+echo "1" | btcli sudo set --param weights_rate_limit --value 1 --subtensor.chain_endpoint ws://subtensor_machine:9945 --wallet.name owner --netuid 1 <<EOF
+$COLDKEY_PASSWORD
+y
+EOF
 
 tail -f /dev/null
