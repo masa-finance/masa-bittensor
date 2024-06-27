@@ -1,0 +1,114 @@
+name: Docker Build and Publish
+
+on:
+  push:
+    branches: [ "dev", "test", "main", "dockerize" ]
+  pull_request:
+    branches: [ "dev", "test", "main" ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    environment:
+      name: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set environment-specific variables
+        run: |
+          echo "ENV_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "ENV_TAG=prod" >> $GITHUB_ENV
+          fi
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Build and push Docker images
+        run: |
+          services=("subtensor" "subnet" "miner" "validator")
+          
+          for service in "${services[@]}"; do
+            echo "Building and pushing $service"
+            docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/$service:${{ env.ENV_TAG }} -f docker/$service/Dockerfile ./docker/$service
+            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/$service:${{ env.ENV_TAG }}
+          done
+
+      - name: Generate docker-compose file
+        run: |
+          cat << EOF > docker-compose.${{ env.ENV_TAG }}.yml
+          services:
+            subtensor:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/subtensor:${{ env.ENV_TAG }}
+              container_name: subtensor_machine
+              ports:
+                - "9945:9945"
+                - "9946:9946"
+                - "30334:30334"
+                - "30335:30335"
+              networks:
+                - subtensor_network
+
+            subnet:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/subnet:${{ env.ENV_TAG }}
+              container_name: subnet_machine
+              depends_on:
+                - subtensor
+              networks:
+                - subtensor_network
+              environment:
+                - COLDKEY_PASSWORD=your_coldkey_password
+                - HOTKEY_PASSWORD=your_hotkey_password
+
+            miner:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/miner:${{ env.ENV_TAG }}
+              container_name: miner_machine
+              ports:
+                - "8093:8093"
+              depends_on:
+                - subnet
+              networks:
+                - subtensor_network
+              environment:
+                - COLDKEY_PASSWORD=your_coldkey_password
+                - HOTKEY_PASSWORD=your_hotkey_password
+
+            validator:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/validator:${{ env.ENV_TAG }}
+              container_name: validator_machine
+              ports:
+                - "8000:8000"
+                - "8092:8092"
+              depends_on:
+                - subnet
+              networks:
+                - subtensor_network
+              environment:
+                - COLDKEY_PASSWORD=your_coldkey_password
+                - HOTKEY_PASSWORD=your_hotkey_password
+
+          networks:
+            subtensor_network:
+              driver: bridge
+          EOF
+
+      - name: Upload docker-compose file as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-compose-${{ env.ENV_TAG }}
+          path: docker-compose.${{ env.ENV_TAG }}.yml
