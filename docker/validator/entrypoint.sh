@@ -34,8 +34,8 @@ $COLDKEY_PASSWORD
 y
 EOF
 
-echo "Wait 2250s before boost"
-sleep 2250
+echo "Wait 1800 before boost"
+sleep 1800
 
 echo "# Boost subnet on the root subnet"
 echo "1" | btcli root boost --netuid 1 --increase 1 --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
@@ -45,11 +45,20 @@ EOF
 
 docker_self_IP=$(getent hosts miner_machine | awk '{ print $1 }')
 
+# Define a function to start the validator
+start_validator() {
+    python /app/neurons/validator.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name validator --wallet.hotkey validator_hotkey --axon.external_ip "$docker_self_IP" --axon.port 8092
+}
+
 # Attempt to register the validator and start it
 if register_node validator; then
     echo "Validator registration successful. Starting the validator..."
+
     # Start the validator
-    python /app/neurons/validator.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name validator --wallet.hotkey validator_hotkey --axon.external_ip "$docker_self_IP" --axon.port 8092
+    start_validator &
+    VALIDATOR_PID=$!
+    echo "Validator started with PID $VALIDATOR_PID"
+
 else
     echo "Validator registration failed. Not starting the validator."
 fi
