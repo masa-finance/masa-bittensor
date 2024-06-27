@@ -32,12 +32,12 @@ while ! check_subnet_exists; do
 done
 echo "Subnet 1 has been created. Proceeding with registration."
 
-# Attempt to register the validator and start it
+# Attempt to register the miner and start it
 if register_node miner; then
     echo "Miner registration successful. Starting the miner..."
     # Start the miner
-
-    python /app/neurons/miner.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name miner --wallet.hotkey miner_hotkey --axon.port 8091
+    # Set ORACLE_BASE_URL to the masa protocol (oracle) node the miner uses
+    ORACLE_BASE_URL=$ORACLE_BASE_URL; python /app/neurons/miner.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name miner --wallet.hotkey miner_hotkey --axon.port 8091
 else
     echo "Miner registration failed. Not starting the validator."
 fi
