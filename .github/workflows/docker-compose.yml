@@ -3,8 +3,7 @@ name: Docker Compose CI
 on:
   push:
     branches:
-      - main
-      - dockerize
+      #      - dockerize
 
 jobs:
   build-and-test:
