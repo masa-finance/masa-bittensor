@@ -38,7 +38,8 @@ if register_node miner; then
     echo "Miner registration successful. Starting the miner..."
     # Start the miner
     # Set ORACLE_BASE_URL to the masa protocol (oracle) node the miner uses
-    ORACLE_BASE_URL=$ORACLE_BASE_URL; python /app/neurons/miner.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name miner --wallet.hotkey miner_hotkey --axon.port 8093 --axon.external_ip "$DOCKER_SELF_IP"
+    export ORACLE_BASE_URL=$ORACLE_BASE_URL
+    python /app/neurons/miner.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name miner --wallet.hotkey miner_hotkey --axon.port 8093 --axon.external_ip "$DOCKER_SELF_IP"
 else
     echo "Miner registration failed. Not starting the validator."
 fi
