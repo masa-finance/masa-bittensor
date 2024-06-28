@@ -1,5 +1,6 @@
 #!/bin/bash
 
+echo "Create Validator"
 # Activate the virtual environment
 source /opt/bittensor-venv/bin/activate
 
@@ -31,23 +32,17 @@ echo "Wait 30s for miner to register and start"
 sleep 30
 
 
-echo "Stake validator"
-echo "1" | btcli root register --wallet.name --netuid 1 validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
-$COLDKEY_PASSWORD
-y
-EOF
-
 echo "Register validator on the root subnet."
-echo "1" | btcli root register --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
+btcli root register --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
 $COLDKEY_PASSWORD
 y
 EOF
 
 echo "Wait 300 before boost"
-sleep 300
+#sleep 300
 
 echo "# Boost subnet on the root subnet"
-echo "1" | btcli root boost --netuid 1 --increase 1 --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
+btcli root boost --netuid 1 --increase 1 --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
 $COLDKEY_PASSWORD
 y
 EOF
@@ -69,6 +64,13 @@ if register_node validator; then
 else
     echo "Validator registration failed. Not starting the validator."
 fi
+
+echo "stake validator"
+btcli stake add --wallet.name validator --wallet.hotkey validator_hotkey --netuid 1 --amount 1000 --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
+y
+$COLDKEY_PASSWORD
+y
+EOF
 
 # Keep the container running
 tail -f /dev/null
