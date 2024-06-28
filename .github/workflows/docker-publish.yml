@@ -5,41 +5,75 @@ on:
     branches: [ "dev", "test", "main", "dockerize" ]
 
 jobs:
-  build-and-push:
-    name: Build and Push Docker images
+  build-subtensor:
+    name: Build and Push Subtensor
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
-    environment:
-      name: ${{ github.ref_name }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
       - name: Log in to GitHub Container Registry
         run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Build and push Docker images
+      - name: Build and push Subtensor
         run: |
-          # Subtensor
           docker build -t ghcr.io/masa-finance/masa-bittensor/subtensor:${{ github.ref_name }} -f docker/subtensor/Dockerfile ./docker/subtensor
           docker push ghcr.io/masa-finance/masa-bittensor/subtensor:${{ github.ref_name }}
-          
-          # Subnet
+
+  build-subnet:
+    name: Build and Push Subnet
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Log in to GitHub Container Registry
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Build and push Subnet
+        run: |
           docker build -t ghcr.io/masa-finance/masa-bittensor/subnet:${{ github.ref_name }} -f docker/subnet/Dockerfile .
           docker push ghcr.io/masa-finance/masa-bittensor/subnet:${{ github.ref_name }}
-          
-          # Miner
+
+  build-miner:
+    name: Build and Push Miner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Log in to GitHub Container Registry
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Build and push Miner
+        run: |
           docker build -t ghcr.io/masa-finance/masa-bittensor/miner:${{ github.ref_name }} -f docker/miner/Dockerfile .
           docker push ghcr.io/masa-finance/masa-bittensor/miner:${{ github.ref_name }}
-          
-          # Validator
+
+  build-validator:
+    name: Build and Push Validator
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Log in to GitHub Container Registry
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Build and push Validator
+        run: |
           docker build -t ghcr.io/masa-finance/masa-bittensor/validator:${{ github.ref_name }} -f docker/validator/Dockerfile .
           docker push ghcr.io/masa-finance/masa-bittensor/validator:${{ github.ref_name }}
 
+  display-tags:
+    name: Display Image Tags
+    needs: [build-subtensor, build-subnet, build-miner, build-validator]
+    runs-on: ubuntu-latest
+    steps:
       - name: Display image tags
         run: |
           echo "The following images have been built and pushed:"
