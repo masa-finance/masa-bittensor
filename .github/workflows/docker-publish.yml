@@ -24,18 +24,26 @@ jobs:
 
       - name: Build and push Docker images
         run: |
-          services=("subtensor" "subnet" "miner" "validator")
+          # Subtensor
+          docker build -t ghcr.io/masa-finance/masa-bittensor/subtensor:${{ github.ref_name }} -f docker/subtensor/Dockerfile ./docker/subtensor
+          docker push ghcr.io/masa-finance/masa-bittensor/subtensor:${{ github.ref_name }}
           
-          for service in "${services[@]}"; do
-            echo "Building and pushing $service"
-            docker build -t ghcr.io/masa-finance/masa-bittensor/$service:${{ github.ref_name }} -f docker/$service/Dockerfile ./docker/$service
-            docker push ghcr.io/masa-finance/masa-bittensor/$service:${{ github.ref_name }}
-          done
+          # Subnet
+          docker build -t ghcr.io/masa-finance/masa-bittensor/subnet:${{ github.ref_name }} -f docker/subnet/Dockerfile .
+          docker push ghcr.io/masa-finance/masa-bittensor/subnet:${{ github.ref_name }}
+          
+          # Miner
+          docker build -t ghcr.io/masa-finance/masa-bittensor/miner:${{ github.ref_name }} -f docker/miner/Dockerfile .
+          docker push ghcr.io/masa-finance/masa-bittensor/miner:${{ github.ref_name }}
+          
+          # Validator
+          docker build -t ghcr.io/masa-finance/masa-bittensor/validator:${{ github.ref_name }} -f docker/validator/Dockerfile .
+          docker push ghcr.io/masa-finance/masa-bittensor/validator:${{ github.ref_name }}
 
       - name: Display image tags
         run: |
           echo "The following images have been built and pushed:"
-          echo "ghcr.io/masa-bittensor/subtensor:${{ github.ref_name }}"
-          echo "ghcr.io/masa-bittensor/subnet:${{ github.ref_name }}"
-          echo "ghcr.io/masa-bittensor/miner:${{ github.ref_name }}"
-          echo "ghcr.io/masa-bittensor/validator:${{ github.ref_name }}"
+          echo "ghcr.io/masa-finance/masa-bittensor/subtensor:${{ github.ref_name }}"
+          echo "ghcr.io/masa-finance/masa-bittensor/subnet:${{ github.ref_name }}"
+          echo "ghcr.io/masa-finance/masa-bittensor/miner:${{ github.ref_name }}"
+          echo "ghcr.io/masa-finance/masa-bittensor/validator:${{ github.ref_name }}"
