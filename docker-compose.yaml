@@ -1,8 +1,8 @@
 services:
   subtensor:
     build:
-      context: .
-      dockerfile: docker/subtensor/Dockerfile
+      context: ./docker/subtensor
+      dockerfile: Dockerfile
     container_name: subtensor_machine
     ports:
       - "9945:9945"  # Expose port 9945
@@ -15,7 +15,7 @@ services:
   subnet:
     build:
       context: .
-      dockerfile: docker/subnet/Dockerfile
+      dockerfile: ./docker/subnet/Dockerfile
     container_name: subnet_machine
     depends_on:
       - subtensor
@@ -28,7 +28,7 @@ services:
   miner:
     build:
       context: .
-      dockerfile: docker/miner/Dockerfile
+      dockerfile: ./docker/miner/Dockerfile
     container_name: miner_machine
     ports:
       - "8093:8093"
@@ -43,7 +43,7 @@ services:
   validator:
     build:
       context: .
-      dockerfile: docker/validator/Dockerfile
+      dockerfile: ./docker/validator/Dockerfile
     container_name: validator_machine
     ports:
       - "8000:8000"

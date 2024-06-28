@@ -1,0 +1,41 @@
+name: Docker Build and Publish
+
+on:
+  push:
+    branches: [ "dev", "test", "main", "dockerize" ]
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    environment:
+      name: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to GitHub Container Registry
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build and push Docker images
+        run: |
+          services=("subtensor" "subnet" "miner" "validator")
+          
+          for service in "${services[@]}"; do
+            echo "Building and pushing $service"
+            docker build -t ghcr.io/masa-finance/masa-bittensor/$service:${{ github.ref_name }} -f docker/$service/Dockerfile ./docker/$service
+            docker push ghcr.io/masa-finance/masa-bittensor/$service:${{ github.ref_name }}
+          done
+
+      - name: Display image tags
+        run: |
+          echo "The following images have been built and pushed:"
+          echo "ghcr.io/masa-bittensor/subtensor:${{ github.ref_name }}"
+          echo "ghcr.io/masa-bittensor/subnet:${{ github.ref_name }}"
+          echo "ghcr.io/masa-bittensor/miner:${{ github.ref_name }}"
+          echo "ghcr.io/masa-bittensor/validator:${{ github.ref_name }}"
