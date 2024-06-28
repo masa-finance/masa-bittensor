@@ -28,7 +28,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
     rustup target add --toolchain nightly wasm32-unknown-unknown"
 
 # Clone the subtensor repository
-RUN git clone https://github.com/opentensor/subtensor.git
+RUN git clone --branch v1.1.12 https://github.com/opentensor/subtensor.git
 
 # Copy the entyrpoint script into container
 COPY ./entrypoint.sh /subtensor/entrypoint.sh
