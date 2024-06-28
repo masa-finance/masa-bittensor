@@ -52,7 +52,15 @@ start_validator() {
 
 # Attempt to register the validator and start it
 if register_node validator; then
-    echo "Validator registration successful. Starting the validator..."
+    echo "Validator registration successful."
+    echo "# Add stake"
+    echo "1" | btcli stake add --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
+y
+y
+$COLDKEY_PASSWORD
+y
+EOF
+
 
     # Start the validator
     start_validator &
