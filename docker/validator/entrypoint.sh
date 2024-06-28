@@ -68,6 +68,11 @@ EOF
     start_validator &
     VALIDATOR_PID=$!
     echo "Validator started with PID $VALIDATOR_PID"
+    kill -9 "$VALIDATOR_PID"
+    # Restart the validator to fix broken pipe error
+    start_validator &
+    VALIDATOR_PID=$!
+    echo "Validator restarted with PID $VALIDATOR_PID"
 
 else
     echo "Validator registration failed. Not starting the validator."
