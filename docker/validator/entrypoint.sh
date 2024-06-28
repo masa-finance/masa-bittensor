@@ -73,12 +73,5 @@ else
     echo "Validator registration failed. Not starting the validator."
 fi
 
-echo "stake validator"
-btcli stake add --wallet.name validator --wallet.hotkey validator_hotkey --netuid 1 --amount 1000 --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
-y
-$COLDKEY_PASSWORD
-y
-EOF
-
 # Keep the container running
 tail -f /dev/null
