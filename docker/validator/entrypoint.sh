@@ -39,7 +39,7 @@ y
 EOF
 
 echo "Wait 300 before boost"
-#sleep 300
+sleep 1200
 
 echo "# Boost subnet on the root subnet"
 btcli root boost --netuid 1 --increase 1 --wallet.name validator --wallet.hotkey validator_hotkey --subtensor.chain_endpoint ws://subtensor_machine:9945 <<EOF
