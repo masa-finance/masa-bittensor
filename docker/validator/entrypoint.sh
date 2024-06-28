@@ -38,7 +38,7 @@ $COLDKEY_PASSWORD
 y
 EOF
 
-echo "Wait 300 before boost"
+echo "Wait 1200 before boost"
 sleep 1200
 
 echo "# Boost subnet on the root subnet"
