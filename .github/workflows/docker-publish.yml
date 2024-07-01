@@ -76,9 +76,26 @@ jobs:
           docker build -t ghcr.io/masa-finance/masa-bittensor/validator:${{ github.ref_name }} -f docker/validator/Dockerfile .
           docker push ghcr.io/masa-finance/masa-bittensor/validator:${{ github.ref_name }}
 
+  build-protocol:
+    name: Build and Push Masa Protocol
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    if: github.event.head_commit.modified_files && contains(github.event.head_commit.modified_files, 'docker/protocol/')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Log in to GitHub Container Registry
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Build and push Protocol Node
+        run: |
+          docker build -t ghcr.io/masa-finance/masa-bittensor/protocol:${{ github.ref_name }} -f docker/protocol/Dockerfile .
+          docker push ghcr.io/masa-finance/masa-bittensor/protocol:${{ github.ref_name }}
+
   display-tags:
     name: Display Image Tags
-    needs: [build-subtensor, build-subnet, build-miner, build-validator]
+    needs: [build-subtensor, build-subnet, build-miner, build-validator, build-protocol]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -89,3 +106,4 @@ jobs:
           echo "ghcr.io/masa-finance/masa-bittensor/subnet:${{ github.ref_name }}"
           echo "ghcr.io/masa-finance/masa-bittensor/miner:${{ github.ref_name }}"
           echo "ghcr.io/masa-finance/masa-bittensor/validator:${{ github.ref_name }}"
+          echo "ghcr.io/masa-finance/masa-bittensor/protocol:${{ github.ref_name }}"

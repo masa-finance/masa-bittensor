@@ -64,6 +64,23 @@ services:
       - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
       - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
 
+  protocol:
+    image: ghcr.io/masa-finance/masa-bittensor/protocol:${BRANCH_NAME:-latest}
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./docker/protocol/Dockerfile
+    container_name: protocol_machine 
+    ports:
+      - "8091:8091"
+    depends_on:
+      - subnet
+    networks:
+      - subtensor_network
+    environment:
+      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
+      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
+
 networks:
   subtensor_network:
     driver: bridge
