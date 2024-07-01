@@ -118,7 +118,7 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         If `k` is larger than the number of available `uids`, set `k` to the number of
         available `uids`.
     """
-    dendrite = bt.dendrite(wallet=bt.wallet)
+    dendrite = bt.dendrite(wallet=self.wallet)
 
     print("get random uids")
 
