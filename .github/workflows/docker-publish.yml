@@ -5,51 +5,48 @@ on:
     branches: [ "dev", "test", "main", "dockerize" ]
     paths:
       - 'docker/**'
-      - '.github/workflows/docker-publish.yml'
-      - '**/*.py'  # This will trigger the workflow when any Python file changes
+      - '.github/workflows/docker-publish.yaml'
+      - '**/*.py'
 
 jobs:
-  determine-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Fetch all history for all branches and tags
-      - id: set-matrix
-        run: |
-          CHANGED=""
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "docker/subtensor/"; then
-            CHANGED="$CHANGED\"subtensor\","
-          fi
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "docker/subnet/\|\.py$"; then
-            CHANGED="$CHANGED\"subnet\","
-          fi
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "docker/miner/\|\.py$"; then
-            CHANGED="$CHANGED\"miner\","
-          fi
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "docker/validator/\|\.py$"; then
-            CHANGED="$CHANGED\"validator\","
-          fi
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "docker/protocol/\|\.py$"; then
-            CHANGED="$CHANGED\"protocol\","
-          fi
-          CHANGED="[${CHANGED%,}]"
-          echo "matrix=$CHANGED" >> $GITHUB_OUTPUT
-
-  build-and-push:
-    needs: determine-changes
+  check-and-build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        image: ${{fromJson(needs.determine-changes.outputs.matrix)}}
+        image: [subtensor, subnet, miner, validator, protocol]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - name: Log in to GitHub Container Registry
         run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          LAST_SUCCESSFUL_SHA=$(git log --format="%H" -n 1 --grep="Docker Build and Publish successful")
+          if [ -z "$LAST_SUCCESSFUL_SHA" ]; then
+            echo "No previous successful build found. Building all images."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            if [ "${{ matrix.image }}" == "subtensor" ]; then
+              CHANGED=$(git diff --name-only $LAST_SUCCESSFUL_SHA HEAD -- docker/subtensor)
+            else
+              CHANGED=$(git diff --name-only $LAST_SUCCESSFUL_SHA HEAD -- docker/${{ matrix.image }} **/*.py)
+            fi
+            if [ -n "$CHANGED" ]; then
+              echo "Changes detected for ${{ matrix.image }}. Building image."
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "No changes detected for ${{ matrix.image }}. Skipping build."
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
       - name: Build and push image
+        if: steps.check_changes.outputs.changed == 'true'
         run: |
           if [ "${{ matrix.image }}" == "subtensor" ]; then
             CONTEXT="./docker/subtensor"
@@ -59,13 +56,26 @@ jobs:
           docker build -t ghcr.io/masa-finance/masa-bittensor/${{ matrix.image }}:${{ github.ref_name }} -f docker/${{ matrix.image }}/Dockerfile $CONTEXT
           docker push ghcr.io/masa-finance/masa-bittensor/${{ matrix.image }}:${{ github.ref_name }}
 
+  mark-success:
+    needs: check-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Commit success marker
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit --allow-empty -m "Docker Build and Publish successful"
+          git push
+
   display-tags:
-    needs: build-and-push
+    needs: check-and-build
     runs-on: ubuntu-latest
     steps:
       - name: Display image tags
         run: |
-          echo "The following images have been built and pushed:"
+          echo "The following images may have been built and pushed:"
           echo "ghcr.io/masa-finance/masa-bittensor/subtensor:${{ github.ref_name }}"
           echo "ghcr.io/masa-finance/masa-bittensor/subnet:${{ github.ref_name }}"
           echo "ghcr.io/masa-finance/masa-bittensor/miner:${{ github.ref_name }}"
