@@ -31,6 +31,9 @@ class Forwarder:
         ### like blacklisting miners only on a specific endpoint like profiles or followers
         miner_uids = await get_random_uids(self.validator, k=self.validator.config.neuron.sample_size)
         
+        if miner_uids == None:
+            return []
+        
         responses = await self.validator.dendrite(
             axons=[self.validator.metagraph.axons[uid] for uid in miner_uids],
             synapse=request,
