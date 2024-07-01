@@ -47,7 +47,9 @@ def get_available_uids(
     ]
 
 
-def remove_excluded_uids(uids: List[int], exclude: List[int]) -> List[int]:
+def remove_excluded_uids(uids: List[int], exclude: List[int] = None) -> List[int]:
+    if exclude is None:
+        return uids
     return [uid for uid in uids if uid not in exclude]
 
 
