@@ -1,3 +1,5 @@
+BRANCH_NAME := $(shell git rev-parse --abbrev-ref HEAD)
+DOCKER_COMPOSE := BRANCH_NAME=$(BRANCH_NAME) docker compose
 
 LOCAL_ENDPOINT = ws://127.0.0.1:9945
 LOCALNET = chain_endpoint $(LOCAL_ENDPOINT)
@@ -121,3 +123,35 @@ run-localnet:
 ## Hyperparameters
 hyperparameters:
 	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)
+
+########################################################################
+#####                   DOCKER COMPOSE COMMANDS                    #####
+########################################################################
+
+.PHONY: up down build logs
+
+pull:
+	$(DOCKER_COMPOSE) pull
+
+up:
+	$(DOCKER_COMPOSE) pull
+	$(DOCKER_COMPOSE) up -d
+
+down:
+	$(DOCKER_COMPOSE) down
+
+build:
+	$(DOCKER_COMPOSE) build
+
+logs:
+	$(DOCKER_COMPOSE) logs -f
+
+# You can keep your existing docker commands or replace them with these:
+docker-build:
+	$(DOCKER_COMPOSE) build
+
+docker-up:
+	$(DOCKER_COMPOSE) up -d
+
+docker-down:
+	$(DOCKER_COMPOSE) down
