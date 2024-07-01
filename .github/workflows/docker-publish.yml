@@ -5,7 +5,7 @@ on:
     branches: [ "dev", "test", "main", "dockerize" ]
     paths:
       - 'docker/**'
-      - '.github/workflows/docker-publish.yaml'
+      - '.github/workflows/docker-publish.yml'
       - '**/*.py'  # This will trigger the workflow when any Python file changes
 
 jobs:
