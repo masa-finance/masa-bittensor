@@ -35,88 +35,116 @@ from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
 from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
 
 delay = 0
+
+
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
         bt.logging.info("Miner initialized with config: {}".format(config))
 
-
-    async def forward(
-        self, synapse: Request
-    ) -> Request:
+    async def forward(self, synapse: Request) -> Request:
         print(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
-        
+
         try:
             request_type = synapse.type
-            
+
             if request_type == RequestType.TWITTER_PROFILE.value:
                 profile = TwitterProfileRequest().get_profile(synapse.query)
-                if profile != None:
+                if profile is not None:
                     profile_dict = dict(profile)
                     synapse.response = profile_dict
                 else:
-                    bt.logging.error(f"Failed to fetch Twitter profile for {synapse.query}.")
-        
+                    bt.logging.error(
+                        f"Failed to fetch Twitter profile for {synapse.query}."
+                    )
+
             elif request_type == RequestType.TWITTER_FOLLOWERS.value:
                 followers = TwitterFollowersRequest().get_followers(synapse.query)
-                if followers != None:
+                if followers is not None:
                     synapse.response = followers
                 else:
-                    bt.logging.error(f"Failed to fetch Twitter followers for {synapse.query}.")
+                    bt.logging.error(
+                        f"Failed to fetch Twitter followers for {synapse.query}."
+                    )
 
             elif request_type == RequestType.TWITTER_TWEETS.value:
-                tweets = TwitterTweetsRequest().get_recent_tweets(RecentTweetsQuery(query=synapse.query, count=synapse.count))
-                if tweets != None:
+                tweets = TwitterTweetsRequest().get_recent_tweets(
+                    RecentTweetsQuery(query=synapse.query, count=synapse.count)
+                )
+                if tweets is not None:
                     synapse.response = tweets
                 else:
-                    bt.logging.error(f"Failed to fetch Twitter tweets for {synapse.query}.")
-            
+                    bt.logging.error(
+                        f"Failed to fetch Twitter tweets for {synapse.query}."
+                    )
+
             elif request_type == RequestType.WEB_SCRAPER.value:
-                web_scraped_data = WebScraperRequest().scrape_web(WebScraperQuery(url=synapse.url, depth=synapse.depth))
-                if web_scraped_data != None:
+                web_scraped_data = WebScraperRequest().scrape_web(
+                    WebScraperQuery(url=synapse.url, depth=synapse.depth)
+                )
+                if web_scraped_data is not None:
                     synapse.response = web_scraped_data
                 else:
                     bt.logging.error(f"Failed to scrape for {synapse.url}.")
 
             elif request_type == RequestType.DISCORD_PROFILE.value:
                 discord_profile = DiscordProfileRequest().get_profile(synapse.query)
-                if discord_profile != None:
+                if discord_profile is not None:
                     synapse.response = discord_profile
                 else:
-                        bt.logging.error(f"Failed to fetch discord profile for {synapse.query}.")
+                    bt.logging.error(
+                        f"Failed to fetch discord profile for {synapse.query}."
+                    )
 
             elif request_type == RequestType.DISCORD_CHANNEL_MESSAGES.value:
-                discord_channel_messages = DiscordChannelMessagesRequest().get_discord_channel_messages(synapse.query)
-                if discord_channel_messages != None:
+                discord_channel_messages = (
+                    DiscordChannelMessagesRequest().get_discord_channel_messages(
+                        synapse.query
+                    )
+                )
+                if discord_channel_messages is not None:
                     synapse.response = discord_channel_messages
                 else:
-                    bt.logging.error(f"Failed to fetch channel messages for {synapse.query}.")
+                    bt.logging.error(
+                        f"Failed to fetch channel messages for {synapse.query}."
+                    )
 
             elif request_type == RequestType.DISCORD_GUILD_CHANNELS.value:
-                discord_guild_channels = DiscordGuildChannelsRequest().get_discord_guild_channels(synapse.query)
-                if discord_guild_channels != None:
+                discord_guild_channels = (
+                    DiscordGuildChannelsRequest().get_discord_guild_channels(
+                        synapse.query
+                    )
+                )
+                if discord_guild_channels is not None:
                     synapse.response = discord_guild_channels
                 else:
-                    bt.logging.error(f"Failed to fetch guild channels for {synapse.query}.")
+                    bt.logging.error(
+                        f"Failed to fetch guild channels for {synapse.query}."
+                    )
 
             elif request_type == RequestType.DISCORD_USER_GUILDS.value:
-                discord_user_guilds = DiscordUserGuildsRequest().get_discord_user_guilds()
-                if discord_user_guilds != None:
+                discord_user_guilds = (
+                    DiscordUserGuildsRequest().get_discord_user_guilds()
+                )
+                if discord_user_guilds is not None:
                     synapse.response = discord_user_guilds
                 else:
-                    bt.logging.error(f"Failed to fetch user guilds.")
+                    bt.logging.error("Failed to fetch user guilds.")
 
             elif request_type == RequestType.DISCORD_ALL_GUILDS.value:
                 discord_all_guilds = DiscordAllGuildsRequest().get_discord_all_guilds()
-                if discord_all_guilds != None:
+                if discord_all_guilds is not None:
                     synapse.response = discord_all_guilds
                 else:
-                    bt.logging.error(f"Failed to fetch all guilds.")
+                    bt.logging.error("Failed to fetch all guilds.")
 
         except Exception as e:
-            bt.logging.error(f"Exception occurred while doing work for {synapse.query}: {str(e)}", exc_info=True)
-            
+            bt.logging.error(
+                f"Exception occurred while doing work for {synapse.query}: {str(e)}",
+                exc_info=True,
+            )
+
         return synapse
 
     async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
@@ -130,55 +158,73 @@ class Miner(BaseMinerNeuron):
         bt.logging.info(f"Neurons Staked: {self.neurons_permit_stake}")
         bt.logging.info(f"Validator Permit: {self.metagraph.validator_permit[uid]}")
 
-        if not self.config.blacklist.allow_non_registered and hotkey not in self.metagraph.hotkeys:
+        if (
+            not self.config.blacklist.allow_non_registered
+            and hotkey not in self.metagraph.hotkeys
+        ):
             bt.logging.warning(f"Blacklisting un-registered hotkey {hotkey}")
             return True, "Unrecognized hotkey"
-        if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
-            bt.logging.warning(f"Blacklisting a request from non-validator hotkey {hotkey}")
+        if (
+            self.config.blacklist.force_validator_permit
+            and not self.metagraph.validator_permit[uid]
+        ):
+            bt.logging.warning(
+                f"Blacklisting a request from non-validator hotkey {hotkey}"
+            )
             return True, "Non-validator hotkey"
         if hotkey not in self.neurons_permit_stake.keys():
-            bt.logging.warning(f"Blacklisting a request from neuron without enough staked: {hotkey}")
+            bt.logging.warning(
+                f"Blacklisting a request from neuron without enough staked: {hotkey}"
+            )
             return True, "Non-staked neuron"
-        
+
         bt.logging.info(f"Not Blacklisting recognized hotkey {hotkey}")
         return False, "Hotkey recognized!"
 
     async def priority(self, synapse: Request) -> float:
         caller_uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
         priority = float(self.metagraph.S[caller_uid])
-        bt.logging.trace(f"Prioritizing {synapse.dendrite.hotkey} with value: ", priority)
+        bt.logging.trace(
+            f"Prioritizing {synapse.dendrite.hotkey} with value: ", priority
+        )
         return priority
-    
+
     def check_stake(self, synapse: Request):
         current_stakes = self.metagraph.S
         hotkey = synapse.dendrite.hotkey
         uid = self.metagraph.hotkeys.index(hotkey)
         current_block = self.subtensor.get_current_block()
-        
+
         if current_stakes[uid] < self.min_stake_required:
             if hotkey in self.neurons_permit_stake.keys():
                 del self.neurons_permit_stake[hotkey]
-                bt.logging.info(f"Removed neuron {hotkey} from staked list due to insufficient stake.")
+                bt.logging.info(
+                    f"Removed neuron {hotkey} from staked list due to insufficient stake."
+                )
         else:
             self.neurons_permit_stake[hotkey] = current_block
             bt.logging.info(f"Added neuron {hotkey} to staked list.")
 
-    
     def check_tempo(self, synapse: Request) -> bool:
         hotkey = synapse.dendrite.hotkey
         last_checked_block = self.neurons_permit_stake.get(hotkey)
         if last_checked_block is None:
-            bt.logging.info(f"There is no last checked block, starting tempo check...")
+            bt.logging.info("There is no last checked block, starting tempo check...")
             return True
-        
-        blocks_since_last_check = self.subtensor.get_current_block() - last_checked_block
+
+        blocks_since_last_check = (
+            self.subtensor.get_current_block() - last_checked_block
+        )
         if blocks_since_last_check >= self.tempo:
-            bt.logging.info(f"A tempo has passed.  Blocks since last check: {blocks_since_last_check}")
+            bt.logging.info(
+                f"A tempo has passed.  Blocks since last check: {blocks_since_last_check}"
+            )
             return True
         else:
-            bt.logging.info(f"Not yet a tempo since last check. Blocks since last check: {blocks_since_last_check}")
+            bt.logging.info(
+                f"Not yet a tempo since last check. Blocks since last check: {blocks_since_last_check}"
+            )
             return False
-        
 
 
 if __name__ == "__main__":

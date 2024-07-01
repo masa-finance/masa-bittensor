@@ -1,5 +1,6 @@
 from masa.types.twitter import TwitterFollowerObject
 
+
 def followers_parser(follower_responses):
     return [
         [TwitterFollowerObject(**follower) for follower in response]

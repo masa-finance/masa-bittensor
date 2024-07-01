@@ -66,7 +66,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Init sync with the network. Updates the metagraph.
         self.sync()
-        
+
         self.load_state()
 
         # Serve axon to enable external connections.
@@ -104,15 +104,12 @@ class BaseValidatorNeuron(BaseNeuron):
                 pass
 
         except Exception as e:
-            bt.logging.error(
-                f"Failed to create Axon initialize with exception: {e}"
-            )
+            bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
             pass
 
     async def concurrent_forward(self):
         coroutines = [
-            self.forward()
-            for _ in range(self.config.neuron.num_concurrent_forwards)
+            self.forward() for _ in range(self.config.neuron.num_concurrent_forwards)
         ]
         await asyncio.gather(*coroutines)
 
@@ -167,9 +164,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # In case of unforeseen errors, the validator will log the error and continue operations.
         except Exception as err:
             bt.logging.error("Error during validation", str(err))
-            bt.logging.debug(
-                print_exception(type(err), err, err.__traceback__)
-            )
+            bt.logging.debug(print_exception(type(err), err, err.__traceback__))
 
     def run_in_background_thread(self):
         """
@@ -226,13 +221,13 @@ class BaseValidatorNeuron(BaseNeuron):
         # Check if self.scores contains any NaN values and log a warning if it does.
         if torch.isnan(self.scores).any():
             bt.logging.warning(
-                f"Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
+                "Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
 
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
-        
+
         bt.logging.debug("raw_weights", raw_weights)
         # bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
         # Process the raw weights to final_weights via subtensor limitations.
@@ -246,8 +241,7 @@ class BaseValidatorNeuron(BaseNeuron):
             subtensor=self.subtensor,
             metagraph=self.metagraph,
         )
-    
-        
+
         bt.logging.debug("processed_weights", processed_weights)
         bt.logging.debug("processed_weight_uids", processed_weight_uids)
 
@@ -271,9 +265,9 @@ class BaseValidatorNeuron(BaseNeuron):
             wait_for_inclusion=False,
             version_key=self.spec_version,
         )
-        
+
         if result is True:
-            print(f"Weights set on chain successfully!")
+            print("Weights set on chain successfully!")
             bt.logging.info("set_weights on chain successfully!")
         else:
             bt.logging.error("set_weights failed", msg)
@@ -304,9 +298,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # If so, we need to add new hotkeys and moving averages.
         if len(self.hotkeys) < len(self.metagraph.hotkeys):
             # Update the size of the moving average scores.
-            new_moving_average = torch.zeros((self.metagraph.n)).to(
-                self.device
-            )
+            new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
             min_len = min(len(self.hotkeys), len(self.scores))
             new_moving_average[:min_len] = self.scores[:min_len]
             self.scores = new_moving_average
@@ -343,8 +335,7 @@ class BaseValidatorNeuron(BaseNeuron):
             1 - alpha
         ) * self.scores.to(self.device)
         print(f"Updated moving avg scores: {self.scores}")
-        
-        
+
         self.save_state()
 
     def save_state(self):
@@ -364,7 +355,6 @@ class BaseValidatorNeuron(BaseNeuron):
     def load_state(self):
         """Loads the state of the validator from a file."""
         bt.logging.info("Loading validator state.")
-        
 
         # Load the state of the validator from file.
         state_path = self.config.neuron.full_path + "/state.pt"
@@ -374,4 +364,6 @@ class BaseValidatorNeuron(BaseNeuron):
             self.scores = state["scores"]
             self.hotkeys = state["hotkeys"]
         else:
-            bt.logging.warning(f"State file not found at {state_path}. Skipping state load.")
+            bt.logging.warning(
+                f"State file not found at {state_path}. Skipping state load."
+            )

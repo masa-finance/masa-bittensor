@@ -28,7 +28,8 @@ import bittensor as bt
 from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_miner_args
 
-from typing import Dict, Union
+from typing import Dict
+
 
 class BaseMinerNeuron(BaseNeuron):
     """
@@ -59,7 +60,7 @@ class BaseMinerNeuron(BaseNeuron):
         self.axon = bt.axon(wallet=self.wallet, config=self.config)
 
         # Attach determiners which functions are called when servicing a request.
-        bt.logging.info(f"Attaching forward function to miner axon.")
+        bt.logging.info("Attaching forward function to miner axon.")
         self.axon.attach(
             forward_fn=self.forward,
             blacklist_fn=self.blacklist,
@@ -73,10 +74,14 @@ class BaseMinerNeuron(BaseNeuron):
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
-        self.neurons_permit_stake: Dict[str, int] = {} # dict of neurons (hotkeys) that meet min stake requirement with their respective last fetched block numbers
-        self.min_stake_required: int = self.config.blacklist.min_stake_required # note, this will be variable per environment
+        self.neurons_permit_stake: Dict[str, int] = (
+            {}
+        )  # dict of neurons (hotkeys) that meet min stake requirement with their respective last fetched block numbers
+        self.min_stake_required: int = (
+            self.config.blacklist.min_stake_required
+        )  # note, this will be variable per environment
         # self.tempo: int = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo #note, this breaks on devnet due to hyperparam issue
-        self.tempo: int = 10 # note, remove once hyperparam calls are fixed in devnet
+        self.tempo: int = 10  # note, remove once hyperparam calls are fixed in devnet
 
         self.load_state()
 
@@ -143,7 +148,7 @@ class BaseMinerNeuron(BaseNeuron):
             exit()
 
         # In case of unforeseen errors, the miner will log the error and continue operations.
-        except Exception as e:
+        except Exception:
             bt.logging.error(traceback.format_exc())
 
     def run_in_background_thread(self):
@@ -216,7 +221,6 @@ class BaseMinerNeuron(BaseNeuron):
     def load_state(self):
         """Loads the state of the miner from a file."""
         bt.logging.info("Loading miner state.")
-        
 
         # Load the state of the miner from file.
         state_path = self.config.neuron.full_path + "/state.pt"
@@ -224,4 +228,6 @@ class BaseMinerNeuron(BaseNeuron):
             state = torch.load(state_path)
             self.neurons_permit_stake = state.get("neurons_permit_stake", {})
         else:
-            bt.logging.warning(f"State file not found at {state_path}. Skipping state load.")
+            bt.logging.warning(
+                f"State file not found at {state_path}. Skipping state load."
+            )
