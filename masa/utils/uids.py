@@ -140,7 +140,7 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         uids = torch.tensor(random_sample)
         return uids
     except Exception as e:
-        bt.logging.error(message=f"Failed to get random miner uids: {e}")
+        bt.logging.error(f"Failed to get random miner uids: {e}")
         return None
     finally:
         dendrite.close_session()
