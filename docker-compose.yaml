@@ -1,18 +1,20 @@
 services:
   subtensor:
+    image: ghcr.io/masa-finance/masa-bittensor/subtensor:${GITHUB_REF_NAME}
     build:
       context: ./docker/subtensor
       dockerfile: Dockerfile
     container_name: subtensor_machine
     ports:
-      - "9945:9945"  # Expose port 9945
-      - "9946:9946"  # Expose port 9946
-      - "30334:30334"  # Expose internal communication port
-      - "30335:30335"  # Expose internal communication port
+      - "9945:9945"
+      - "9946:9946"
+      - "30334:30334"
+      - "30335:30335"
     networks:
       - subtensor_network
 
   subnet:
+    image: ghcr.io/masa-finance/masa-bittensor/subnet:${GITHUB_REF_NAME}
     build:
       context: .
       dockerfile: ./docker/subnet/Dockerfile
@@ -22,10 +24,11 @@ services:
     networks:
       - subtensor_network
     environment:
-      - COLDKEY_PASSWORD=your_coldkey_password
-      - HOTKEY_PASSWORD=your_hotkey_password
+      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
+      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
 
   miner:
+    image: ghcr.io/masa-finance/masa-bittensor/miner:${GITHUB_REF_NAME}
     build:
       context: .
       dockerfile: ./docker/miner/Dockerfile
@@ -37,10 +40,11 @@ services:
     networks:
       - subtensor_network
     environment:
-      - COLDKEY_PASSWORD=your_coldkey_password
-      - HOTKEY_PASSWORD=your_hotkey_password
+      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
+      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
 
   validator:
+    image: ghcr.io/masa-finance/masa-bittensor/validator:${GITHUB_REF_NAME}
     build:
       context: .
       dockerfile: ./docker/validator/Dockerfile
@@ -53,8 +57,8 @@ services:
     networks:
       - subtensor_network
     environment:
-      - COLDKEY_PASSWORD=your_coldkey_password
-      - HOTKEY_PASSWORD=your_hotkey_password
+      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
+      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
 
 networks:
   subtensor_network:
