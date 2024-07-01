@@ -34,6 +34,9 @@ class Forwarder:
             self.validator, k=self.validator.config.neuron.sample_size
         )
 
+        if miner_uids is None:
+            return []
+
         responses = await self.validator.dendrite(
             axons=[self.validator.metagraph.axons[uid] for uid in miner_uids],
             synapse=request,
