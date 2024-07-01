@@ -41,7 +41,9 @@ def get_available_uids(
 ) -> List[int]:
     return [uid for uid in range(metagraph.n.item()) if check_uid_availability(metagraph, uid, vpermit_tao_limit)]
 
-def remove_excluded_uids(uids: List[int], exclude: List[int]) -> List[int]:
+def remove_excluded_uids(uids: List[int], exclude: List[int] = None) -> List[int]:
+    if exclude is None:
+        return uids
     return [uid for uid in uids if uid not in exclude]
 
 async def ping_uids(dendrite, metagraph, uids, timeout=3):
