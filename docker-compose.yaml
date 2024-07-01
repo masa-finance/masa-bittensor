@@ -1,6 +1,7 @@
 services:
   subtensor:
-    image: ghcr.io/masa-finance/masa-bittensor/subtensor:${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD)}
+    image: ghcr.io/masa-finance/masa-bittensor/subtensor:${BRANCH_NAME:-latest}
+    platform: linux/amd64
     build:
       context: ./docker/subtensor
       dockerfile: Dockerfile
@@ -14,7 +15,8 @@ services:
       - subtensor_network
 
   subnet:
-    image: ghcr.io/masa-finance/masa-bittensor/subnet:${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD)}
+    image: ghcr.io/masa-finance/masa-bittensor/subnet:${BRANCH_NAME:-latest}
+    platform: linux/amd64
     build:
       context: .
       dockerfile: ./docker/subnet/Dockerfile
@@ -28,7 +30,8 @@ services:
       - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
 
   miner:
-    image: ghcr.io/masa-finance/masa-bittensor/miner:${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD)}
+    image: ghcr.io/masa-finance/masa-bittensor/miner:${BRANCH_NAME:-latest}
+    platform: linux/amd64
     build:
       context: .
       dockerfile: ./docker/miner/Dockerfile
@@ -44,7 +47,8 @@ services:
       - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
 
   validator:
-    image: ghcr.io/masa-finance/masa-bittensor/validator:${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD)}
+    image: ghcr.io/masa-finance/masa-bittensor/validator:${BRANCH_NAME:-latest}
+    platform: linux/amd64
     build:
       context: .
       dockerfile: ./docker/validator/Dockerfile

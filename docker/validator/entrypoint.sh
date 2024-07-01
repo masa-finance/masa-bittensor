@@ -71,6 +71,7 @@ EOF
     echo "sleep before restarting"
     sleep 60
     kill -9 "$VALIDATOR_PID"
+    sleep 10
     # Restart the validator to fix broken pipe error
     start_validator &
     VALIDATOR_PID=$!
