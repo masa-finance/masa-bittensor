@@ -4,9 +4,10 @@ on:
   push:
     branches: [ "dev", "test", "main", "dockerize" ]
     paths:
-      - 'docker/**'
+      - 'docker/${{ matrix.image }}/**'
       - '.github/workflows/docker-publish.yml'
       - '**/*.py'
+
 
 jobs:
   check-and-build:
