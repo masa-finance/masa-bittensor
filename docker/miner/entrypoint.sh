@@ -6,8 +6,8 @@ source /opt/bittensor-venv/bin/activate
 # Use environment variables for passwords
 COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-'default_coldkey_password'}
 HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-'default_hotkey_password'}
-ORACLE_BASE_URL="http://34.72.224.59:8080/api/v1"
 DOCKER_SELF_IP=$(getent hosts miner_machine | awk '{ print $1 }')
+ORACLE_BASE_URL="${DOCKER_SELF_IP}:8081/api/v1"
 
 # Import the shared functions
 source functions.sh
