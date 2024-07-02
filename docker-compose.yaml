@@ -72,7 +72,7 @@ services:
       dockerfile: ./docker/protocol/Dockerfile
     container_name: protocol_machine 
     ports:
-      - "8091:8091"
+      - "8081:8081"
     depends_on:
       - subnet
     networks:
