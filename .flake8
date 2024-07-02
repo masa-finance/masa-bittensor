@@ -1,0 +1,8 @@
+[flake8]
+select = ANN,B,B9,BLK,C,D,DAR,E,F,I,S,W
+ignore = E203,E501,W503
+application-import-names = masa, neurons, tests
+docstring-convention = google
+import-order-style = google
+max-complexity = 10
+max-line-length = 88
