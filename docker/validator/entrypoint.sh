@@ -52,6 +52,12 @@ start_validator() {
     python /app/neurons/validator.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name validator --wallet.hotkey validator_hotkey --axon.port 8092  --axon.external_ip "$DOCKER_SELF_IP"
 }
 
+# Function to check if port 8000 is in use
+is_port_in_use() {
+    netstat -tuln | grep :8000 > /dev/null
+    return $?
+}
+
 # Attempt to register the validator and start it
 if register_node validator; then
     echo "Validator registration successful."
@@ -70,10 +76,25 @@ EOF
     echo "Validator started with PID $VALIDATOR_PID"
     echo "sleep 60 before killing"
     sleep 60
-    kill -9 "$VALIDATOR_PID"
-    echo "sleep 10  before restarting"
-    sleep 10
-    # Restart the validator to fix broken pipe error
+    # Stop the validator more gracefully
+    kill $VALIDATOR_PID
+    echo "Sent SIGTERM to validator process"
+    # Wait for the process to stop and port to be released
+    for i in {1..30}; do
+        if ! is_port_in_use; then
+            echo "Port 8000 is now available"
+            break
+        fi
+        echo "Waiting for port 8000 to be released... (attempt $i)"
+        sleep 2
+    done
+
+    if is_port_in_use; then
+        echo "Port 8000 is still in use. Forcing kill."
+        kill -9 $VALIDATOR_PID
+        sleep 5
+    fi
+
     start_validator &
     VALIDATOR_PID=$!
     echo "Validator restarted with PID $VALIDATOR_PID"
