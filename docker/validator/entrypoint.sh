@@ -65,15 +65,16 @@ EOF
 
 
     # Start the validator
-    start_validator &
+    start_validator 
     VALIDATOR_PID=$!
     echo "Validator started with PID $VALIDATOR_PID"
-    echo "sleep before restarting"
+    echo "sleep 60 before killing"
     sleep 60
     kill -9 "$VALIDATOR_PID"
+    echo "sleep 10  before restarting"
     sleep 10
     # Restart the validator to fix broken pipe error
-    start_validator &
+    start_validator 
     VALIDATOR_PID=$!
     echo "Validator restarted with PID $VALIDATOR_PID"
 
