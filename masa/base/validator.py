@@ -328,17 +328,7 @@ class BaseValidatorNeuron(BaseNeuron):
             uids_tensor = uids.clone().detach()
         else:
             uids_tensor = torch.tensor(uids).to(self.device)
-
-        # Compute forward pass rewards, assumes uids are mutually exclusive.
-        # shape: [ metagraph.n ]
-        scattered_rewards: torch.FloatTensor = self.scores.scatter(
-            0, uids_tensor, rewards
-        ).to(self.device)
-        print(f"Scattered rewards: {rewards}")
-
-        # Update scores with rewards produced by this step.
-        # shape: [ metagraph.n ]
-        
+            
         # Ensure that the uids_tensor and rewards have the same length
         if len(uids_tensor) != len(rewards):
             raise ValueError("The length of uids_tensor and rewards must be the same.")
@@ -350,11 +340,25 @@ class BaseValidatorNeuron(BaseNeuron):
             new_scores = torch.zeros(new_size).to(self.device)
             new_scores[:self.scores.size(0)] = self.scores
             self.scores = new_scores
+
+        # Compute forward pass rewards, assumes uids are mutually exclusive.
+        # shape: [ metagraph.n ]
+        scattered_rewards: torch.FloatTensor = self.scores.scatter(
+            0, uids_tensor, rewards
+        ).to(self.device)
+        print(f"Scattered rewards: {rewards}")
+
+        # Update scores with rewards produced by this step.
+        # shape: [ metagraph.n ]
+
             
         alpha: float = self.config.neuron.moving_average_alpha
         self.scores: torch.FloatTensor = alpha * scattered_rewards + (
             1 - alpha
         ) * self.scores.to(self.device)
+        
+        
+        
         print(f"Updated moving avg scores: {self.scores}")
         
         
