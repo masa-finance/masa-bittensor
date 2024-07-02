@@ -20,6 +20,8 @@
 from typing import Optional
 import bittensor as bt
 from masa.types.twitter import TwitterProfileObject
+
+
 class TwitterProfileProtocol(bt.Synapse):
     """
     A protocol for handling Twitter profile requests and responses.

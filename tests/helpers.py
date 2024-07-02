@@ -21,12 +21,10 @@ from bittensor import (
     NeuronInfo,
     AxonInfo,
     PrometheusInfo,
-    __ss58_format__,
 )
 from bittensor.mock.wallet_mock import MockWallet as _MockWallet
 from bittensor.mock.wallet_mock import get_mock_coldkey as _get_mock_coldkey
 from bittensor.mock.wallet_mock import get_mock_hotkey as _get_mock_hotkey
-from bittensor.mock.wallet_mock import get_mock_keypair as _get_mock_keypair
 from bittensor.mock.wallet_mock import get_mock_wallet as _get_mock_wallet
 
 from rich.console import Console
@@ -124,10 +122,7 @@ def get_mock_neuron(**kwargs) -> NeuronInfo:
 
 def get_mock_neuron_by_uid(uid: int, **kwargs) -> NeuronInfo:
     return get_mock_neuron(
-        uid=uid,
-        hotkey=_get_mock_hotkey(uid),
-        coldkey=_get_mock_coldkey(uid),
-        **kwargs
+        uid=uid, hotkey=_get_mock_hotkey(uid), coldkey=_get_mock_coldkey(uid), **kwargs
     )
 
 

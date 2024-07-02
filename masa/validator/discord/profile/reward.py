@@ -26,25 +26,25 @@ from masa.types.discord import DiscordProfileObject
 def reward(query: str, response: List[DiscordProfileObject]) -> float:
     # Return a reward of 0.0 if the response is None
     if response is None:
-        return 0.0 
+        return 0.0
     bt.logging.info(f"Getting discord response from {response}")
     # Extract length of response
     user_id = response.get("ID", "")
     bt.logging.info(f"Calculating reward for discord response {user_id}")
-    
+
     # Return a reward of 1 if the response is not empty and has a length
     if user_id == query:
         return 1
     else:
         return 0
 
+
 def get_rewards(
     self,
     query: str,
     responses: DiscordProfileObject,
 ) -> torch.FloatTensor:
-    bt.logging.info(f"Getting rewards...")
-    return torch.FloatTensor(
-        [reward(query, response) for response in responses]
-    ).to(self.device) 
-
+    bt.logging.info("Getting rewards...")
+    return torch.FloatTensor([reward(query, response) for response in responses]).to(
+        self.device
+    )
