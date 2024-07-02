@@ -23,6 +23,7 @@ from masa.types.discord import DiscordProfileObject
 from masa.validator.forwarder import Forwarder
 from masa.validator.discord.profile.reward import get_rewards
 
+
 class DiscordProfileForwarder(Forwarder):
 
     def __init__(self, validator):
@@ -30,8 +31,14 @@ class DiscordProfileForwarder(Forwarder):
 
     async def forward_query(self, query):
         try:
-            return await self.forward(request=Request(query=query, type=RequestType.DISCORD_PROFILE.value), get_rewards=get_rewards, parser_object=DiscordProfileObject)
+            return await self.forward(
+                request=Request(query=query, type=RequestType.DISCORD_PROFILE.value),
+                get_rewards=get_rewards,
+                parser_object=DiscordProfileObject,
+            )
 
         except Exception as e:
-            bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)
+            bt.logging.error(
+                f"Error during the handle responses process: {str(e)}", exc_info=True
+            )
             return []

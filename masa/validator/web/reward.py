@@ -19,32 +19,31 @@
 
 import torch
 import bittensor as bt
-from typing import List
 from masa.types.web import WebScraperObject
 
 
 def reward(query: str, response: WebScraperObject) -> float:
     # Return a reward of 0.0 if the response is None
     if response is None:
-        return 0.0 
+        return 0.0
     bt.logging.info(f"Getting web scraper response from {response}")
     # Extract length of response
-    pages_length = len(response['pages'])
+    pages_length = len(response["pages"])
     bt.logging.info(f"Calculating reward for web scraper response {pages_length}")
-    
+
     # Return a reward of 1 if the response is not empty and has a length
     if pages_length > 0:
         return 1
     else:
         return 0
 
+
 def get_rewards(
     self,
     query: str,
     responses: WebScraperObject,
 ) -> torch.FloatTensor:
-    bt.logging.info(f"Getting rewards...")
-    return torch.FloatTensor(
-        [reward(query, response) for response in responses]
-    ).to(self.device) 
-
+    bt.logging.info("Getting rewards...")
+    return torch.FloatTensor([reward(query, response) for response in responses]).to(
+        self.device
+    )

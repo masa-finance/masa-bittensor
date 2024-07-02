@@ -1,26 +1,26 @@
 import os
-import time
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 import asyncio
 import uvicorn
-from fastapi import FastAPI, Depends
 from masa.miner.twitter.tweets import RecentTweetsQuery
 from masa.miner.web.scraper import WebScraperQuery
 from masa.validator.twitter.profile.forward import TwitterProfileForwarder
 from masa.validator.twitter.followers.forward import TwitterFollowersForwarder
 from masa.validator.twitter.tweets.forward import TwitterTweetsForwarder
 from masa.validator.web.forward import WebScraperForwarder
-from masa.validator.discord.channel_messages.forward import DiscordChannelMessagesForwarder
+from masa.validator.discord.channel_messages.forward import (
+    DiscordChannelMessagesForwarder,
+)
 from masa.validator.discord.guild_channels.forward import DiscordGuildChannelsForwarder
 from masa.validator.discord.user_guilds.forward import DiscordUserGuildsForwarder
 from masa.validator.discord.profile.forward import DiscordProfileForwarder
 from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
 
+
 class ValidatorAPI:
     def __init__(self, validator, config=None):
-        self.host = os.getenv('VALIDATOR_API_HOST', "0.0.0.0")
-        self.port = int(os.getenv('VALIDATOR_API_PORT', "8000"))
-        
+        self.host = os.getenv("VALIDATOR_API_HOST", "0.0.0.0")
+        self.port = int(os.getenv("VALIDATOR_API_PORT", "8000"))
         self.validator = validator
         self.app = FastAPI()
 
@@ -30,7 +30,7 @@ class ValidatorAPI:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Twitter profile for the given username",
-            tags=["twitter"]
+            tags=["twitter"],
         )
 
         self.app.add_api_route(
@@ -39,7 +39,7 @@ class ValidatorAPI:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Twitter followers for the given username",
-            tags=["twitter"]
+            tags=["twitter"],
         )
 
         self.app.add_api_route(
@@ -48,7 +48,7 @@ class ValidatorAPI:
             methods=["POST"],
             dependencies=[Depends(self.get_self)],
             response_description="Get recent tweets given a query",
-            tags=["twitter"]
+            tags=["twitter"],
         )
 
         self.app.add_api_route(
@@ -57,7 +57,7 @@ class ValidatorAPI:
             methods=["POST"],
             dependencies=[Depends(self.get_self)],
             response_description="Get recent tweets given a query",
-            tags=["twitter"]
+            tags=["twitter"],
         )
 
         self.app.add_api_route(
@@ -66,7 +66,7 @@ class ValidatorAPI:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Discord profile for the given user ID",
-            tags=["discord"]
+            tags=["discord"],
         )
 
         self.app.add_api_route(
@@ -75,7 +75,7 @@ class ValidatorAPI:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Discord channel messages for the given channel ID",
-            tags=["discord"]
+            tags=["discord"],
         )
 
         self.app.add_api_route(
@@ -84,7 +84,7 @@ class ValidatorAPI:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Discord channels for the given guild ID",
-            tags=["discord"]
+            tags=["discord"],
         )
 
         self.app.add_api_route(
@@ -93,7 +93,7 @@ class ValidatorAPI:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Discord guilds for the user",
-            tags=["discord"]
+            tags=["discord"],
         )
 
         self.app.add_api_route(
@@ -102,7 +102,7 @@ class ValidatorAPI:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get all guilds that all the Discord workers are apart of",
-            tags=["discord"]
+            tags=["discord"],
         )
 
         self.app.add_api_route(
@@ -111,33 +111,46 @@ class ValidatorAPI:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the axons for the given metagraph",
-            tags=["metagraph"]
+            tags=["metagraph"],
         )
-        
+
         self.start_server()
-        
-        
+
     async def get_twitter_profile(self, username: str):
-        return await TwitterProfileForwarder(self.validator).forward_query(query=username)
+        return await TwitterProfileForwarder(self.validator).forward_query(
+            query=username
+        )
 
     async def get_twitter_followers(self, username: str):
-        return await TwitterFollowersForwarder(self.validator).forward_query(query=username)
-    
+        return await TwitterFollowersForwarder(self.validator).forward_query(
+            query=username
+        )
+
     async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
-        return await TwitterTweetsForwarder(self.validator).forward_query(tweet_query=tweet_query)
+        return await TwitterTweetsForwarder(self.validator).forward_query(
+            tweet_query=tweet_query
+        )
 
     async def scrape_web(self, web_scraper_query: WebScraperQuery):
-        return await WebScraperForwarder(self.validator).forward_query(web_scraper_query=web_scraper_query)
+        return await WebScraperForwarder(self.validator).forward_query(
+            web_scraper_query=web_scraper_query
+        )
 
     async def get_discord_profile(self, user_id: str):
-        return await DiscordProfileForwarder(self.validator).forward_query(query=user_id)
-    
+        return await DiscordProfileForwarder(self.validator).forward_query(
+            query=user_id
+        )
+
     async def get_discord_channel_messages(self, channel_id: str):
-        return await DiscordChannelMessagesForwarder(self.validator).forward_query(query=channel_id)
-    
+        return await DiscordChannelMessagesForwarder(self.validator).forward_query(
+            query=channel_id
+        )
+
     async def get_discord_guild_channels(self, guild_id: str):
-        return await DiscordGuildChannelsForwarder(self.validator).forward_query(query=guild_id)
-    
+        return await DiscordGuildChannelsForwarder(self.validator).forward_query(
+            query=guild_id
+        )
+
     async def get_discord_user_guilds(self):
         return await DiscordUserGuildsForwarder(self.validator).forward_query()
 
@@ -146,7 +159,7 @@ class ValidatorAPI:
 
     def get_axons(self):
         return self.validator.metagraph.axons
-        
+
     def start_server(self):
         config = uvicorn.Config(app=self.app, host=self.host, port=self.port)
         server = uvicorn.Server(config)
@@ -162,8 +175,6 @@ class ValidatorAPI:
             # Close the loop to clean up properly
             loop.close()
             asyncio.set_event_loop(None)  # Reset the event loop
- 
+
     async def get_self(self):
         return self
-    
-    

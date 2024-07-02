@@ -23,6 +23,7 @@ from masa.validator.forwarder import Forwarder
 from masa.validator.discord.user_guilds.parser import user_guilds_parser
 from masa.validator.discord.user_guilds.reward import get_rewards
 
+
 class DiscordUserGuildsForwarder(Forwarder):
 
     def __init__(self, validator):
@@ -30,8 +31,14 @@ class DiscordUserGuildsForwarder(Forwarder):
 
     async def forward_query(self):
         try:
-            return await self.forward(request=Request(type=RequestType.DISCORD_USER_GUILDS.value), get_rewards=get_rewards, parser_method=user_guilds_parser)
+            return await self.forward(
+                request=Request(type=RequestType.DISCORD_USER_GUILDS.value),
+                get_rewards=get_rewards,
+                parser_method=user_guilds_parser,
+            )
 
         except Exception as e:
-            bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)
+            bt.logging.error(
+                f"Error during the handle responses process: {str(e)}", exc_info=True
+            )
             return []

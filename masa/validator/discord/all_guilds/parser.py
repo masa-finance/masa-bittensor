@@ -1,5 +1,6 @@
 from masa.types.discord import DiscordGuildChannelObject
 
+
 def all_guilds_parser(all_guilds_responses):
     return [
         DiscordGuildChannelObject(**guild)

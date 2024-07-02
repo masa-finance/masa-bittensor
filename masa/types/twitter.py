@@ -1,5 +1,7 @@
 from typing import Optional, List, Dict
 from typing_extensions import TypedDict
+
+
 class TwitterProfileObject(TypedDict, total=False):
     UserID: str
     Avatar: Optional[str]
@@ -22,6 +24,7 @@ class TwitterProfileObject(TypedDict, total=False):
     Username: Optional[str]
     Website: Optional[str]
 
+
 class TwitterFollowerObject(TypedDict, total=False):
     can_dm: Optional[bool]
     can_media_tag: Optional[bool]
@@ -29,7 +32,9 @@ class TwitterFollowerObject(TypedDict, total=False):
     default_profile: Optional[bool]
     default_profile_image: Optional[bool]
     description: Optional[str]
-    entities: Optional[dict]  # This could be further detailed with a TypedDict if necessary
+    entities: Optional[
+        dict
+    ]  # This could be further detailed with a TypedDict if necessary
     fast_followers_count: Optional[int]
     favourites_count: Optional[int]
     followers_count: Optional[int]
@@ -52,6 +57,7 @@ class TwitterFollowerObject(TypedDict, total=False):
     verified: Optional[bool]
     want_retweets: Optional[bool]
     withheld_in_countries: Optional[List[str]]
+
 
 class TwitterTweetObject(TypedDict, total=False):
     ConversationID: str

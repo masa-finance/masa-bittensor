@@ -24,15 +24,26 @@ from masa.validator.forwarder import Forwarder
 from masa.validator.web.reward import get_rewards
 from masa.validator.web.parser import web_scraper_parser
 
+
 class WebScraperForwarder(Forwarder):
 
     def __init__(self, validator):
         super(WebScraperForwarder, self).__init__(validator)
 
     async def forward_query(self, web_scraper_query: WebScraperQuery):
-        try:          
-            return await self.forward(request=Request(url=web_scraper_query.url, depth=web_scraper_query.depth, type=RequestType.WEB_SCRAPER.value), get_rewards=get_rewards, parser_method=web_scraper_parser)
+        try:
+            return await self.forward(
+                request=Request(
+                    url=web_scraper_query.url,
+                    depth=web_scraper_query.depth,
+                    type=RequestType.WEB_SCRAPER.value,
+                ),
+                get_rewards=get_rewards,
+                parser_method=web_scraper_parser,
+            )
 
         except Exception as e:
-            bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)
+            bt.logging.error(
+                f"Error during the handle responses process: {str(e)}", exc_info=True
+            )
             return []
