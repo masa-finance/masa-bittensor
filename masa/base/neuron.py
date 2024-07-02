@@ -111,10 +111,12 @@ class BaseNeuron(ABC):
         self.step = 0
 
     @abstractmethod
-    async def forward(self, synapse: bt.Synapse) -> bt.Synapse: ...
+    async def forward(self, synapse: bt.Synapse) -> bt.Synapse:
+        pass
 
     @abstractmethod
-    def run(self): ...
+    def run(self):
+        pass
 
     def sync(self):
         """
@@ -129,8 +131,8 @@ class BaseNeuron(ABC):
         if self.should_set_weights():
             try:
                 self.set_weights()
-            except:
-                print("Setting weights failed")
+            except Exception as e:
+                bt.logging.error(f"Setting weights failed: {e}")
 
     def check_registered(self):
         # --- Check for registration.

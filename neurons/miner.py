@@ -42,11 +42,13 @@ class PingMiner(bt.Synapse):
     def deserialize(self) -> str:
         return self.sent_from
 
+
 def forward_ping(synapse: PingMiner) -> PingMiner:
     synapse.is_active = True
     bt.logging.error(f"Got ping from {synapse.sent_from}")
 
     return synapse
+
 
 delay = 0
 
@@ -55,105 +57,14 @@ class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
         self.axon.attach(forward_fn=forward_ping)
-        bt.logging.info("Miner initialized with config: {}".format(config)) 
+        bt.logging.info("Miner initialized with config: {}".format(config))
 
     async def forward(self, synapse: Request) -> Request:
         print(f"Sleeping for rate limiting purposes: {delay}s")
         time.sleep(delay)
 
         try:
-            request_type = synapse.type
-
-            if request_type == RequestType.TWITTER_PROFILE.value:
-                profile = TwitterProfileRequest().get_profile(synapse.query)
-                if profile is not None:
-                    profile_dict = dict(profile)
-                    synapse.response = profile_dict
-                else:
-                    bt.logging.error(
-                        f"Failed to fetch Twitter profile for {synapse.query}."
-                    )
-
-            elif request_type == RequestType.TWITTER_FOLLOWERS.value:
-                followers = TwitterFollowersRequest().get_followers(synapse.query)
-                if followers is not None:
-                    synapse.response = followers
-                else:
-                    bt.logging.error(
-                        f"Failed to fetch Twitter followers for {synapse.query}."
-                    )
-
-            elif request_type == RequestType.TWITTER_TWEETS.value:
-                tweets = TwitterTweetsRequest().get_recent_tweets(
-                    RecentTweetsQuery(query=synapse.query, count=synapse.count)
-                )
-                if tweets is not None:
-                    synapse.response = tweets
-                else:
-                    bt.logging.error(
-                        f"Failed to fetch Twitter tweets for {synapse.query}."
-                    )
-
-            elif request_type == RequestType.WEB_SCRAPER.value:
-                web_scraped_data = WebScraperRequest().scrape_web(
-                    WebScraperQuery(url=synapse.url, depth=synapse.depth)
-                )
-                if web_scraped_data is not None:
-                    synapse.response = web_scraped_data
-                else:
-                    bt.logging.error(f"Failed to scrape for {synapse.url}.")
-
-            elif request_type == RequestType.DISCORD_PROFILE.value:
-                discord_profile = DiscordProfileRequest().get_profile(synapse.query)
-                if discord_profile is not None:
-                    synapse.response = discord_profile
-                else:
-                    bt.logging.error(
-                        f"Failed to fetch discord profile for {synapse.query}."
-                    )
-
-            elif request_type == RequestType.DISCORD_CHANNEL_MESSAGES.value:
-                discord_channel_messages = (
-                    DiscordChannelMessagesRequest().get_discord_channel_messages(
-                        synapse.query
-                    )
-                )
-                if discord_channel_messages is not None:
-                    synapse.response = discord_channel_messages
-                else:
-                    bt.logging.error(
-                        f"Failed to fetch channel messages for {synapse.query}."
-                    )
-
-            elif request_type == RequestType.DISCORD_GUILD_CHANNELS.value:
-                discord_guild_channels = (
-                    DiscordGuildChannelsRequest().get_discord_guild_channels(
-                        synapse.query
-                    )
-                )
-                if discord_guild_channels is not None:
-                    synapse.response = discord_guild_channels
-                else:
-                    bt.logging.error(
-                        f"Failed to fetch guild channels for {synapse.query}."
-                    )
-
-            elif request_type == RequestType.DISCORD_USER_GUILDS.value:
-                discord_user_guilds = (
-                    DiscordUserGuildsRequest().get_discord_user_guilds()
-                )
-                if discord_user_guilds is not None:
-                    synapse.response = discord_user_guilds
-                else:
-                    bt.logging.error("Failed to fetch user guilds.")
-
-            elif request_type == RequestType.DISCORD_ALL_GUILDS.value:
-                discord_all_guilds = DiscordAllGuildsRequest().get_discord_all_guilds()
-                if discord_all_guilds is not None:
-                    synapse.response = discord_all_guilds
-                else:
-                    bt.logging.error("Failed to fetch all guilds.")
-
+            self.handle_request(synapse)
         except Exception as e:
             bt.logging.error(
                 f"Exception occurred while doing work for {synapse.query}: {str(e)}",
@@ -161,6 +72,100 @@ class Miner(BaseMinerNeuron):
             )
 
         return synapse
+
+    def handle_request(self, synapse: Request):
+        request_type = synapse.type
+
+        if request_type == RequestType.TWITTER_PROFILE.value:
+            self.handle_twitter_profile(synapse)
+        elif request_type == RequestType.TWITTER_FOLLOWERS.value:
+            self.handle_twitter_followers(synapse)
+        elif request_type == RequestType.TWITTER_TWEETS.value:
+            self.handle_twitter_tweets(synapse)
+        elif request_type == RequestType.WEB_SCRAPER.value:
+            self.handle_web_scraper(synapse)
+        elif request_type == RequestType.DISCORD_PROFILE.value:
+            self.handle_discord_profile(synapse)
+        elif request_type == RequestType.DISCORD_CHANNEL_MESSAGES.value:
+            self.handle_discord_channel_messages(synapse)
+        elif request_type == RequestType.DISCORD_GUILD_CHANNELS.value:
+            self.handle_discord_guild_channels(synapse)
+        elif request_type == RequestType.DISCORD_USER_GUILDS.value:
+            self.handle_discord_user_guilds(synapse)
+        elif request_type == RequestType.DISCORD_ALL_GUILDS.value:
+            self.handle_discord_all_guilds(synapse)
+
+    def handle_twitter_profile(self, synapse: Request):
+        profile = TwitterProfileRequest().get_profile(synapse.query)
+        if profile is not None:
+            profile_dict = dict(profile)
+            synapse.response = profile_dict
+        else:
+            bt.logging.error(f"Failed to fetch Twitter profile for {synapse.query}.")
+
+    def handle_twitter_followers(self, synapse: Request):
+        followers = TwitterFollowersRequest().get_followers(synapse.query)
+        if followers is not None:
+            synapse.response = followers
+        else:
+            bt.logging.error(f"Failed to fetch Twitter followers for {synapse.query}.")
+
+    def handle_twitter_tweets(self, synapse: Request):
+        tweets = TwitterTweetsRequest().get_recent_tweets(
+            RecentTweetsQuery(query=synapse.query, count=synapse.count)
+        )
+        if tweets is not None:
+            synapse.response = tweets
+        else:
+            bt.logging.error(f"Failed to fetch Twitter tweets for {synapse.query}.")
+
+    def handle_web_scraper(self, synapse: Request):
+        web_scraped_data = WebScraperRequest().scrape_web(
+            WebScraperQuery(url=synapse.url, depth=synapse.depth)
+        )
+        if web_scraped_data is not None:
+            synapse.response = web_scraped_data
+        else:
+            bt.logging.error(f"Failed to scrape for {synapse.url}.")
+
+    def handle_discord_profile(self, synapse: Request):
+        discord_profile = DiscordProfileRequest().get_profile(synapse.query)
+        if discord_profile is not None:
+            synapse.response = discord_profile
+        else:
+            bt.logging.error(f"Failed to fetch discord profile for {synapse.query}.")
+
+    def handle_discord_channel_messages(self, synapse: Request):
+        discord_channel_messages = (
+            DiscordChannelMessagesRequest().get_discord_channel_messages(synapse.query)
+        )
+        if discord_channel_messages is not None:
+            synapse.response = discord_channel_messages
+        else:
+            bt.logging.error(f"Failed to fetch channel messages for {synapse.query}.")
+
+    def handle_discord_guild_channels(self, synapse: Request):
+        discord_guild_channels = (
+            DiscordGuildChannelsRequest().get_discord_guild_channels(synapse.query)
+        )
+        if discord_guild_channels is not None:
+            synapse.response = discord_guild_channels
+        else:
+            bt.logging.error(f"Failed to fetch guild channels for {synapse.query}.")
+
+    def handle_discord_user_guilds(self, synapse: Request):
+        discord_user_guilds = DiscordUserGuildsRequest().get_discord_user_guilds()
+        if discord_user_guilds is not None:
+            synapse.response = discord_user_guilds
+        else:
+            bt.logging.error("Failed to fetch user guilds.")
+
+    def handle_discord_all_guilds(self, synapse: Request):
+        discord_all_guilds = DiscordAllGuildsRequest().get_discord_all_guilds()
+        if discord_all_guilds is not None:
+            synapse.response = discord_all_guilds
+        else:
+            bt.logging.error("Failed to fetch all guilds.")
 
     async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
 

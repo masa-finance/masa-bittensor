@@ -22,7 +22,6 @@ import unittest
 import bittensor as bt
 
 from neurons.validator import Neuron as Validator
-from neurons.miner import Neuron as Miner
 
 from masa.api.dummy import Dummy
 from masa.utils.uids import get_random_uids
@@ -65,9 +64,7 @@ class TemplateValidatorNeuronTestCase(unittest.TestCase):
 
         responses = self.neuron.dendrite.query(
             # Send the query to miners in the network.
-            axons=[
-                self.neuron.metagraph.axons[uid] for uid in self.miner_uids
-            ],
+            axons=[self.neuron.metagraph.axons[uid] for uid in self.miner_uids],
             # Construct a dummy query.
             synapse=Dummy(dummy_input=self.neuron.step),
             # All responses have the deserialize function called on them before returning.
@@ -105,9 +102,9 @@ class TemplateValidatorNeuronTestCase(unittest.TestCase):
         )
 
         rewards = get_rewards(self.neuron, responses)
-        expected_rewards = rewards.clone()
+        rewards.clone()
         # Add NaN values to rewards
         rewards[0] = float("nan")
 
-        with self.assertLogs(bt.logging, level="WARNING") as cm:
+        with self.assertLogs(bt.logging, level="WARNING"):
             self.neuron.update_scores(rewards, self.miner_uids)

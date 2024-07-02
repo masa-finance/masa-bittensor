@@ -6,3 +6,10 @@ docstring-convention = google
 import-order-style = google
 max-complexity = 10
 max-line-length = 88
+# Ignore F401 (imported but unused) and E402 (module level import not at top of file) for __init__.py files
+per-file-ignores =
+    __init__.py: F401, E402
+# Exclude specific files from flake8 checks
+exclude =
+    ./masa/api/dummy.py,
+    ./masa/api/examples/subnet21.py

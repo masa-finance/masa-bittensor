@@ -21,7 +21,6 @@ from bittensor import (
     NeuronInfo,
     AxonInfo,
     PrometheusInfo,
-    __ss58_format__,
 )
 from bittensor.mock.wallet_mock import MockWallet as _MockWallet
 from bittensor.mock.wallet_mock import get_mock_coldkey as _get_mock_coldkey

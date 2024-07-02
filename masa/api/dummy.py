@@ -18,7 +18,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
-from typing import List, Optional, Union, Any, Dict
+from typing import List, Union, Any
 from masa.api.request import Dummy
 from bittensor.subnets import SubnetsAPI
 

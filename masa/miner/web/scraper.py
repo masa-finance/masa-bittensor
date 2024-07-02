@@ -2,7 +2,6 @@ from dataclasses import dataclass
 import json
 import requests
 import bittensor as bt
-from typing import List
 from masa.miner.masa_protocol_request import MasaProtocolRequest
 from masa.types.web import WebScraperObject
 
