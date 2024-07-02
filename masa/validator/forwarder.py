@@ -60,10 +60,12 @@ class Forwarder:
         )
 
         # Update the scores based on the rewards
-        self.validator.update_scores(rewards, valid_miner_uids)
-
-        self.validator.set_weights()
-
+        
+        if(len(valid_miner_uids) > 0):
+            self.validator.update_scores(rewards, valid_miner_uids)
+        
+            self.validator.set_weights()
+        
         return parsed_responses
 
     def sanitize_responses_and_uids(self, responses, miner_uids):
