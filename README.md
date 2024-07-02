@@ -1,110 +1,67 @@
-# Subtensor Network Setup with Docker Compose
+# Masa Bittensor Network
 
-This repository contains a Docker Compose setup for running a local Subtensor network with multiple services, including subtensor, subnet, miner, and validator. Each service is defined in its own Dockerfile and script files, which automate the setup and execution of the Subtensor network components.
-
-## Overview
-
-The `docker-compose.yml` file defines four services:
-
-1. **subtensor**: This service sets up the main Subtensor network node and runs the local network script.
-2. **subnet**: This service sets up a subnet node that depends on the subtensor node.
-3. **miner**: This service sets up a miner node that depends on the subnet node.
-4. **validator**: This service sets up a validator node that depends on the subnet node.
-
-Each service has its own Dockerfile and initialization scripts that automate the setup and configuration of the respective nodes.
-
-## File Structure
-
-- `docker-compose.yml`: Docker Compose configuration file defining the services and their dependencies.
-- `Dockerfile.subtensor`: Dockerfile for building the subtensor node.
-- `Dockerfile.subnet`: Dockerfile for building the subnet node.
-- `Dockerfile.miner`: Dockerfile for building the miner node.
-- `Dockerfile.validator`: Dockerfile for building the validator node.
-- `scripts/`: Directory containing initialization scripts for each service.
-  - `localnet.sh`: Script to set up and run the local Subtensor network.
-  - `run_faucet.sh`: Script defining the `run_faucet` function used by multiple services.
-  - `create_subnet.sh`: Initialization script for the subnet service.
-  - `create_miner.sh`: Initialization script for the miner service.
-  - `create_validator.sh`: Initialization script for the validator service (same as miner for now).
+This repository contains a Docker Compose setup for running a local Masa Bittensor network with multiple services, including subtensor, subnet, miner, validator, and protocol.
 
 ## Prerequisites
 
-Make sure you have Docker and Docker Compose installed on your system. You can follow the official installation guides:
+- Docker
+- Docker Compose
+- Make
 
-- [Docker Installation](https://docs.docker.com/get-docker/)
-- [Docker Compose Installation](https://docs.docker.com/compose/install/)
+## Quick Start
 
-## How to Build and Run
-
-1. **Clone the repository:**
-
-   ```bash
-   git clone https://github.com/yourusername/subtensor-network.git
-   cd subtensor-network
+1. Clone the repository:
+   ```
+   git clone https://github.com/masa-finance/masa-bittensor.git
+   cd masa-bittensor
    ```
 
-2. **Build the Docker images:**
-
-   ```bash
-   docker compose build
+2. Start the network:
    ```
-
-3. **Run the Docker Compose setup:**
-
-   ```bash
-   docker compose up
+   make up
    ```
+   This command will automatically pull the pre-built Docker images from the GitHub Container Registry and start all services.
 
-   This command will start all the defined services and set up the network. The `subtensor` service will initialize first, followed by the `subnet`, `miner`, and `validator` services.
-
-4. **Observe the Interactions:**
-
-   You can observe the logs of the running containers to monitor the interactions between the different services. Open a new terminal and use the following command to view the logs of a specific container:
-
-   ```bash
-   docker logs -f <container_name>
+3. Watch the logs:
    ```
+   make logs
+   ```
+   Monitor the output of all services. It may take about 20 minutes for the validator to have its weights boosted and become fully operational.
 
-   Replace `<container_name>` with `subtensor_machine`, `subnet_machine`, `miner_machine`, or `validator_machine` to view the logs of the respective service.
+## API Testing
+
+Once the network is up and running:
+
+1. Open your browser and navigate to `http://localhost:8000/docs` to see the available API endpoints.
+
+2. Test an endpoint using curl:
+   ```
+   curl localhost:8000/data/discord/profile/691473028525195315
+   ```
+   This should return data about the queried Discord profile.
+
+3. In the Docker logs (`make logs`), you should see the validator and miner receiving and processing the request, then sending it to the masa protocol node for actual processing.
+
+## Available Make Commands
+
+- `make up`: Pull images and start all services
+- `make down`: Stop and remove all containers
+- `make logs`: View logs from all services
+- `make pull`: Pull the latest images without starting the services
+- `make build`: Build the images locally (not typically needed)
 
 ## Troubleshooting
 
-If you encounter any issues, you can use the following commands to debug:
+If you encounter issues:
 
-- **List running containers:**
+1. Ensure you're using the latest version of Docker and Docker Compose.
+2. Try stopping the network (`make down`), pulling the latest images (`make pull`), and starting again (`make up`).
+3. Check the logs (`make logs`) for any error messages.
 
-  ```bash
-  docker ps
-  ```
+## Contributing
 
-- **Access a running container:**
-
-  ```bash
-  docker exec -it <container_name> /bin/bash
-  ```
-
-  Replace `<container_name>` with the name of the container you want to access.
-
-- **Stop the Docker Compose setup:**
-
-  ```bash
-  docker compose down
-  ```
-
-## Notes
-
-- Ensure that the `COLDKEY_PASSWORD` and `HOTKEY_PASSWORD` environment variables are set correctly in the Docker Compose file or in the respective Dockerfiles.
-- The `run_faucet` function is defined in the `run_faucet.sh` script, which is sourced in the initialization scripts of the `subnet`, `miner`, and `validator` services.
+For development workflows and contribution guidelines, please see CONTRIBUTING.md.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgements
-
-Special thanks to the Subtensor team for their work on the Subtensor project. This setup is based on their documentation and codebase.
-
-- [Bittensor GitHub Repository](https://github.com/opentensor/bittensor)
-- [Subtensor GitHub Repository](https://github.com/opentensor/subtensor)
-- [Bittensor Documentation](https://docs.bittensor.com/)
-
