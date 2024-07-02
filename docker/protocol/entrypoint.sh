@@ -38,7 +38,7 @@ if [ "$STAKE_AMOUNT" != "" ]; then
     echo "Staking completed. Restarting node..."
 fi
 
-./masa-node
+./masa-node &
 
 # Keep the container running
 tail -f /dev/null
