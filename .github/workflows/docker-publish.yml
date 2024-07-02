@@ -1,0 +1,98 @@
+name: Docker Build and Publish
+
+on:
+  push:
+    branches: [ "dev", "test", "main", "dockerize" ]
+    paths:
+      - 'docker/**'
+      - '.github/workflows/docker-publish.yml'
+      - '**/*.py'
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        image: [subtensor, subnet, miner, validator, protocol]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Download last successful build info
+        uses: actions/download-artifact@v3
+        with:
+          name: last-successful-build
+          path: .
+        continue-on-error: true
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if [ -f last_successful_build.txt ]; then
+            LAST_SUCCESSFUL_SHA=$(cat last_successful_build.txt)
+          else
+            echo "No previous successful build found. Building all images."
+            echo "changed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if [ "${{ matrix.image }}" == "subtensor" ]; then
+            CHANGED=$(git diff --name-only $LAST_SUCCESSFUL_SHA HEAD -- docker/subtensor)
+          else
+            CHANGED=$(git diff --name-only $LAST_SUCCESSFUL_SHA HEAD -- docker/${{ matrix.image }} **/*.py)
+          fi
+          if [ -n "$CHANGED" ]; then
+            echo "Changes detected for ${{ matrix.image }}. Building image."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes detected for ${{ matrix.image }}. Skipping build."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          if [ "${{ matrix.image }}" == "subtensor" ]; then
+            CONTEXT="./docker/subtensor"
+          else
+            CONTEXT="."
+          fi
+          docker build -t ghcr.io/masa-finance/masa-bittensor/${{ matrix.image }}:${{ github.ref_name }} -f docker/${{ matrix.image }}/Dockerfile $CONTEXT
+          docker push ghcr.io/masa-finance/masa-bittensor/${{ matrix.image }}:${{ github.ref_name }}
+
+  mark-success:
+    needs: check-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create success marker
+        run: echo ${{ github.sha }} > last_successful_build.txt
+      - name: Upload success marker
+        uses: actions/upload-artifact@v3
+        with:
+          name: last-successful-build
+          path: last_successful_build.txt
+          retention-days: 1
+
+  display-tags:
+    needs: check-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display image tags
+        run: |
+          echo "The following images may have been built and pushed:"
+          echo "ghcr.io/masa-finance/masa-bittensor/subtensor:${{ github.ref_name }}"
+          echo "ghcr.io/masa-finance/masa-bittensor/subnet:${{ github.ref_name }}"
+          echo "ghcr.io/masa-finance/masa-bittensor/miner:${{ github.ref_name }}"
+          echo "ghcr.io/masa-finance/masa-bittensor/validator:${{ github.ref_name }}"
+          echo "ghcr.io/masa-finance/masa-bittensor/protocol:${{ github.ref_name }}"
