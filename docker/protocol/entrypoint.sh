@@ -9,7 +9,7 @@ RPC_URL=${RPC_URL:-https://ethereum-sepolia.publicnode.com}
 ENV=${ENV:-test}
 FILE_PATH=${FILE_PATH:-.}
 VALIDATOR=${VALIDATOR:-false}
-PORT=${PORT:-8080}
+PORT=${PORT:-8081}
 
 # AI LLM
 CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
@@ -38,7 +38,7 @@ if [ "$STAKE_AMOUNT" != "" ]; then
     echo "Staking completed. Restarting node..."
 fi
 
-./masa-node
+./masa-node &
 
 # Keep the container running
 tail -f /dev/null
