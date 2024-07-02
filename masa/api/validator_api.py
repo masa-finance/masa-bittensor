@@ -19,9 +19,8 @@ from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
 
 class ValidatorAPI:
     def __init__(self, validator, config=None):
-        self.host = os.getenv("VALIDATOR_API_HOST", "localhost")
+        self.host = os.getenv("VALIDATOR_API_HOST", "0.0.0.0")
         self.port = int(os.getenv("VALIDATOR_API_PORT", "8000"))
-
         self.validator = validator
         self.app = FastAPI()
 
@@ -57,8 +56,8 @@ class ValidatorAPI:
             self.scrape_web,
             methods=["POST"],
             dependencies=[Depends(self.get_self)],
-            response_description="Scrape data from a given website url",
-            tags=["web"],
+            response_description="Get recent tweets given a query",
+            tags=["twitter"],
         )
 
         self.app.add_api_route(

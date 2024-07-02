@@ -34,13 +34,28 @@ from masa.miner.web.scraper import WebScraperQuery, WebScraperRequest
 from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
 from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
 
+
+class PingMiner(bt.Synapse):
+    sent_from: typing.Optional[str]
+    is_active: typing.Optional[bool]
+
+    def deserialize(self) -> str:
+        return self.sent_from
+
+def forward_ping(synapse: PingMiner) -> PingMiner:
+    synapse.is_active = True
+    bt.logging.error(f"Got ping from {synapse.sent_from}")
+
+    return synapse
+
 delay = 0
 
 
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
-        bt.logging.info("Miner initialized with config: {}".format(config))
+        self.axon.attach(forward_fn=forward_ping)
+        bt.logging.info("Miner initialized with config: {}".format(config)) 
 
     async def forward(self, synapse: Request) -> Request:
         print(f"Sleeping for rate limiting purposes: {delay}s")
