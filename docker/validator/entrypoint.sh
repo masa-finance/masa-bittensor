@@ -47,15 +47,31 @@ $COLDKEY_PASSWORD
 y
 EOF
 
-# Define a function to start the validator
-start_validator() {
-    python /app/neurons/validator.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name validator --wallet.hotkey validator_hotkey --axon.port 8092  --axon.external_ip "$DOCKER_SELF_IP"
+kill_existing_validator() {
+    pid=$(netstat -tulpn 2>/dev/null | grep :8000 | awk '{print $7}' | cut -d'/' -f1)
+    if [ -n "$pid" ]; then
+        echo "Killing existing process on port 8000 (PID: $pid)"
+        kill $pid
+        sleep 5  # Wait for the process to fully terminate and release the port
+    fi
 }
 
-# Function to check if port 8000 is in use
-is_port_in_use() {
-    netstat -tuln | grep :8000 > /dev/null
-    return $?
+start_validator() {
+    kill_existing_validator
+    if ! netstat -tuln | grep -q :8000; then
+        echo "Starting validator..."
+        python /app/neurons/validator.py --netuid 1 --subtensor.chain_endpoint ws://subtensor_machine:9946 --wallet.name validator --wallet.hotkey validator_hotkey --axon.port 8092  --axon.external_ip "$DOCKER_SELF_IP" --api.port 8000 &
+        VALIDATOR_PID=$!
+        echo "Validator started with PID $VALIDATOR_PID"
+    else
+        echo "Error: Port 8000 is still in use. Cannot start validator."
+        exit 1
+    fi
+}
+
+restart_validator() {
+    kill_existing_validator
+    start_validator
 }
 
 # Attempt to register the validator and start it
@@ -72,32 +88,11 @@ EOF
 
     # Start the validator
     start_validator &
-    VALIDATOR_PID=$!
-    echo "Validator started with PID $VALIDATOR_PID"
-    echo "sleep 60 before killing"
+    echo "sleep 60 before restarting"
     sleep 60
-    # Stop the validator more gracefully
     kill $VALIDATOR_PID
-    echo "Sent SIGTERM to validator process"
-    # Wait for the process to stop and port to be released
-    for i in {1..30}; do
-        if ! is_port_in_use; then
-            echo "Port 8000 is now available"
-            break
-        fi
-        echo "Waiting for port 8000 to be released... (attempt $i)"
-        sleep 2
-    done
 
-    if is_port_in_use; then
-        echo "Port 8000 is still in use. Forcing kill."
-        kill -9 $VALIDATOR_PID
-        sleep 5
-    fi
-
-    start_validator &
-    VALIDATOR_PID=$!
-    echo "Validator restarted with PID $VALIDATOR_PID"
+    restart_validator &
 
 else
     echo "Validator registration failed. Not starting the validator."
