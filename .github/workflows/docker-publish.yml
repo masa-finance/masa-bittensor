@@ -20,29 +20,34 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Log in to GitHub Container Registry
-        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Download last successful build info
+        uses: actions/download-artifact@v3
+        with:
+          name: last-successful-build
+          path: .
+        continue-on-error: true
 
       - name: Check for changes
         id: check_changes
         run: |
-          LAST_SUCCESSFUL_SHA=$(git log --format="%H" -n 1 --grep="Docker Build and Publish successful")
-          if [ -z "$LAST_SUCCESSFUL_SHA" ]; then
+          if [ -f last_successful_build.txt ]; then
+            LAST_SUCCESSFUL_SHA=$(cat last_successful_build.txt)
+          else
             echo "No previous successful build found. Building all images."
             echo "changed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if [ "${{ matrix.image }}" == "subtensor" ]; then
+            CHANGED=$(git diff --name-only $LAST_SUCCESSFUL_SHA HEAD -- docker/subtensor)
           else
-            if [ "${{ matrix.image }}" == "subtensor" ]; then
-              CHANGED=$(git diff --name-only $LAST_SUCCESSFUL_SHA HEAD -- docker/subtensor)
-            else
-              CHANGED=$(git diff --name-only $LAST_SUCCESSFUL_SHA HEAD -- docker/${{ matrix.image }} **/*.py)
-            fi
-            if [ -n "$CHANGED" ]; then
-              echo "Changes detected for ${{ matrix.image }}. Building image."
-              echo "changed=true" >> $GITHUB_OUTPUT
-            else
-              echo "No changes detected for ${{ matrix.image }}. Skipping build."
-              echo "changed=false" >> $GITHUB_OUTPUT
-            fi
+            CHANGED=$(git diff --name-only $LAST_SUCCESSFUL_SHA HEAD -- docker/${{ matrix.image }} **/*.py)
+          fi
+          if [ -n "$CHANGED" ]; then
+            echo "Changes detected for ${{ matrix.image }}. Building image."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes detected for ${{ matrix.image }}. Skipping build."
+            echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and push image
@@ -60,14 +65,14 @@ jobs:
     needs: check-and-build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Commit success marker
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git commit --allow-empty -m "Docker Build and Publish successful"
-          git push
+      - name: Create success marker
+        run: echo ${{ github.sha }} > last_successful_build.txt
+      - name: Upload success marker
+        uses: actions/upload-artifact@v3
+        with:
+          name: last-successful-build
+          path: last_successful_build.txt
+          retention-days: 1
 
   display-tags:
     needs: check-and-build
