@@ -23,6 +23,7 @@ from masa.validator.forwarder import Forwarder
 from masa.validator.discord.channel_messages.parser import channel_messages_parser
 from masa.validator.discord.channel_messages.reward import get_rewards
 
+
 class DiscordChannelMessagesForwarder(Forwarder):
 
     def __init__(self, validator):
@@ -30,8 +31,16 @@ class DiscordChannelMessagesForwarder(Forwarder):
 
     async def forward_query(self, query):
         try:
-            return await self.forward(request=Request(query=query, type=RequestType.DISCORD_CHANNEL_MESSAGES.value), get_rewards=get_rewards, parser_method=channel_messages_parser)
+            return await self.forward(
+                request=Request(
+                    query=query, type=RequestType.DISCORD_CHANNEL_MESSAGES.value
+                ),
+                get_rewards=get_rewards,
+                parser_method=channel_messages_parser,
+            )
 
         except Exception as e:
-            bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)
+            bt.logging.error(
+                f"Error during the handle responses process: {str(e)}", exc_info=True
+            )
             return []

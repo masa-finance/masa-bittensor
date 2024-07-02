@@ -136,7 +136,7 @@ def add_miner_args(cls, parser):
         help="If set, we will force incoming requests to have a permit.",
         default=False,
     )
-    
+
     parser.add_argument(
         "--blacklist.min_stake_required",
         type=int,
@@ -254,7 +254,7 @@ def add_validator_args(cls, parser):
         help="Runs forward method automatically",
         default=False,
     )
-    
+
     parser.add_argument(
         "--neuron.debug",
         action="store_true",

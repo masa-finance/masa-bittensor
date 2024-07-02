@@ -26,21 +26,26 @@ from masa.api.request import RequestType
 from masa.base.validator import BaseValidatorNeuron
 from masa.api.validator_api import ValidatorAPI
 
+
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
         self.API = ValidatorAPI(self)
         bt.logging.info("Validator initialized with config: {}".format(config))
 
+    async def forward(
+        self, request="brendanplayford", type=RequestType.TWITTER_PROFILE.value
+    ):
+        bt.logging.warning(
+            "Unused method forward is being called, please use Forwarder"
+        )
 
-    async def forward(self, request = 'brendanplayford', type = RequestType.TWITTER_PROFILE.value):
-        bt.logging.warning("Unused method forward is being called, please use Forwarder")
-        
     def update_weights(self, scores):
         # Example: Update weights (this is a placeholder for actual weight update logic)
         for score in scores:
             # TODO Update logic here
             pass
+
 
 if __name__ == "__main__":
     with Validator() as validator:

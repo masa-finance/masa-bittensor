@@ -23,16 +23,22 @@ from masa.validator.forwarder import Forwarder
 from masa.validator.twitter.profile.reward import get_rewards
 from masa.types.twitter import TwitterProfileObject
 
+
 class TwitterProfileForwarder(Forwarder):
 
     def __init__(self, validator):
         super(TwitterProfileForwarder, self).__init__(validator)
 
-
     async def forward_query(self, query):
         try:
-            return await self.forward(request=Request(query=query, type=RequestType.TWITTER_PROFILE.value), get_rewards=get_rewards, parser_object=TwitterProfileObject)
+            return await self.forward(
+                request=Request(query=query, type=RequestType.TWITTER_PROFILE.value),
+                get_rewards=get_rewards,
+                parser_object=TwitterProfileObject,
+            )
 
         except Exception as e:
-            bt.logging.error(f"Error during the handle responses process: {str(e)}", exc_info=True)
+            bt.logging.error(
+                f"Error during the handle responses process: {str(e)}", exc_info=True
+            )
             return []

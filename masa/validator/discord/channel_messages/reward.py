@@ -26,24 +26,24 @@ from masa.types.discord import DiscordChannelMessageObject
 def reward(query: str, response: List[DiscordChannelMessageObject]) -> float:
     # Return a reward of 0.0 if the response is None
     if response is None:
-        return 0.0 
+        return 0.0
     bt.logging.info(f"Getting discord response from {response}")
 
-    channel_id = response.get('channel_id')
+    channel_id = response.get("channel_id")
     bt.logging.info(f"Calculating reward for discord response {channel_id}")
-    
+
     if channel_id == query:
         return 1
     else:
         return 0
+
 
 def get_rewards(
     self,
     query: str,
     responses: List[DiscordChannelMessageObject],
 ) -> torch.FloatTensor:
-    bt.logging.info(f"Getting rewards...")
-    return torch.FloatTensor(
-        [reward(query, response) for response in responses]
-    ).to(self.device) 
-
+    bt.logging.info("Getting rewards...")
+    return torch.FloatTensor([reward(query, response) for response in responses]).to(
+        self.device
+    )

@@ -18,7 +18,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
-from typing import List, Optional, Union, Any, Dict
+from typing import List, Union, Any
 from masa.api.request import Dummy
 from bittensor.subnets import SubnetsAPI
 
@@ -33,9 +33,7 @@ class DummyAPI(SubnetsAPI):
         synapse.dummy_input = dummy_input
         return synapse
 
-    def process_responses(
-        self, responses: List[Union["bt.Synapse", Any]]
-    ) -> List[int]:
+    def process_responses(self, responses: List[Union["bt.Synapse", Any]]) -> List[int]:
         outputs = []
         for response in responses:
             if response.dendrite.status_code != 200:
