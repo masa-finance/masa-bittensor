@@ -26,6 +26,8 @@ RUN chmod +x /app/entrypoint.sh
 
 # Expose the port
 EXPOSE 8081
+# 
+EXPOSE 4001
 
 # Set the entry point
 ENTRYPOINT ["/app/entrypoint.sh"]
