@@ -15,6 +15,7 @@ from masa.validator.discord.guild_channels.forward import DiscordGuildChannelsFo
 from masa.validator.discord.user_guilds.forward import DiscordUserGuildsForwarder
 from masa.validator.discord.profile.forward import DiscordProfileForwarder
 from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
+from fastapi.middleware.cors import CORSMiddleware
 
 
 class ValidatorAPI:
@@ -23,6 +24,15 @@ class ValidatorAPI:
         self.port = int(os.getenv("VALIDATOR_API_PORT", "8000"))
         self.validator = validator
         self.app = FastAPI()
+        
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
 
         self.app.add_api_route(
             "/data/twitter/profile/{username}",
@@ -113,6 +123,14 @@ class ValidatorAPI:
             response_description="Get the axons for the given metagraph",
             tags=["metagraph"],
         )
+        self.app.add_api_route(
+            "/healthcheck",
+            self.healthcheck,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get healthcheck status",
+            tags=["metagraph"],
+        )
 
         self.start_server()
 
@@ -159,6 +177,13 @@ class ValidatorAPI:
 
     def get_axons(self):
         return self.validator.metagraph.axons
+    
+    def healthcheck(self):
+        return {
+            "coldkey": self.validator.wallet.coldkeypub.ss58_address,
+            "hotkey": self.validator.wallet.hotkey.ss58_address,
+            "is_active": True
+        }
 
     def start_server(self):
         config = uvicorn.Config(app=self.app, host=self.host, port=self.port)
