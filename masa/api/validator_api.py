@@ -147,9 +147,10 @@ class ValidatorAPI:
         )
 
     async def get_discord_guild_channels(self, guild_id: str):
-        return await DiscordGuildChannelsForwarder(self.validator).forward_query(
-            query=guild_id
-        )
+        all_responses = await DiscordGuildChannelsForwarder(
+            self.validator
+        ).forward_query(query=guild_id)
+        return all_responses[0]
 
     async def get_discord_user_guilds(self):
         return await DiscordUserGuildsForwarder(self.validator).forward_query()
