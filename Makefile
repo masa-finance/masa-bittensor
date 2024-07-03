@@ -134,8 +134,7 @@ pull:
 	$(DOCKER_COMPOSE) pull
 
 up:
-	$(DOCKER_COMPOSE) pull
-	$(DOCKER_COMPOSE) up -d
+	$(DOCKER_COMPOSE) up -d --pull always
 
 down:
 	$(DOCKER_COMPOSE) down
@@ -151,7 +150,7 @@ docker-build:
 	$(DOCKER_COMPOSE) build
 
 docker-up:
-	$(DOCKER_COMPOSE) up -d
+	$(DOCKER_COMPOSE) up -d --pull always
 
 docker-down:
 	$(DOCKER_COMPOSE) down

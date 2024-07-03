@@ -16,6 +16,7 @@ RUN apt-get update && \
     python3-venv \
     expect \
     bc \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Create and activate a virtual environment, then install Bittensor

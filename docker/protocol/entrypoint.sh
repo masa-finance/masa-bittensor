@@ -31,12 +31,7 @@ DISCORD_SCRAPER=${DISCORD_SCRAPER:-true}
 WEB_SCRAPER=${WEB_SCRAPER:-true}
 EOF
 
-# Start the node
-if [ "$STAKE_AMOUNT" != "" ]; then
-    echo "Staking $STAKE_AMOUNT MASA tokens..."
-    ./masa-node --stake $STAKE_AMOUNT
-    echo "Staking completed. Restarting node..."
-fi
+#start the node
 
 ./masa-node &
 
