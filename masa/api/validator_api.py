@@ -158,7 +158,8 @@ class ValidatorAPI:
         return all_responses[0]
 
     async def get_discord_all_guilds(self):
-        return await DiscordAllGuildsForwarder(self.validator).forward_query()
+        all_responses = await DiscordAllGuildsForwarder(self.validator).forward_query()
+        return all_responses[0]
 
     def get_axons(self):
         return self.validator.metagraph.axons
