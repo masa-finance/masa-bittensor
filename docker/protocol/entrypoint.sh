@@ -31,9 +31,7 @@ DISCORD_SCRAPER=${DISCORD_SCRAPER:-true}
 WEB_SCRAPER=${WEB_SCRAPER:-true}
 EOF
 
-# Start the node
-echo "Staking 1000 MASA tokens..."
-./masa-node --stake 1000
+#start the node
 
 ./masa-node &
 
