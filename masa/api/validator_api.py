@@ -117,45 +117,54 @@ class ValidatorAPI:
         self.start_server()
 
     async def get_twitter_profile(self, username: str):
-        return await TwitterProfileForwarder(self.validator).forward_query(
+        all_responses = await TwitterProfileForwarder(self.validator).forward_query(
             query=username
         )
+        return all_responses[0]
 
     async def get_twitter_followers(self, username: str):
-        return await TwitterFollowersForwarder(self.validator).forward_query(
+        all_responses = await TwitterFollowersForwarder(self.validator).forward_query(
             query=username
         )
+        return all_responses[0]
 
     async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
-        return await TwitterTweetsForwarder(self.validator).forward_query(
+        all_responses = await TwitterTweetsForwarder(self.validator).forward_query(
             tweet_query=tweet_query
         )
+        return all_responses[0]
 
     async def scrape_web(self, web_scraper_query: WebScraperQuery):
-        return await WebScraperForwarder(self.validator).forward_query(
+        all_responses = await WebScraperForwarder(self.validator).forward_query(
             web_scraper_query=web_scraper_query
         )
+        return all_responses[0]
 
     async def get_discord_profile(self, user_id: str):
-        return await DiscordProfileForwarder(self.validator).forward_query(
+        all_responses = await DiscordProfileForwarder(self.validator).forward_query(
             query=user_id
         )
+        return all_responses[0]
 
     async def get_discord_channel_messages(self, channel_id: str):
-        return await DiscordChannelMessagesForwarder(self.validator).forward_query(
-            query=channel_id
-        )
+        all_responses = await DiscordChannelMessagesForwarder(
+            self.validator
+        ).forward_query(query=channel_id)
+        return all_responses[0]
 
     async def get_discord_guild_channels(self, guild_id: str):
-        return await DiscordGuildChannelsForwarder(self.validator).forward_query(
-            query=guild_id
-        )
+        all_responses = await DiscordGuildChannelsForwarder(
+            self.validator
+        ).forward_query(query=guild_id)
+        return all_responses[0]
 
     async def get_discord_user_guilds(self):
-        return await DiscordUserGuildsForwarder(self.validator).forward_query()
+        all_responses = await DiscordUserGuildsForwarder(self.validator).forward_query()
+        return all_responses[0]
 
     async def get_discord_all_guilds(self):
-        return await DiscordAllGuildsForwarder(self.validator).forward_query()
+        all_responses = await DiscordAllGuildsForwarder(self.validator).forward_query()
+        return all_responses[0]
 
     def get_axons(self):
         return self.validator.metagraph.axons

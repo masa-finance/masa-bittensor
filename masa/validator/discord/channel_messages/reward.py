@@ -28,8 +28,9 @@ def reward(query: str, response: List[DiscordChannelMessageObject]) -> float:
     if response is None:
         return 0.0
     bt.logging.info(f"Getting discord response from {response}")
+    messages = [DiscordChannelMessageObject(**message) for message in response]
 
-    channel_id = response.get("channel_id")
+    channel_id = messages[0].get("channel_id")
     bt.logging.info(f"Calculating reward for discord response {channel_id}")
 
     if channel_id == query:
@@ -41,7 +42,7 @@ def reward(query: str, response: List[DiscordChannelMessageObject]) -> float:
 def get_rewards(
     self,
     query: str,
-    responses: List[DiscordChannelMessageObject],
+    responses: List[List[DiscordChannelMessageObject]],
 ) -> torch.FloatTensor:
     bt.logging.info("Getting rewards...")
     return torch.FloatTensor([reward(query, response) for response in responses]).to(
