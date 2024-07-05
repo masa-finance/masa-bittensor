@@ -25,10 +25,6 @@ def check_uid_availability(
     # Filter out non validator permit.
     if metagraph.validator_permit[uid]:
 
-        # Filter out neurons who are validators
-        if metagraph.S[uid] > vpermit_tao_limit:
-            return False
-
         # Filter out uid without IP.
         if metagraph.neurons[uid].axon_info.ip == "0.0.0.0":
             return False
@@ -130,13 +126,13 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         candidate_uids = remove_excluded_uids(avail_uids, exclude)
 
         healthy_uids, _ = await ping_uids(dendrite, self.metagraph, candidate_uids)
-        filtered_uids = filter_duplicated_axon_ips_for_uids(
-            healthy_uids, self.metagraph
-        )
+        # filtered_uids = filter_duplicated_axon_ips_for_uids(
+        #     healthy_uids, self.metagraph
+        # )
 
-        k = min(k, len(filtered_uids))
+        k = min(k, len(healthy_uids))
         # Random sampling
-        random_sample = random.sample(filtered_uids, k)
+        random_sample = random.sample(healthy_uids, k)
         print(f"Random sample: {random_sample}")
 
         uids = torch.tensor(random_sample)
