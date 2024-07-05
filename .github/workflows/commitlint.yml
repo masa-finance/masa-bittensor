@@ -1,7 +1,6 @@
 name: Commitlint
 
 on:
-  push:
   pull_request:
 
 jobs:
