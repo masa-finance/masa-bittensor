@@ -63,12 +63,11 @@ class Forwarder:
         
         if(len(valid_miner_uids) > 0):
             self.validator.update_scores(rewards, valid_miner_uids)
-        
-         
-            try:
-                self.validator.set_weights()
-            except Exception as e:
-                bt.logging.error(f"Failed to set weights: {e}")
+            if self.validator.should_set_weights():
+                try:
+                    self.validator.set_weights()
+                except Exception as e:
+                    bt.logging.error(f"Failed to set weights: {e}")
             
         return parsed_responses
 
