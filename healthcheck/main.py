@@ -10,6 +10,9 @@ import threading
 import asyncio
 
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
 from masa.base.healthcheck import PingMiner
 
 
@@ -271,3 +274,65 @@ update_thread.start()
 async def get_axons_rest():
     return { "axons": axons_cache }
 
+@app.post("/axon/call/{uid}")
+async def call_axon(uid: int, request: Request):
+    """
+    Calls a specific method on the axon identified by the given UID.
+
+    Args:
+        uid (int): The UID of the axon.
+        request (Request): The incoming request object containing method, path, body, etc.
+
+    Returns:
+        Response: The response from the axon.
+    """
+    # Find the axon with the given UID
+    axon = next((axon for axon in axons_cache if axon["uid"] == uid), None)
+    
+    if not axon:
+        return JSONResponse(status_code=404, content={"message": "Axon not found"})
+
+    # Validate that the axon is connected
+    if axon["status"] != "connected":
+        return JSONResponse(status_code=400, content={"message": "Axon is not connected"})
+    
+    # Extract method, path, and body from the request
+    request_data = await request.json()
+    method = request_data.get("method")
+    path = request_data.get("path")
+    body = request_data.get("body", {})
+
+    if not method or not path:
+        return JSONResponse(status_code=400, content={"message": "Method and path are required"})
+    
+    
+    # Construct the URL
+    url = f"http://{axon['ip']}:8000/{path}"
+    
+    if axon['ip'] == external_ip:
+        url = f"http://localhost:8000/{path}"
+        
+    print(f"IP: {axon['ip']}")
+    print(f"path: {path}")
+    print(f"method: {method}")
+    print(f"URL: {url}")
+    
+    
+    # Forward the request to the axon
+    async with httpx.AsyncClient() as client:
+        if method.upper() == "GET":
+            response = await client.get(url, params=body)
+        elif method.upper() == "POST":
+            response = await client.post(url, json=body)
+        elif method.upper() == "PUT":
+            response = await client.put(url, json=body)
+        elif method.upper() == "DELETE":
+            response = await client.delete(url, json=body)
+        elif method.upper() == "PATCH":
+            response = await client.patch(url, json=body)
+        else:
+            return JSONResponse(status_code=405, content={"message": "Method not allowed"})
+        
+    print(f"RESPONSE: {response.status_code}")
+    
+    return JSONResponse(status_code=response.status_code, content=response.json())
