@@ -13,8 +13,6 @@ RUN pip install httpx
 RUN pip install fastapi-cli
 RUN pip install asyncpg
 
-COPY healthcheck/.env /app/.env
-
 
 # Make port 4000 available to the world outside this container
 EXPOSE 4000
