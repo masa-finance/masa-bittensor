@@ -22,7 +22,7 @@ app = FastAPI()
 
 origins = [
     "http://localhost:3000",
-    "http://localhost",
+    "https://bittensor-test-tool.vercel.app",
 ]
 
 app.add_middleware(
