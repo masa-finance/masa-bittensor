@@ -17,7 +17,21 @@ from datetime import datetime, timezone
 
 from masa.base.healthcheck import PingMiner
 
+nest_asyncio.apply()
+app = FastAPI()
 
+origins = [
+    "http://localhost:3000",
+    "http://localhost",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 axons_cache = []
 
@@ -41,19 +55,6 @@ external_ip = get_external_ip()
 print(f"External IP: {external_ip}")
 
 
-nest_asyncio.apply()
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    expose_headers=["*"],  # Add this line to expose all headers
-    allow_headers=["*"],  # Add this line to allow all headers
-)
-
-    
 
 async def check_axon_health(axon):
     """
@@ -206,34 +207,8 @@ async def store_uptime_report(axon_pk: int, status: str):
 
     # Close the cursor and connection
     await db_connection.close()
-    
-from fastapi import FastAPI, HTTPException
 
-app = FastAPI()
 
-@app.post("/axons/setup/{subnet}")
-async def get_connected_axons(subnet: int, request: Request):
-    """
-    Get all connected axons by IP address and subnet ID.
-
-    Parameters:
-    subnet_id (int): The subnet ID to query.
-    request (Request): The incoming request object containing the IP address.
-
-    Returns:
-    List[dict]: A list of connected axons with the given IP address.
-    """
-    try:
-        request_data = await request.json()
-        ip = request_data.get("ip")
-        if not ip:
-            raise HTTPException(status_code=400, detail="IP address is required")
-        
-        connected_axons = await get_connected_axons_by_ip(ip, subnet)
-        return {"connected_axons": connected_axons}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
 async def get_connected_axons_by_ip(ip: str, subnet_id: int):
     """
     Given an IP address, get all the connected axons.
@@ -318,13 +293,14 @@ async def get_connected_axons_by_ip(ip: str, subnet_id: int):
     finally:
         print("FINISHED")
         
-    print(connected_axon_uids)
-        
     for axon in connected_axons:
         if axon["uid"] in healthy_unhealthy_validators:
             axon["vpermit"] = False
             
     connected_axons = [axon for axon in connected_axons if axon["uid"] in connected_axon_uids]
+    
+    for axon in connected_axons:
+        axon["status"] = "connected"
 
     return connected_axons
 
@@ -384,16 +360,18 @@ async def get_axons(subnet_id: int):
     try:
         healthy_miners, _ = await ping_uids(dendrite, subnet, miner_uids)
         healthy_validators = await get_axon_health_status(validators_uids, subnet)
-        connected_axons = healthy_miners + healthy_validators
         unhealthy_validators = [uid for uid in validators_uids if uid not in healthy_validators]
         if unhealthy_validators:
             healthy_unhealthy_validators, _ = await ping_uids(dendrite, subnet, unhealthy_validators)
             healthy_validators.extend(healthy_unhealthy_validators)
+        connected_axons = healthy_miners + healthy_validators
     except Exception as e:
         bt.logging.error(message=f"Failed to get random miner uids: {e}")
         return None
     finally:
         print("FINISHED")
+        
+        
 
     for axon in axons:
         if axon["uid"] in connected_axons:
@@ -486,6 +464,8 @@ async def get_axons_rest():
     return { "axons": [dict(axon) for axon in axons] }
 
 
+
+
 @app.get("/axon/uptime/{subnet}/{uid}")
 async def get_axon_uptime(subnet: int, uid: int):
     conn = await asyncpg.connect("postgresql://masa:FAxqyUSSRo6Esh9BRUoZdRyfVbW6vgDo@dpg-cq4o8f5ds78s73cnlju0-a.oregon-postgres.render.com/inspector")
@@ -510,6 +490,32 @@ async def get_axon_uptime(subnet: int, uid: int):
     await conn.close()
     
     return { "uptime": [dict(record) for record in uptime_records] }
+
+
+
+@app.post("/axons/setup/{subnet}")
+async def get_connected_axons(subnet: int, request: Request):
+    """
+    Get all connected axons by IP address and subnet ID.
+
+    Parameters:
+    subnet_id (int): The subnet ID to query.
+    request (Request): The incoming request object containing the IP address.
+
+    Returns:
+    List[dict]: A list of connected axons with the given IP address.
+    """
+    try:
+        request_data = await request.json()
+        ip = request_data.get("ip")
+        if not ip:
+            raise HTTPException(status_code=400, detail="IP address is required")
+        
+        connected_axons = await get_connected_axons_by_ip(ip, subnet)
+        return {"connected_axons": connected_axons}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
 
 @app.post("/axon/call/{uid}")
