@@ -11,7 +11,7 @@ import asyncio
 import asyncpg
 
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import Request
+from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from datetime import datetime, timezone
 
@@ -185,7 +185,7 @@ async def store_uptime_report(axon_pk: int, status: str):
     # Get the current timestamp in UTC
     timestamp = datetime.now()
     
-    db_connection = await asyncpg.connect("postgresql://masa:FAxqyUSSRo6Esh9BRUoZdRyfVbW6vgDo@dpg-cq4o8f5ds78s73cnlju0-a.oregon-postgres.render.com/inspector")
+    db_connection = await asyncpg.connect(os.getenv("POSTGRES_URL"))
     
 
     # Assuming you have a database connection and a cursor
@@ -388,7 +388,7 @@ async def get_axons(subnet_id: int):
 
 
     # Store or update axons in the database
-    conn = await asyncpg.connect("postgresql://masa:FAxqyUSSRo6Esh9BRUoZdRyfVbW6vgDo@dpg-cq4o8f5ds78s73cnlju0-a.oregon-postgres.render.com/inspector")
+    conn = await asyncpg.connect(os.getenv("POSTGRES_URL"))
     
     await conn.execute('''
         CREATE TABLE IF NOT EXISTS axons (
@@ -456,7 +456,7 @@ update_thread.start()
 
 @app.get("/axons/{subnet}")
 async def get_axons_rest():
-    conn = await asyncpg.connect("postgresql://masa:FAxqyUSSRo6Esh9BRUoZdRyfVbW6vgDo@dpg-cq4o8f5ds78s73cnlju0-a.oregon-postgres.render.com/inspector")
+    conn = await asyncpg.connect(os.getenv("POSTGRES_URL"))
     axons = await conn.fetch('SELECT * FROM axons')
     
     
@@ -468,7 +468,7 @@ async def get_axons_rest():
 
 @app.get("/axon/uptime/{subnet}/{uid}")
 async def get_axon_uptime(subnet: int, uid: int):
-    conn = await asyncpg.connect("postgresql://masa:FAxqyUSSRo6Esh9BRUoZdRyfVbW6vgDo@dpg-cq4o8f5ds78s73cnlju0-a.oregon-postgres.render.com/inspector")
+    conn = await asyncpg.connect(os.getenv("POSTGRES_URL"))
     
     axon = await conn.fetchrow('''
         SELECT * FROM axons 
