@@ -10,7 +10,7 @@ NETUID = 1
 SUBTENSOR_ENVIRONMENT = chain_endpoint ws://100.28.51.29:9945
 ```
 
-## Register Wallet to Subnet
+## Register Wallet to Testnet
 
 Register your `miner` to the subnet (`1`):
 
