@@ -413,7 +413,7 @@ async def get_axons(subnet_id: int):
     ''')
     
     for axon in axons:
-        pk = f"{subnet_id}_ws://54.205.45.3:9945_{axon['ip']}_{axon['hotkey']}"
+        pk = f"{subnet_id}_ws://54.205.45.3:9945_{axon['ip']}_{axon['port']}_{axon['hotkey']}"
         existing_axon = await conn.fetchrow('SELECT * FROM axons WHERE pk = $1', pk)
         if existing_axon:
             timestamp = None
@@ -464,6 +464,33 @@ async def get_axons_rest():
     return { "axons": [dict(axon) for axon in axons] }
 
 
+@app.get("/weights/{subnet}")
+async def get_weights(subnet: int):
+    # Assuming `bt` is the Bittensor module and `metagraph` is accessible
+    try:
+        conn = await asyncpg.connect(os.getenv("POSTGRES_URL"))
+
+        metagraph = bt.metagraph(subnet, "ws://54.205.45.3:9945", lite=False)
+
+        weights = metagraph.weights.tolist()
+        uids = metagraph.uids.tolist()
+        weights_with_uids = [{"uid": uid, "weight": weight} for uid, weight in zip(uids, weights)]
+        axons = await conn.fetch('SELECT * FROM axons')
+        axons_info = []
+        for axon in axons:
+            axon_dict = dict(axon)
+            uid = axon_dict['uid']
+            weight = next((w for u, w in zip(uids, weights) if u == uid), None)
+            if weight is not None:
+                axon_dict['weight'] = weight
+            axons_info.append(axon_dict)
+        return { "weights_with_uids": weights_with_uids }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"message": str(e)})
+
+
+
+
 
 
 @app.get("/axon/uptime/{subnet}/{uid}")
@@ -478,7 +505,8 @@ async def get_axon_uptime(subnet: int, uid: int):
     if not axon:
         return JSONResponse(status_code=404, content={"message": "Axon not found"})
     # Fetch the last up to 60 uptime records for the given axon on the specified subnet from the uptime table
-    pk = f"{subnet}_ws://54.205.45.3:9945_{axon['ip']}_{axon['hotkey']}"
+    pk = f"{subnet}_ws://54.205.45.3:9945_{axon['ip']}_{axon['port']}_{axon['hotkey']}"
+
 
     uptime_records = await conn.fetch('''
         SELECT * FROM uptime 
