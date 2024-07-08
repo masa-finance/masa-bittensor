@@ -413,7 +413,7 @@ async def get_axons(subnet_id: int):
     ''')
     
     for axon in axons:
-        pk = f"{subnet_id}_ws://54.205.45.3:9945_{axon['ip']}_{axon['port']}_{axon['hotkey']}"
+        pk = f"{subnet_id}_ws://54.205.45.3:9945_{axon['uid']}_{axon['hotkey']}"
         existing_axon = await conn.fetchrow('SELECT * FROM axons WHERE pk = $1', pk)
         if existing_axon:
             timestamp = None
@@ -489,7 +489,45 @@ async def get_weights(subnet: int):
         return JSONResponse(status_code=500, content={"message": str(e)})
 
 
+@app.get("/leaderboard/{subnet}")
+async def get_leaderboard(subnet: int):
+    try:
+        conn = await asyncpg.connect(os.getenv("POSTGRES_URL"))
 
+        # Fetch axons and their trust values
+        axons = await conn.fetch('SELECT * FROM axons')
+        if not axons:
+            return JSONResponse(status_code=404, content={"message": "No axons found for the given subnet"})
+
+        # Calculate uptime percentage for each axon in the last 24 hours
+        leaderboard = []
+        for axon in axons:
+            axon_dict = dict(axon)
+            pk = f"{subnet}_ws://54.205.45.3:9945_{axon_dict['uid']}_{axon_dict['hotkey']}"
+            
+            uptime_records = await conn.fetch('''
+                SELECT * FROM uptime 
+                WHERE pk = $1 AND timestamp >= NOW() - INTERVAL '24 HOURS'
+            ''', pk)
+            
+            total_records = len(uptime_records)
+            uptime_percentage = sum(record['status'] == 'connected' for record in uptime_records) / total_records if total_records > 0 else 0
+            
+            if uptime_percentage > 0:
+                axon_dict['uptime_percentage'] = uptime_percentage
+                leaderboard.append(axon_dict)
+
+        # Sort axons based on trust value and uptime percentage
+        leaderboard.sort(key=lambda x: (x['trust'], x['uptime_percentage']), reverse=True)
+
+        # Assign positions
+        for position, axon in enumerate(leaderboard, start=1):
+            axon['position'] = position
+
+        await conn.close()
+        return {"leaderboard": leaderboard}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"message": str(e)})
 
 
 
@@ -505,7 +543,7 @@ async def get_axon_uptime(subnet: int, uid: int):
     if not axon:
         return JSONResponse(status_code=404, content={"message": "Axon not found"})
     # Fetch the last up to 60 uptime records for the given axon on the specified subnet from the uptime table
-    pk = f"{subnet}_ws://54.205.45.3:9945_{axon['ip']}_{axon['port']}_{axon['hotkey']}"
+    pk = f"{subnet}_ws://54.205.45.3:9945_{axon['uid']}_{axon['hotkey']}"
 
 
     uptime_records = await conn.fetch('''
