@@ -353,8 +353,8 @@ async def get_axons(subnet_id: int):
         axon["last_update"] = last_update[uid]
         axon["trust"] = trust[uid]
 
-    validators_uids = [uid for axon, uid in zip(axons, uids) if axon["vpermit"] or axon['staked_amount'] > 100]
-    miner_uids = [uid for axon, uid in zip(axons, uids) if not (axon["vpermit"] or axon['staked_amount'] > 100)]
+    validators_uids = [uid for axon, uid in zip(axons, uids) if axon["vpermit"]]
+    miner_uids = [uid for axon, uid in zip(axons, uids) if not axon["vpermit"]]
     wallet = bt.wallet("validator")
     dendrite = bt.dendrite(wallet=wallet)
     healthy_unhealthy_validators = None
