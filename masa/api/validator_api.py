@@ -15,6 +15,7 @@ from masa.validator.discord.guild_channels.forward import DiscordGuildChannelsFo
 from masa.validator.discord.user_guilds.forward import DiscordUserGuildsForwarder
 from masa.validator.discord.profile.forward import DiscordProfileForwarder
 from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
+from fastapi.middleware.cors import CORSMiddleware
 
 
 class ValidatorAPI:
@@ -23,6 +24,15 @@ class ValidatorAPI:
         self.port = int(os.getenv("VALIDATOR_API_PORT", "8000"))
         self.validator = validator
         self.app = FastAPI()
+        
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
 
         self.app.add_api_route(
             "/data/twitter/profile/{username}",
@@ -113,6 +123,14 @@ class ValidatorAPI:
             response_description="Get the axons for the given metagraph",
             tags=["metagraph"],
         )
+        self.app.add_api_route(
+            "/healthcheck",
+            self.healthcheck,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get healthcheck status",
+            tags=["metagraph"],
+        )
 
         self.start_server()
 
@@ -120,54 +138,79 @@ class ValidatorAPI:
         all_responses = await TwitterProfileForwarder(self.validator).forward_query(
             query=username
         )
-        return all_responses[0]
+        if all_responses:
+            return all_responses[0]
+        return []
 
     async def get_twitter_followers(self, username: str):
         all_responses = await TwitterFollowersForwarder(self.validator).forward_query(
             query=username
         )
-        return all_responses[0]
+        if all_responses:
+            return all_responses[0]
+        return []
 
     async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
         all_responses = await TwitterTweetsForwarder(self.validator).forward_query(
             tweet_query=tweet_query
         )
-        return all_responses[0]
+        if all_responses:
+            return all_responses[0]
+        return []
 
     async def scrape_web(self, web_scraper_query: WebScraperQuery):
         all_responses = await WebScraperForwarder(self.validator).forward_query(
             web_scraper_query=web_scraper_query
         )
-        return all_responses[0]
+        if all_responses:
+            return all_responses[0]
+        return []
 
     async def get_discord_profile(self, user_id: str):
         all_responses = await DiscordProfileForwarder(self.validator).forward_query(
             query=user_id
         )
-        return all_responses[0]
+        if all_responses:
+            return all_responses[0]
+        return []
 
     async def get_discord_channel_messages(self, channel_id: str):
         all_responses = await DiscordChannelMessagesForwarder(
             self.validator
         ).forward_query(query=channel_id)
-        return all_responses[0]
+        if all_responses:
+            return all_responses[0]
+        return []
 
     async def get_discord_guild_channels(self, guild_id: str):
         all_responses = await DiscordGuildChannelsForwarder(
             self.validator
         ).forward_query(query=guild_id)
-        return all_responses[0]
+        if all_responses:
+            return all_responses[0]
+        return []
 
     async def get_discord_user_guilds(self):
         all_responses = await DiscordUserGuildsForwarder(self.validator).forward_query()
-        return all_responses[0]
+        if all_responses:
+            return all_responses[0]
+        return []
 
     async def get_discord_all_guilds(self):
         all_responses = await DiscordAllGuildsForwarder(self.validator).forward_query()
-        return all_responses[0]
+        if all_responses:
+            return all_responses[0]
+        return []
 
     def get_axons(self):
         return self.validator.metagraph.axons
+    
+    def healthcheck(self):
+        return {
+            "coldkey": self.validator.wallet.coldkeypub.ss58_address,
+            "hotkey": self.validator.wallet.hotkey.ss58_address,
+            "is_active": True
+        }
 
     def start_server(self):
         config = uvicorn.Config(app=self.app, host=self.host, port=self.port)

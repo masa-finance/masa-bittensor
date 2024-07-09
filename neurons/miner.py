@@ -33,22 +33,7 @@ from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
 from masa.miner.web.scraper import WebScraperQuery, WebScraperRequest
 from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
 from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
-
-
-class PingMiner(bt.Synapse):
-    sent_from: typing.Optional[str]
-    is_active: typing.Optional[bool]
-
-    def deserialize(self) -> str:
-        return self.sent_from
-
-
-def forward_ping(synapse: PingMiner) -> PingMiner:
-    synapse.is_active = True
-    bt.logging.error(f"Got ping from {synapse.sent_from}")
-
-    return synapse
-
+from masa.base.healthcheck import forward_ping
 
 delay = 0
 
