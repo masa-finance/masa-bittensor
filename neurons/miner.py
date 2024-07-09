@@ -235,7 +235,10 @@ class Miner(BaseMinerNeuron):
         blocks_since_last_check = (
             self.subtensor.get_current_block() - last_checked_block
         )
-        if blocks_since_last_check >= self.tempo:
+        if (
+            blocks_since_last_check
+            >= self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+        ):
             bt.logging.info(
                 f"A tempo has passed.  Blocks since last check: {blocks_since_last_check}"
             )
