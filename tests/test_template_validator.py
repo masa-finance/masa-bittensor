@@ -37,7 +37,7 @@ class TemplateValidatorNeuronTestCase(unittest.TestCase):
     The `reward` attribute of all RewardEvents is expected to be a float, and the `is_filter_model` attribute is expected to be a boolean.
     """
 
-    def setUp(self):
+    async def setUp(self):
         sys.argv = sys.argv[0] + ["--config", "tests/configs/validator.json"]
 
         config = BaseValidatorNeuron.config()
@@ -45,7 +45,7 @@ class TemplateValidatorNeuronTestCase(unittest.TestCase):
         config.metagraph._mock = True
         config.subtensor._mock = True
         self.neuron = Validator(config)
-        self.miner_uids = get_random_uids(self, k=10)
+        self.miner_uids = await get_random_uids(self, k=10)
 
     def test_run_single_step(self):
         # TODO: Test a single step

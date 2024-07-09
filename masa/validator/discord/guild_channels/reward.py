@@ -20,15 +20,19 @@
 import torch
 import bittensor as bt
 from typing import List
-from masa.types.discord import DiscordChannelMessageObject
+from masa.types.discord import DiscordGuildChannelObject
 
 
-def reward(query: str, response: List[DiscordChannelMessageObject]) -> float:
+def reward(query: str, response: List[DiscordGuildChannelObject]) -> float:
     # Return a reward of 0.0 if the response is None
     if response is None:
         return 0.0
     bt.logging.info(f"Getting discord response from {response}")
-    guild_id = response.get("guild_id", "")
+
+    # Convert dictionaries to DiscordGuildChannelObject instances
+    channels = [DiscordGuildChannelObject(**channel) for channel in response]
+
+    guild_id = channels[0].get("guild_id")
     bt.logging.info(f"Calculating reward for discord response {guild_id}")
 
     if guild_id == query:
@@ -40,7 +44,7 @@ def reward(query: str, response: List[DiscordChannelMessageObject]) -> float:
 def get_rewards(
     self,
     query: str,
-    responses: DiscordChannelMessageObject,
+    responses: List[List[DiscordGuildChannelObject]],
 ) -> torch.FloatTensor:
     bt.logging.info("Getting rewards...")
     return torch.FloatTensor([reward(query, response) for response in responses]).to(

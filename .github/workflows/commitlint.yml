@@ -1,7 +1,6 @@
 name: Commitlint
 
 on:
-  push:
   pull_request:
 
 jobs:
@@ -9,5 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Commitlint
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
       - name: Run commitlint
         uses: opensource-nepal/commitlint@v1

@@ -12,7 +12,7 @@ INCENTIVIZED_TESTNET = chain_endpoint $(INCENTIVIZED_TESTNET_ENDPOINT)
 
 TESTNET = network test
 
-NETUID = 1 # devnet
+NETUID = 2 # devnet
 # NETUID = 165 # testnet
 
 
