@@ -279,7 +279,7 @@ async def get_connected_axons_by_ip(ip: str, subnet_id: int):
     wallet = bt.wallet("validator")
     dendrite = bt.dendrite(wallet=wallet)
 
-    healthy_unhealthy_validators = None
+    healthy_unhealthy_validators = []
     try:
         healthy_miners, _ = await ping_uids(dendrite, subnet, miner_uids)
         healthy_validators = await get_axon_health_status(validators_uids, subnet)
@@ -357,7 +357,7 @@ async def get_axons(subnet_id: int):
     miner_uids = [uid for axon, uid in zip(axons, uids) if not axon["vpermit"]]
     wallet = bt.wallet("validator")
     dendrite = bt.dendrite(wallet=wallet)
-    healthy_unhealthy_validators = None
+    healthy_unhealthy_validators = []
     try:
         healthy_miners, _ = await ping_uids(dendrite, subnet, miner_uids)
         healthy_validators = await get_axon_health_status(validators_uids, subnet)
@@ -430,11 +430,12 @@ async def get_axons(subnet_id: int):
                     UPDATE axons SET version=$1, port=$2, ip_type=$3, coldkey=$4, protocol=$5, status=$6, staked_amount=$7, uid=$8, vpermit=$9, dividends=$10, incentive=$11, trust=$12, last_update=$13 WHERE pk=$14
                 ''', axon['version'], axon['port'], axon['ip_type'], axon['coldkey'], axon['protocol'], axon['status'], axon['staked_amount'], axon['uid'], axon['vpermit'], axon['dividends'], axon['incentive'], axon['trust'], axon['last_update'], pk)
         else:
-            await conn.execute('''
-                INSERT INTO axons(pk, version, ip, port, ip_type, hotkey, coldkey, protocol, status, staked_amount, uid, vpermit, dividends, incentive, trust, last_update) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-            ''', pk, axon['version'], axon['ip'], axon['port'], axon['ip_type'], axon['hotkey'], axon['coldkey'],
-               axon['protocol'], axon['status'], axon['staked_amount'],
-               axon['uid'], axon['vpermit'], axon['dividends'], axon['incentive'], axon['trust'], axon['last_update'])
+            if(axon['ip' != '0.0.0.0']):
+                await conn.execute('''
+                    INSERT INTO axons(pk, version, ip, port, ip_type, hotkey, coldkey, protocol, status, staked_amount, uid, vpermit, dividends, incentive, trust, last_update) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                ''', pk, axon['version'], axon['ip'], axon['port'], axon['ip_type'], axon['hotkey'], axon['coldkey'],
+                axon['protocol'], axon['status'], axon['staked_amount'],
+                axon['uid'], axon['vpermit'], axon['dividends'], axon['incentive'], axon['trust'], axon['last_update'])
         await store_uptime_report(pk, axon['status'])
     await conn.close()
     
@@ -448,11 +449,11 @@ async def periodic_axons_update():
         await asyncio.sleep(60)
 
 
-def start_periodic_update():
-    asyncio.run(periodic_axons_update())
+# def start_periodic_update():
+#     asyncio.run(periodic_axons_update())
 
-update_thread = threading.Thread(target=start_periodic_update)
-update_thread.start()
+# update_thread = threading.Thread(target=start_periodic_update)
+# update_thread.start()
 
 
 @app.get("/axons/{subnet}")
@@ -584,6 +585,59 @@ async def get_connected_axons(subnet: int, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
     
 
+
+@app.post("/axon/call_all")
+async def call_all_axons_with_vpermit(request: Request):
+    """
+    Calls a specific method on all axons with vpermit.
+
+    Args:
+        request (Request): The incoming request object containing method, path, body, etc.
+
+    Returns:
+        List[dict]: An array of responses from the axons.
+    """
+    responses = []
+
+    # Extract method, path, and body from the request
+    request_data = await request.json()
+    method = request_data.get("method")
+    path = request_data.get("path")
+    body = request_data.get("body", {})
+
+    if not method or not path:
+        return JSONResponse(status_code=400, content={"message": "Method and path are required"})
+
+    for axon in axons_cache:
+        if axon.get("vpermit"):
+            # Validate that the axon is connected
+            if axon["status"] != "connected":
+                responses.append({"axon": axon, "response": {"status_code": 400, "message": "Axon is not connected"}})
+                continue
+
+            # Construct the URL
+            url = f"http://{axon['ip']}:8000/{path}"
+            if axon['ip'] == external_ip:
+                url = f"http://localhost:8000/{path}"
+
+            # Forward the request to the axon
+            async with httpx.AsyncClient() as client:
+                try:
+                    if method.upper() == "GET":
+                        response = await client.get(url, params=body)
+                    elif method.upper() == "POST":
+                        response = await client.post(url, json=body)
+                    elif method.upper() == "PUT":
+                        response = await client.put(url, json=body)
+                    else:
+                        responses.append({"axon": axon, "response": {"status_code": 400, "message": "Invalid method"}})
+                        continue
+
+                    responses.append({"axon": axon, "response": response.json()})
+                except Exception as e:
+                    responses.append({"axon": axon, "response": {"status_code": 500, "message": str(e)}})
+
+    return responses
 
 @app.post("/axon/call/{uid}")
 async def call_axon(uid: int, request: Request):
