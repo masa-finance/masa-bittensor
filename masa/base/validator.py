@@ -83,6 +83,8 @@ class BaseValidatorNeuron(BaseNeuron):
         self.is_running: bool = False
         self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
+        
+        self.run_in_background_thread()
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -140,7 +142,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # This loop maintains the validator's operations until intentionally stopped.
         try:
-            while True and self.config.neuron.autorun:
+            while True:
                 bt.logging.info(f"step({self.step}) block({self.block})")
 
                 # Run multiple forwards concurrently.
@@ -229,13 +231,14 @@ class BaseValidatorNeuron(BaseNeuron):
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
 
         bt.logging.debug("raw_weights", raw_weights)
+        bt.logging.debug("NET UID",  self.config.netuid)
         # bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
         # Process the raw weights to final_weights via subtensor limitations.
         (
             processed_weight_uids,
             processed_weights,
         ) = bt.utils.weight_utils.process_weights_for_netuid(
-            uids=torch.from_numpy(self.metagraph.uids).to("cpu"),
+            uids=self.metagraph.uids,
             weights=raw_weights.to("cpu").numpy(),
             netuid=self.config.netuid,
             subtensor=self.subtensor,

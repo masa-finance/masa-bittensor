@@ -1,0 +1,24 @@
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the current directory contents into the container at /app
+COPY . /app
+
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install httpx
+RUN pip install fastapi-cli
+RUN pip install asyncpg
+
+
+# Make port 4000 available to the world outside this container
+EXPOSE 4000
+
+RUN btcli wallet regen_coldkey --wallet.path /root/.bittensor/wallets --mnemonic "rib volume tomato layer powder evolve supreme hip blood enough drop cable" --no_password --wallet.name validator
+RUN btcli wallet regen_hotkey --wallet.path /root/.bittensor/wallets --wallet.name validator --wallet.hotkey default --mnemonic forum leopard person there tribe cube kidney corn confirm off develop dice
+
+# Run healthcheck/main.py when the container launches
+CMD ["uvicorn", "healthcheck.main:app", "--host", "0.0.0.0", "--port", "4000"]
