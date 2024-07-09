@@ -34,6 +34,7 @@ app.add_middleware(
 )
 
 axons_cache = []
+subtensor = "ws://100.28.51.29:9945"
 
 def get_external_ip() -> str:
     """
@@ -220,7 +221,7 @@ async def get_connected_axons_by_ip(ip: str, subnet_id: int):
     Returns:
     List[dict]: A list of connected axons with the given IP address.
     """
-    subnet = bt.metagraph(subnet_id, "ws://54.205.45.3:9945", lite=False)
+    subnet = bt.metagraph(subnet_id, subtensor, lite=False)
     subnet.sync()
 
     axons = [
@@ -306,7 +307,7 @@ async def get_connected_axons_by_ip(ip: str, subnet_id: int):
 
 
 async def get_axons(subnet_id: int):
-    subnet = bt.metagraph(subnet_id, "ws://54.205.45.3:9945", lite=False)
+    subnet = bt.metagraph(subnet_id, subtensor, lite=False)
     subnet.sync()
     min_tao_required_for_vpermit = 10
     
@@ -413,7 +414,7 @@ async def get_axons(subnet_id: int):
     ''')
     
     for axon in axons:
-        pk = f"{subnet_id}_ws://54.205.45.3:9945_{axon['uid']}_{axon['hotkey']}"
+        pk = f"{subnet_id}_{subtensor}_{axon['uid']}_{axon['hotkey']}"
         existing_axon = await conn.fetchrow('SELECT * FROM axons WHERE pk = $1', pk)
         if existing_axon:
             timestamp = None
@@ -470,7 +471,7 @@ async def get_weights(subnet: int):
     try:
         conn = await asyncpg.connect(os.getenv("POSTGRES_URL"))
 
-        metagraph = bt.metagraph(subnet, "ws://54.205.45.3:9945", lite=False)
+        metagraph = bt.metagraph(subnet, subtensor, lite=False)
 
         weights = metagraph.weights.tolist()
         uids = metagraph.uids.tolist()
@@ -503,7 +504,7 @@ async def get_leaderboard(subnet: int):
         leaderboard = []
         for axon in axons:
             axon_dict = dict(axon)
-            pk = f"{subnet}_ws://54.205.45.3:9945_{axon_dict['uid']}_{axon_dict['hotkey']}"
+            pk = f"{subnet}_{subtensor}_{axon_dict['uid']}_{axon_dict['hotkey']}"
             
             uptime_records = await conn.fetch('''
                 SELECT * FROM uptime 
@@ -543,7 +544,7 @@ async def get_axon_uptime(subnet: int, uid: int):
     if not axon:
         return JSONResponse(status_code=404, content={"message": "Axon not found"})
     # Fetch the last up to 60 uptime records for the given axon on the specified subnet from the uptime table
-    pk = f"{subnet}_ws://54.205.45.3:9945_{axon['uid']}_{axon['hotkey']}"
+    pk = f"{subnet}_{subtensor}_{axon['uid']}_{axon['hotkey']}"
 
 
     uptime_records = await conn.fetch('''
