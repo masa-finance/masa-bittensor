@@ -449,11 +449,11 @@ async def periodic_axons_update():
         await asyncio.sleep(60)
 
 
-# def start_periodic_update():
-#     asyncio.run(periodic_axons_update())
+def start_periodic_update():
+    asyncio.run(periodic_axons_update())
 
-# update_thread = threading.Thread(target=start_periodic_update)
-# update_thread.start()
+update_thread = threading.Thread(target=start_periodic_update)
+update_thread.start()
 
 
 @app.get("/axons/{subnet}")
