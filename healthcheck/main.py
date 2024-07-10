@@ -430,7 +430,7 @@ async def get_axons(subnet_id: int):
                     UPDATE axons SET version=$1, port=$2, ip_type=$3, coldkey=$4, protocol=$5, status=$6, staked_amount=$7, uid=$8, vpermit=$9, dividends=$10, incentive=$11, trust=$12, last_update=$13 WHERE pk=$14
                 ''', axon['version'], axon['port'], axon['ip_type'], axon['coldkey'], axon['protocol'], axon['status'], axon['staked_amount'], axon['uid'], axon['vpermit'], axon['dividends'], axon['incentive'], axon['trust'], axon['last_update'], pk)
         else:
-            if(axon['ip' != '0.0.0.0']):
+            if(axon['ip'] != '0.0.0.0'):
                 await conn.execute('''
                     INSERT INTO axons(pk, version, ip, port, ip_type, hotkey, coldkey, protocol, status, staked_amount, uid, vpermit, dividends, incentive, trust, last_update) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
                 ''', pk, axon['version'], axon['ip'], axon['port'], axon['ip_type'], axon['hotkey'], axon['coldkey'],
@@ -449,11 +449,11 @@ async def periodic_axons_update():
         await asyncio.sleep(60)
 
 
-def start_periodic_update():
-    asyncio.run(periodic_axons_update())
+# def start_periodic_update():
+#     asyncio.run(periodic_axons_update())
 
-update_thread = threading.Thread(target=start_periodic_update)
-update_thread.start()
+# update_thread = threading.Thread(target=start_periodic_update)
+# update_thread.start()
 
 
 @app.get("/axons/{subnet}")
