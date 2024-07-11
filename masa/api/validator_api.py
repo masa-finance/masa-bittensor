@@ -139,7 +139,7 @@ class ValidatorAPI:
             query=username
         )
         if all_responses:
-            return all_responses[0]
+            return all_responses
         return []
 
     async def get_twitter_followers(self, username: str):
@@ -147,7 +147,7 @@ class ValidatorAPI:
             query=username
         )
         if all_responses:
-            return all_responses[0]
+            return all_responses
         return []
 
     async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
@@ -155,7 +155,7 @@ class ValidatorAPI:
             tweet_query=tweet_query
         )
         if all_responses:
-            return all_responses[0]
+            return all_responses
         return []
 
     async def scrape_web(self, web_scraper_query: WebScraperQuery):
@@ -163,7 +163,7 @@ class ValidatorAPI:
             web_scraper_query=web_scraper_query
         )
         if all_responses:
-            return all_responses[0]
+            return all_responses
         return []
 
     async def get_discord_profile(self, user_id: str):
@@ -171,7 +171,7 @@ class ValidatorAPI:
             query=user_id
         )
         if all_responses:
-            return all_responses[0]
+            return all_responses
         return []
 
     async def get_discord_channel_messages(self, channel_id: str):
@@ -179,7 +179,7 @@ class ValidatorAPI:
             self.validator
         ).forward_query(query=channel_id)
         if all_responses:
-            return all_responses[0]
+            return all_responses
         return []
 
     async def get_discord_guild_channels(self, guild_id: str):
@@ -187,19 +187,19 @@ class ValidatorAPI:
             self.validator
         ).forward_query(query=guild_id)
         if all_responses:
-            return all_responses[0]
+            return all_responses
         return []
 
     async def get_discord_user_guilds(self):
         all_responses = await DiscordUserGuildsForwarder(self.validator).forward_query()
         if all_responses:
-            return all_responses[0]
+            return all_responses
         return []
 
     async def get_discord_all_guilds(self):
         all_responses = await DiscordAllGuildsForwarder(self.validator).forward_query()
         if all_responses:
-            return all_responses[0]
+            return all_responses
         return []
 
     def get_axons(self):
@@ -209,7 +209,8 @@ class ValidatorAPI:
         return {
             "coldkey": self.validator.wallet.coldkeypub.ss58_address,
             "hotkey": self.validator.wallet.hotkey.ss58_address,
-            "is_active": True
+            "is_active": True,
+            "name": self.validator.config.neuron.name
         }
 
     def start_server(self):

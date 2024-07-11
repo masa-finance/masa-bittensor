@@ -36,9 +36,7 @@ class Validator(BaseValidatorNeuron):
     async def forward(
         self, request="brendanplayford", type=RequestType.TWITTER_PROFILE.value
     ):
-        bt.logging.warning(
-            "Unused method forward is being called, please use Forwarder"
-        )
+        pass
 
     def update_weights(self, scores):
         # Example: Update weights (this is a placeholder for actual weight update logic)
