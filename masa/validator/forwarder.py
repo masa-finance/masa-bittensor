@@ -27,7 +27,7 @@ class Forwarder:
         self.validator = validator
 
     async def forward(
-        self, request, get_rewards, parser_object=None, parser_method=None, timeout=2
+        self, request, get_rewards, parser_object=None, parser_method=None, timeout=5
     ):
         # TODO: This should live inside each endpoint to enable us to filter miners by different parameters in the future
         # like blacklisting miners only on a specific endpoint like profiles or followers
