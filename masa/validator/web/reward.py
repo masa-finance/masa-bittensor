@@ -27,8 +27,12 @@ def reward(query: str, response: WebScraperObject) -> float:
     if response is None:
         return 0.0
     bt.logging.info(f"Getting web scraper response from {response}")
+
     # Extract length of response
-    pages_length = len(response["pages"])
+    pages_length = 0
+    if isinstance(response["pages"], list):
+        pages_length = len(response["pages"])
+
     bt.logging.info(f"Calculating reward for web scraper response {pages_length}")
 
     # Return a reward of 1 if the response is not empty and has a length
