@@ -33,8 +33,13 @@ def reward(query: str, response: TwitterProfileObject) -> float:
     bt.logging.info(f"Calculating reward for response {username.lower()}")
 
     # Return a reward of 1 if the username matches the query and userID is not None, otherwise return 0
+    score = 1.0
+    required_keys = TwitterProfileObject.__annotations__.keys()  # Get all required keys from TwitterProfileObject
+    missing_keys = sum(1 for key in required_keys if key not in response or response[key] is None)
+    score -= 0.1 * missing_keys
+
     if username.lower() == query.lower() and userID is not None:
-        return 1
+        return max(score, 0)  # Ensure the score doesn't go below 0
     else:
         return 0
 

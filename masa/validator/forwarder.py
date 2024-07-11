@@ -72,8 +72,19 @@ class Forwarder:
                     self.validator.set_weights()
                 except Exception as e:
                     bt.logging.error(f"Failed to set weights: {e}")
+                    
+        # Add corresponding uid to each response
+        response_with_uids = [
+            {"response": response, "uid": int(uid.item()), "score": score.item()}
+            for response, uid, score in zip(parsed_responses, valid_miner_uids, rewards)
+        ]
             
-        return parsed_responses
+        response_with_uids.sort(key=lambda x: x["score"], reverse=True)
+        
+        print("FINAL RESPONSES ------------------------------------------------")
+        print(response_with_uids)
+        
+        return response_with_uids
 
     def sanitize_responses_and_uids(self, responses, miner_uids):
         valid_responses = [response for response in responses if response is not None]
