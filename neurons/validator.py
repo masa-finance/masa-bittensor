@@ -36,7 +36,7 @@ class Validator(BaseValidatorNeuron):
     async def forward(
         self, request="brendanplayford", type=RequestType.TWITTER_PROFILE.value
     ):
-        bt.logging.warning(
+        bt.logging.trace(
             "Unused method forward is being called, please use Forwarder"
         )
 
