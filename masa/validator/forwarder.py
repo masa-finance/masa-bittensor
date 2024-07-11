@@ -18,6 +18,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 from masa.utils.uids import get_random_uids
+import bittensor as bt
 
 
 # this forwarder needs to able to handle multiple requests, driven off of an API request
