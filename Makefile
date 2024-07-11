@@ -21,6 +21,7 @@ NETUID = 1 # devnet
 ########################################################################
 # SUBTENSOR_ENVIRONMENT = $(LOCALNET)
 SUBTENSOR_ENVIRONMENT = $(INCENTIVIZED_TESTNET)
+# SUBTENSOR_ENVIRONMENT = $(DEVNET)
 # SUBTENSOR_ENVIRONMENT = $(TESTNET)
 
 
@@ -123,9 +124,12 @@ build-binary:
 run-localnet:
 	BUILD_BINARY=0 ./scripts/localnet.sh
 
-## Hyperparameters
+## Hyperparameters and metagraph
 hyperparameters:
 	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)
+
+metagraph:
+	btcli subnets metagraph --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)
 
 ########################################################################
 #####                   DOCKER COMPOSE COMMANDS                    #####
