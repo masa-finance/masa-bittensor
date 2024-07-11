@@ -42,7 +42,6 @@ def reward(query: str, response: TwitterProfileObject) -> float:
         return max(score, 0)  # Ensure the score doesn't go below 0
     else:
         return 0
-        return 0
 
 
 def get_rewards(
