@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install httpx
 RUN pip install fastapi-cli
 RUN pip install asyncpg
+RUN pip install cachetools
 
 
 # Make port 4000 available to the world outside this container
