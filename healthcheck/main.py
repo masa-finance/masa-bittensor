@@ -666,6 +666,47 @@ async def call_all_axons_with_vpermit(request: Request):
 
     return responses
 
+
+@app.get("/subnet/{subnet_id}/block")
+async def get_subnet_block(subnet_id: int):
+    try:
+        subnet_metagraph = bt.metagraph(subnet_id, subtensor, lite=False)
+        
+        current_block = subnet_metagraph.block
+        blocks_per_tempo = 360
+        seconds_per_block = 12
+
+        # Calculate the current tempo and the block within the current tempo
+        current_tempo = current_block // blocks_per_tempo
+        block_within_tempo = current_block % blocks_per_tempo
+        
+        # Calculate the estimated time left in the current tempo
+        time_left_seconds = (blocks_per_tempo - block_within_tempo) * seconds_per_block
+        time_left_minutes = time_left_seconds / 60
+
+        # Calculate the percentage of the current tempo completed
+        percentage_completed = (block_within_tempo / blocks_per_tempo) * 100
+
+        # Convert numpy int64 to Python int for JSON serialization
+        response = {
+            "current_block": int(current_tempo * blocks_per_tempo),
+            "current_tempo": int(current_tempo),
+            "block_within_tempo": int(block_within_tempo),
+            "time_left_minutes": float(time_left_minutes),
+            "percentage_completed": float(percentage_completed)
+        }
+
+        return JSONResponse(status_code=200, content=response)
+    
+    except Exception as e:
+        print("Exception", e)
+        
+        return JSONResponse(status_code=400, content={"message":"Block calculation failed", "error": e})
+
+        
+
+
+
 @app.post("/axon/call/{uid}")
 async def call_axon(uid: int, request: Request):
     """
