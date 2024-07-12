@@ -1,4 +1,4 @@
-name: Check PR title
+name: Check PR style
 
 on:
   pull_request_target:
