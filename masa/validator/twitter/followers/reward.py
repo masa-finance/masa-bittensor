@@ -27,7 +27,7 @@ def reward(query: str, response: List[TwitterFollowerObject]) -> float:
     # Return a reward of 0.0 if the response is None
     if response is None or len(response) == 0:
         return 0.0
-    bt.logging.info(f"Calculating reward for followers {len(response)}")
+    bt.logging.info(f"Calculating reward for followers: {len(response)}")
 
     score = 1.0
     required_keys = TwitterFollowerObject.__annotations__.keys()  # Get all required keys from TwitterFollowersObject

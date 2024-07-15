@@ -25,18 +25,16 @@ from masa.types.twitter import TwitterTweetObject
 
 def reward(query: str, response: List[TwitterTweetObject]) -> float:
     # Return a reward of 0.0 if the response is None
-    if response is None:
+    if response is None or len(response) == 0:
         return 0.0
-    bt.logging.info(f"Getting tweets from {response}")
-    # Extract length of response
-    length = len(response)
-    bt.logging.info(f"Calculating reward for tweets {length}")
+    bt.logging.info(f"Calculating reward for tweets: {len(response)}")
 
-    # Return a reward of 1 if the response is not empty and has a length
-    if length > 0:
-        return 1
-    else:
-        return 0
+    score = 1.0
+    required_keys = TwitterTweetObject.__annotations__.keys()  # Get all required keys from TwitterFollowersObject
+    missing_keys = sum(1 for key in required_keys for tweet in response if key not in tweet)
+    score -= 0.1 * missing_keys
+
+    return max(score, 0)
 
 
 def get_rewards(
