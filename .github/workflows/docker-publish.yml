@@ -82,6 +82,10 @@ jobs:
       - name: Display image tags
         run: |
           TAG=${{ github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
+          GITHUB_EVENT_NAME=github.event_name
+          GITHUB_EVENT_RELEASE_TAG=github.event.release.tag_name
+          echo "Got github event name: $GITHUB_EVENT_NAME"
+          echo "Got github event release tag: $GITHUB_EVENT_RELEASE_TAG"
           echo "The following images may have been built and pushed:"
           echo "ghcr.io/masa-finance/masa-bittensor/subtensor:$TAG"
           echo "ghcr.io/masa-finance/masa-bittensor/subnet:$TAG"
