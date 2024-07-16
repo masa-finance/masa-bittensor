@@ -26,7 +26,7 @@ class Forwarder:
         self.validator = validator
         
         
-    async def forward(self, request, get_rewards, parser_object = None, parser_method = None, timeout = 10):
+    async def forward(self, request, get_rewards, parser_object = None, parser_method = None, timeout = 20):
         miner_uids = await get_random_uids(self.validator, k=self.validator.config.neuron.sample_size)
         if miner_uids is None:
             return []

@@ -126,6 +126,11 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         candidate_uids = remove_excluded_uids(avail_uids, exclude)
 
         healthy_uids, _ = await ping_uids(dendrite, self.metagraph, candidate_uids)
+
+        # guard against deployed validators not finding any healthy ids via ping...
+        if (len(healthy_uids) == 0):
+            healthy_uids = candidate_uids
+
         # filtered_uids = filter_duplicated_axon_ips_for_uids(
         #     healthy_uids, self.metagraph
         # )
