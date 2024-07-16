@@ -29,7 +29,7 @@ class Forwarder:
         self.validator = validator
         
         
-    async def forward(self, request, get_rewards, parser_object = None, parser_method = None, timeout = 15):
+    async def forward(self, request, get_rewards, parser_object = None, parser_method = None, timeout = 10):
         miner_uids = await get_random_uids(self.validator, k=self.validator.config.neuron.sample_size)
         if miner_uids is None:
             return []
@@ -80,7 +80,7 @@ class Forwarder:
             for response, latency, uid, score in zip(parsed_responses, process_times, valid_miner_uids, rewards)
         ]
             
-        responses_with_metadata.sort(key=lambda x: (x["score"], x["latency"]), reverse=True)
+        responses_with_metadata.sort(key=lambda x: (-x["score"], x["latency"]))
         return responses_with_metadata
 
     def sanitize_responses_and_uids(self, responses, miner_uids):
