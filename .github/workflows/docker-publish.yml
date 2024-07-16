@@ -52,7 +52,7 @@ jobs:
           fi
 
       - name: Log in to GitHub Container Registry
-        if: steps.check_changes.outputs.changed == 'true'
+        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'release'
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
@@ -60,7 +60,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
-        if: steps.check_changes.outputs.changed == 'true'
+        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'release'
         run: |
           if [ "${{ matrix.image }}" == "subtensor" ]; then
             CONTEXT="./docker/subtensor"
@@ -72,7 +72,7 @@ jobs:
           docker push ghcr.io/masa-finance/masa-bittensor/${{ matrix.image }}:$TAG
 
       - name: Mark successful build
-        if: steps.check_changes.outputs.changed == 'true'
+        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'release'
         run: echo ${{ github.sha }} > last_successful_build_${{ matrix.image }}.txt
 
   display-tags:
