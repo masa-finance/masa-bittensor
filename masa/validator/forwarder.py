@@ -75,17 +75,13 @@ class Forwarder:
                     
 
         # Add corresponding uid to each response
-        response_with_uids = [
+        responses_with_metadata = [
             {"response": response, "uid": int(uid.item()), "score": score.item(), "latency": latency}
             for response, latency, uid, score in zip(parsed_responses, process_times, valid_miner_uids, rewards)
         ]
             
-        response_with_uids.sort(key=lambda x: x["score"], reverse=True)
-        
-        for response in response_with_uids:
-            print(response)
-        
-        return response_with_uids
+        responses_with_metadata.sort(key=lambda x: (x["score"], x["latency"]), reverse=True)
+        return responses_with_metadata
 
     def sanitize_responses_and_uids(self, responses, miner_uids):
         valid_responses = [response for response in responses if response is not None]
