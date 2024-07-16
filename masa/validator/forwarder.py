@@ -61,7 +61,7 @@ class Forwarder:
 
         # Score responses
         rewards = get_rewards(
-            self.validator, query=request.query, responses=parsed_responses, process_times=process_times
+            self.validator, query=request.query, responses=parsed_responses
         )
 
         # Update the scores based on the rewards
