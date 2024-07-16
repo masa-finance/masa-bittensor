@@ -20,9 +20,6 @@
 from masa.utils.uids import get_random_uids
 import bittensor as bt
 
-
-from masa.miner.masa_protocol_request import REQUEST_TIMEOUT_IN_SECONDS  # Import the constant
-import bittensor as bt
 # this forwarder needs to able to handle multiple requests, driven off of an API request
 class Forwarder:
     def __init__(self, validator):
