@@ -29,10 +29,10 @@ class Forwarder:
         self.validator = validator
         
         
-    async def forward(self, request, get_rewards, parser_object = None, parser_method = None, timeout = 2):
-        ### TODO: This should live inside each endpoint to enable us to filter miners by diffferent parameters in the future
-        ### like blacklisting miners only on a specific endpoint like profiles or followers
-        miner_uids = get_random_uids(self.validator, k=self.validator.config.neuron.sample_size)
+    async def forward(self, request, get_rewards, parser_object = None, parser_method = None, timeout = 15):
+        miner_uids = await get_random_uids(self.validator, k=self.validator.config.neuron.sample_size)
+        if miner_uids is None:
+            return []
         
         synapses = await self.validator.dendrite(
             axons=[self.validator.metagraph.axons[uid] for uid in miner_uids],
@@ -42,8 +42,6 @@ class Forwarder:
         )
 
         responses = [synapse.response for synapse in synapses]
-        process_times = [synapse.dendrite.process_time for synapse in synapses]
-        bt.logging.info(f"PROCESS TIMES: {process_times}")
 
         # Filter and parse valid responses
         valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(
@@ -58,13 +56,15 @@ class Forwarder:
         elif parser_method:
             parsed_responses = parser_method(valid_responses)
 
+
+        process_times = [synapse.dendrite.process_time for synapse, uid in zip(synapses, miner_uids) if uid in valid_miner_uids]
+
         # Score responses
         rewards = get_rewards(
-            self.validator, query=request.query, responses=parsed_responses
+            self.validator, query=request.query, responses=parsed_responses, process_times=process_times
         )
 
         # Update the scores based on the rewards
-
         if len(valid_miner_uids) > 0:
             self.validator.update_scores(rewards, valid_miner_uids)
             if self.validator.should_set_weights():
@@ -73,16 +73,17 @@ class Forwarder:
                 except Exception as e:
                     bt.logging.error(f"Failed to set weights: {e}")
                     
+
         # Add corresponding uid to each response
         response_with_uids = [
-            {"response": response, "uid": int(uid.item()), "score": score.item()}
-            for response, uid, score in zip(parsed_responses, valid_miner_uids, rewards)
+            {"response": response, "uid": int(uid.item()), "score": score.item(), "latency": latency}
+            for response, latency, uid, score in zip(parsed_responses, process_times, valid_miner_uids, rewards)
         ]
             
         response_with_uids.sort(key=lambda x: x["score"], reverse=True)
         
-        print("FINAL RESPONSES ------------------------------------------------")
-        print(response_with_uids)
+        for response in response_with_uids:
+            print(response)
         
         return response_with_uids
 
