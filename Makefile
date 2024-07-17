@@ -39,6 +39,10 @@ fund-validator-wallet:
 fund-miner-wallet:
 	btcli wallet faucet --wallet.name miner --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
+## Send TAO
+send:
+	btcli w transfer --subtensor.$(SUBTENSOR_ENVIRONMENT)
+
 ## Subnet creation
 create-subnet:
 	btcli subnet create --wallet.name owner --subtensor.$(SUBTENSOR_ENVIRONMENT)
