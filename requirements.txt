@@ -1,5 +1,5 @@
-bittensor
-torch
-python-dotenv
-loguru
-watchfiles
+bittensor==7.3.0
+loguru==0.7.2
+python-dotenv==0.21.0
+torch==2.3.0
+watchfiles==0.22.0
