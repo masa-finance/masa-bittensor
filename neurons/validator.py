@@ -25,11 +25,13 @@ from masa.api.request import RequestType
 # Bittensor Validator Template:
 from masa.base.validator import BaseValidatorNeuron
 from masa.api.validator_api import ValidatorAPI
+from sentence_transformers import SentenceTransformer
 
 
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')  # Load a pre-trained model for embeddings
         self.API = ValidatorAPI(self)
         bt.logging.info("Validator initialized with config: {}".format(config))
 
