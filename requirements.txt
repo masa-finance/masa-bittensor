@@ -3,3 +3,5 @@ torch
 python-dotenv
 loguru
 watchfiles
+scikit-learn==1.5.1
+sentence-transformers==3.0.1
