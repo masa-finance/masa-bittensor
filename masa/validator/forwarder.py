@@ -144,6 +144,12 @@ class Forwarder:
         print("DICT 2 ---------------------------")
         print(dict2)
 
+        if not isinstance(dict1, dict) and not isinstance(dict2, dict):
+            if dict1 != dict2:
+                return max(score - 0.1, 0)
+            else:
+                return max(score, 0)
+
         for key in dict1.keys():
 
             print(f"Scoring key: {key} - prev score: {score}")
