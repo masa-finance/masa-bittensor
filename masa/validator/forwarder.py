@@ -72,10 +72,8 @@ class Forwarder:
             responses=parsed_responses, miner_uids=miner_uids, source_method=source_method, query=request.query)
 
         # Score responses
-        rewards = self.get_rewards(responses=parsed_responses, source_of_truth=source_of_truth if isinstance(
-            source_of_truth, dict) else None
-        )
-
+        rewards = self.get_rewards(responses=parsed_responses, source_of_truth=source_of_truth
+                                   )
         # Update the scores based on the rewards
         if len(valid_miner_uids) > 0:
             self.validator.update_scores(rewards, valid_miner_uids)
@@ -113,7 +111,7 @@ class Forwarder:
         embeddings = self.validator.model.encode(
             [str(response) for response in combined_responses])
 
-        num_clusters = min(len(combined_responses), 5)
+        num_clusters = min(len(combined_responses), 2)
         clustering_model = KMeans(n_clusters=num_clusters)
         clustering_model.fit(embeddings)
         cluster_labels = clustering_model.labels_
@@ -130,9 +128,46 @@ class Forwarder:
             for i, response in enumerate(responses)
         ]
 
+        print("REWARDS LIST ---------------------")
+        print(rewards_list)
+
         return torch.FloatTensor(rewards_list).to(
             self.validator.device
         )
+
+    def score_dicts_difference(self, initialScore, dict1, dict2):
+        score = initialScore
+
+        print("COMPARING ---------------------------")
+        print("DICT 1 ---------------------------")
+        print(dict1)
+        print("DICT 2 ---------------------------")
+        print(dict2)
+
+        for key in dict1.keys():
+
+            print(f"Scoring key: {key} - prev score: {score}")
+            if key not in dict2 or dict2[key] is None:
+                print(f"Score for: {key} -0.1: {key} not in dict2 or is none")
+                score -= 0.1
+            elif isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
+                score = self.score_dicts_difference(score, dict1[key], dict2[key])
+                print(f"Score for: {key} -{score}: dict difference")
+            elif isinstance(dict1[key], list) and isinstance(dict2[key], list):
+                if len(dict1[key]) != len(dict2[key]):
+                    length_difference = abs(len(dict1[key]) - len(dict2[key]))
+                    score -= 0.1 * (1 + length_difference)
+                    print(
+                        f"Score for: {key} -{score}: array length difference of {length_difference} - dict1 length: {len(dict1[key])} dict2 length: {len(dict2[key])}")
+                else:
+                    for item1, item2 in zip(dict1[key], dict2[key]):
+                        score = self.score_dicts_difference(score, item1, item2)
+                        print(f"Score for: {key} -{score}: list item difference")
+            elif str(dict1[key]) != str(dict2[key]):
+                print(f"Score for: {key} -0.1: string check")
+                score -= 0.1
+
+        return max(score, 0)
 
     def calculate_reward(self, response: dict, source_of_truth: dict) -> float:
 
@@ -142,17 +177,14 @@ class Forwarder:
 
         bt.logging.info(f"Getting username from {response}")
 
-        score = 1.0
-        # Get all required keys from source_of_truth
-        required_keys = source_of_truth.keys()
-        missing_keys = sum(
-            1 for key in required_keys if key not in response or response[key] is None)
-        score -= 0.1 * missing_keys
+        print("NEW SCORE -------------------------------------------------------------")
+        print(response)
+        print("SCORING ****************************************************************")
 
-        for key in required_keys:
-            if key in response and key in source_of_truth and response[key] != source_of_truth[key]:
-                score -= 0.1
+        response = {'response': response}
 
+        score = self.score_dicts_difference(1, source_of_truth, response)
+        print(score)
         return max(score, 0)  # Ensure the score doesn't go below 0
 
     def sanitize_responses_and_uids(self, responses, miner_uids):
@@ -192,4 +224,7 @@ class Forwarder:
                 bt.logging.error(
                     f"Failed to transform most_common_response to dict: {e}")
                 most_common_response = {}
+
+        most_common_response = {'response': most_common_response}
+
         return most_common_response
