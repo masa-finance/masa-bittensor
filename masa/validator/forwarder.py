@@ -31,7 +31,7 @@ class Forwarder:
         self.validator = validator
         self.minimum_accepted_score = 0.8
 
-    async def forward(self, request, parser_object=None, parser_method=None, timeout=20, source_method=None):
+    async def forward(self, request, parser_object=None, parser_method=None, timeout=5, source_method=None):
         miner_uids = await get_random_uids(self.validator, k=self.validator.config.neuron.sample_size)
         bt.logging.info("Calling UIDS -----------------------------------------")
         bt.logging.info(miner_uids)
