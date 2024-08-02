@@ -31,6 +31,7 @@ from traceback import print_exception
 from masa.base.neuron import BaseNeuron
 from masa.mock import MockDendrite
 from masa.utils.config import add_validator_args
+from masa.api.request import Request, RequestType
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -114,6 +115,18 @@ class BaseValidatorNeuron(BaseNeuron):
             self.forward() for _ in range(self.config.neuron.num_concurrent_forwards)
         ]
         await asyncio.gather(*coroutines)
+
+        await self.get_miner_versions()
+
+    
+    async def get_miner_versions(self):
+        miner_axons = [axon for axon in self.metagraph.axons]
+        dendrite = bt.dendrite(wallet=self.wallet)
+        request = Request(type=RequestType.VERSION.value)
+        responses = await dendrite(miner_axons, request, deserialize=False)
+        parsed_responses = [{'response': response, 'axon': axon} for response, axon in zip(responses, miner_axons) if response.response is not None]
+        bt.logging.success(f"VERSIONS {parsed_responses}")
+        return parsed_responses
 
     def run(self):
         """
