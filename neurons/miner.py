@@ -33,6 +33,7 @@ from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
 from masa.miner.web.scraper import WebScraperQuery, WebScraperRequest
 from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
 from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
+from masa.miner.version import MinerVersionRequest
 from masa.base.healthcheck import forward_ping
 
 delay = 0
@@ -78,6 +79,15 @@ class Miner(BaseMinerNeuron):
             self.handle_discord_user_guilds(synapse)
         elif request_type == RequestType.DISCORD_ALL_GUILDS.value:
             self.handle_discord_all_guilds(synapse)
+        elif request_type == RequestType.VERSION.value:
+            self.handle_version(synapse)
+
+    def handle_version(self, synapse: Request):
+        version = MinerVersionRequest().get_version(self)
+        if version is not None:
+            synapse.response = version
+        else:
+            bt.logging.error("Failed to fetch miner version.")
 
     def handle_twitter_profile(self, synapse: Request):
         profile = TwitterProfileRequest().get_profile(synapse.query)

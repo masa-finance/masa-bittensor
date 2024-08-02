@@ -38,7 +38,7 @@ class Forwarder:
 
         if miner_uids is None:
             return []
-
+        
         synapses = await self.validator.dendrite(
             axons=[self.validator.metagraph.axons[uid] for uid in miner_uids],
             synapse=request,
@@ -67,6 +67,13 @@ class Forwarder:
 
         process_times = [synapse.dendrite.process_time for synapse,
                          uid in zip(synapses, miner_uids) if uid in valid_miner_uids]
+
+        if (request.type == 'version'):
+            responses_with_metadata = [
+                {"version": response, "uid": int(uid.item()), "latency": latency}
+                for response, latency, uid in zip(valid_responses, process_times, valid_miner_uids)
+            ]
+            return responses_with_metadata
 
         source_of_truth = await self.get_source_of_truth(
             responses=parsed_responses, miner_uids=miner_uids, source_method=source_method, query=request.query)

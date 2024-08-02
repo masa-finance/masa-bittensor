@@ -1,3 +1,4 @@
+import bittensor as bt
 import os
 from fastapi import FastAPI, Depends
 import asyncio
@@ -15,6 +16,7 @@ from masa.validator.discord.guild_channels.forward import DiscordGuildChannelsFo
 from masa.validator.discord.user_guilds.forward import DiscordUserGuildsForwarder
 from masa.validator.discord.profile.forward import DiscordProfileForwarder
 from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
+from masa.validator.version import VersionForwarder
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -33,6 +35,15 @@ class ValidatorAPI:
             allow_headers=["*"],
         )
 
+
+        self.app.add_api_route(
+            "/version",
+            self.get_miner_version,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get the version from each miner",
+            tags=["version"],
+        )
 
         self.app.add_api_route(
             "/data/twitter/profile/{username}",
@@ -134,6 +145,11 @@ class ValidatorAPI:
 
         self.start_server()
 
+    async def get_miner_version(self):
+        all_responses = await VersionForwarder(self.validator).forward_query()
+        if all_responses:
+            return all_responses
+        return []
     async def get_twitter_profile(self, username: str):
         all_responses = await TwitterProfileForwarder(self.validator).forward_query(
             query=username
