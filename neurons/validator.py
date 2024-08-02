@@ -17,16 +17,12 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-
-import time
 import bittensor as bt
-from masa.api.request import RequestType
 
 # Bittensor Validator Template:
 from masa.base.validator import BaseValidatorNeuron
 from masa.api.validator_api import ValidatorAPI
 from sentence_transformers import SentenceTransformer
-
 
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
@@ -35,20 +31,10 @@ class Validator(BaseValidatorNeuron):
         self.API = ValidatorAPI(self)
         bt.logging.info("Validator initialized with config: {}".format(config))
 
-    async def forward(
-        self, request="brendanplayford", type=RequestType.TWITTER_PROFILE.value
-    ):
+    async def forward(self):
         pass
-
-    def update_weights(self, scores):
-        # Example: Update weights (this is a placeholder for actual weight update logic)
-        for score in scores:
-            # TODO Update logic here
-            pass
 
 
 if __name__ == "__main__":
     with Validator() as validator:
-        while True:
-            bt.logging.info("Validator running...")
-            time.sleep(5)
+        validator.run_in_background_thread()
