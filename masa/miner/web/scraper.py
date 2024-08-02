@@ -30,8 +30,6 @@ class WebScraperRequest(MasaProtocolRequest):
         bt.logging.info(f"Formatting scraped data: {data}")
         json_data = data.json()["data"]
 
-        print("JSON DATA -------------------------------------------[]")
-        print(json_data)
         formatted_scraped_data = WebScraperObject(**json_data)
 
         return formatted_scraped_data

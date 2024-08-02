@@ -47,16 +47,12 @@ class Forwarder:
         )
 
         responses = [synapse.response for synapse in synapses]
-        bt.logging.info("Responses -----------------------------------------")
-        bt.logging.info(responses)
+
         # Filter and parse valid responses
         valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(
             responses, miner_uids=miner_uids
         )
         parsed_responses = responses
-
-        bt.logging.info("Parsed responses -----------------------------------------")
-        bt.logging.info(parsed_responses)
 
         if parser_object:
             parsed_responses = [
@@ -102,12 +98,6 @@ class Forwarder:
         combined_responses = responses.copy()
         combined_responses.append(source_of_truth)
 
-        bt.logging.info("Raw responses -----------------------------------------------")
-        bt.logging.info(responses)
-        bt.logging.info(
-            "Combined responses ----------------------------------------------------")
-        bt.logging.info(combined_responses)
-
         embeddings = self.validator.model.encode(
             [str(response) for response in combined_responses])
 
@@ -121,15 +111,14 @@ class Forwarder:
         bt.logging.info(source_of_truth)
         bt.logging.info(f"Source of truth label: {source_of_truth_label}")
         bt.logging.info(f"labels: {cluster_labels}")
-        bt.logging.info("Getting rewards...")
         rewards_list = [
             1 if cluster_labels[i] == source_of_truth_label else self.calculate_reward(
                 response, source_of_truth)
             for i, response in enumerate(responses)
         ]
 
-        print("REWARDS LIST ---------------------")
-        print(rewards_list)
+        bt.logging.info("REWARDS LIST ----------------------------------------------")
+        bt.logging.info(rewards_list)
 
         return torch.FloatTensor(rewards_list).to(
             self.validator.device
@@ -138,12 +127,6 @@ class Forwarder:
     def score_dicts_difference(self, initialScore, dict1, dict2):
         score = initialScore
 
-        print("COMPARING ---------------------------")
-        print("DICT 1 ---------------------------")
-        print(dict1)
-        print("DICT 2 ---------------------------")
-        print(dict2)
-
         if not isinstance(dict1, dict) and not isinstance(dict2, dict):
             if dict1 != dict2:
                 return max(score - 0.1, 0)
@@ -151,26 +134,18 @@ class Forwarder:
                 return max(score, 0)
 
         for key in dict1.keys():
-
-            print(f"Scoring key: {key} - prev score: {score}")
             if key not in dict2 or dict2[key] is None:
-                print(f"Score for: {key} -0.1: {key} not in dict2 or is none")
                 score -= 0.1
             elif isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
                 score = self.score_dicts_difference(score, dict1[key], dict2[key])
-                print(f"Score for: {key} -{score}: dict difference")
             elif isinstance(dict1[key], list) and isinstance(dict2[key], list):
                 if len(dict1[key]) != len(dict2[key]):
                     length_difference = abs(len(dict1[key]) - len(dict2[key]))
                     score -= 0.1 * (1 + length_difference)
-                    print(
-                        f"Score for: {key} -{score}: array length difference of {length_difference} - dict1 length: {len(dict1[key])} dict2 length: {len(dict2[key])}")
                 else:
                     for item1, item2 in zip(dict1[key], dict2[key]):
                         score = self.score_dicts_difference(score, item1, item2)
-                        print(f"Score for: {key} -{score}: list item difference")
             elif str(dict1[key]) != str(dict2[key]):
-                print(f"Score for: {key} -0.1: string check")
                 score -= 0.1
 
         return max(score, 0)
@@ -182,15 +157,9 @@ class Forwarder:
             return 0.0
 
         bt.logging.info(f"Getting username from {response}")
-
-        print("NEW SCORE -------------------------------------------------------------")
-        print(response)
-        print("SCORING ****************************************************************")
-
         response = {'response': response}
 
         score = self.score_dicts_difference(1, source_of_truth, response)
-        print(score)
         return max(score, 0)  # Ensure the score doesn't go below 0
 
     def sanitize_responses_and_uids(self, responses, miner_uids):

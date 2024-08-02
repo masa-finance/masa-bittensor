@@ -21,7 +21,6 @@ import bittensor as bt
 from masa.api.request import Request, RequestType
 from masa.miner.web.scraper import WebScraperQuery
 from masa.validator.forwarder import Forwarder
-from masa.validator.web.reward import get_rewards
 from masa.validator.web.parser import web_scraper_parser
 from masa.miner.web.scraper import WebScraperRequest
 

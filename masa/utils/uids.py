@@ -122,7 +122,7 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         avail_uids = get_available_uids(
             self.metagraph, self.config.neuron.vpermit_tao_limit
         )
-        healthy_uids = remove_excluded_uids(avail_uids, exclude)
+        # healthy_uids = remove_excluded_uids(avail_uids, exclude)
 
         # healthy_uids, _ = await ping_uids(dendrite, self.metagraph, candidate_uids)
 
@@ -134,10 +134,9 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         #     healthy_uids, self.metagraph
         # )
 
-        k = min(k, len(healthy_uids))
+        # k = min(k, len(healthy_uids))
         # Random sampling
-        random_sample = random.sample(healthy_uids, k)
-        print(f"Random sample: {random_sample}")
+        # random_sample = random.sample(healthy_uids, k)
 
         uids = torch.tensor(avail_uids)
         return uids
