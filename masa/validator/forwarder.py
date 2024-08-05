@@ -176,7 +176,7 @@ class Forwarder:
         weighted_responses = defaultdict(float)
         most_common_response = None
         count_high_score_uids = sum(
-            1 for uid in miner_uids if self.validator.scores[uid] > self.minimum_accepted_score)
+            1 for uid in miner_uids if self.validator.scores[uid] >= self.minimum_accepted_score)
         bt.logging.info(
             f"Number of UIDs with score greater than the minimum accepted: {count_high_score_uids}")
 
