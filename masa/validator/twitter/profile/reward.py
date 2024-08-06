@@ -17,39 +17,29 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import torch
 import bittensor as bt
 from masa.types.twitter import TwitterProfileObject
 
 
-def reward(query: str, response: TwitterProfileObject) -> float:
+def calculate_reward(query: str, response: TwitterProfileObject, source_of_truth: TwitterProfileObject) -> float:
+
     # Return a reward of 0.0 if the response is None
     if response is None:
         return 0.0
+
     bt.logging.info(f"Getting username from {response}")
     # Extract username and userID from the response, defaulting to empty string and None respectively
-    username = response.get("Username", "")
-    userID = response.get("UserID", None)
-    bt.logging.info(f"Calculating reward for response {username.lower()}")
 
     # Return a reward of 1 if the username matches the query and userID is not None, otherwise return 0
     score = 1.0
-    required_keys = TwitterProfileObject.__annotations__.keys()  # Get all required keys from TwitterProfileObject
-    missing_keys = sum(1 for key in required_keys if key not in response or response[key] is None)
+    # Get all required keys from TwitterProfileObject
+    required_keys = TwitterProfileObject.__annotations__.keys()
+    missing_keys = sum(
+        1 for key in required_keys if key not in response or response[key] is None)
     score -= 0.1 * missing_keys
 
-    if username.lower() == query.lower() and userID is not None:
-        return max(score, 0)  # Ensure the score doesn't go below 0
-    else:
-        return 0
+    for key in required_keys:
+        if key in response and key in source_of_truth and response[key] != source_of_truth[key]:
+            score -= 0.1
 
-
-def get_rewards(
-    self,
-    query: str,
-    responses: TwitterProfileObject,
-) -> torch.FloatTensor:
-    bt.logging.info("Getting rewards...")
-    return torch.FloatTensor([reward(query, response) for response in responses]).to(
-        self.device
-    )
+    return max(score, 0)  

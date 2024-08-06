@@ -21,8 +21,8 @@ import bittensor as bt
 from masa.api.request import Request, RequestType
 from masa.miner.web.scraper import WebScraperQuery
 from masa.validator.forwarder import Forwarder
-from masa.validator.web.reward import get_rewards
 from masa.validator.web.parser import web_scraper_parser
+from masa.miner.web.scraper import WebScraperRequest
 
 
 class WebScraperForwarder(Forwarder):
@@ -32,15 +32,17 @@ class WebScraperForwarder(Forwarder):
 
     async def forward_query(self, web_scraper_query: WebScraperQuery):
         try:
+            def source_method(query):
+                return WebScraperRequest().scrape_web(web_scraper_query)
+
             return await self.forward(
                 request=Request(
                     url=web_scraper_query.url,
                     depth=web_scraper_query.depth,
                     type=RequestType.WEB_SCRAPER.value,
                 ),
-                get_rewards=get_rewards,
                 parser_method=web_scraper_parser,
-            )
+                source_method=source_method)
 
         except Exception as e:
             bt.logging.error(

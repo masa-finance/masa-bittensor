@@ -21,8 +21,8 @@ import bittensor as bt
 from masa.api.request import Request, RequestType
 from masa.validator.forwarder import Forwarder
 from masa.validator.discord.all_guilds.parser import all_guilds_parser
-from masa.validator.discord.all_guilds.reward import get_rewards
 from masa.miner.masa_protocol_request import REQUEST_TIMEOUT_IN_SECONDS
+from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
 
 
 class DiscordAllGuildsForwarder(Forwarder):
@@ -32,11 +32,14 @@ class DiscordAllGuildsForwarder(Forwarder):
 
     async def forward_query(self):
         try:
+
+            def source_method(query):
+                return DiscordAllGuildsRequest().get_discord_all_guilds()
             return await self.forward(
                 request=Request(type=RequestType.DISCORD_ALL_GUILDS.value),
-                get_rewards=get_rewards,
                 parser_method=all_guilds_parser,
                 timeout=REQUEST_TIMEOUT_IN_SECONDS,
+                source_method=source_method
             )
 
         except Exception as e:
