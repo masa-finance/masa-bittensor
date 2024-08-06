@@ -1,3 +1,4 @@
+import bittensor as bt
 import os
 from fastapi import FastAPI, Depends
 import asyncio
@@ -24,7 +25,7 @@ class ValidatorAPI:
         self.port = int(os.getenv("VALIDATOR_API_PORT", "8000"))
         self.validator = validator
         self.app = FastAPI()
-        
+
         self.app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
@@ -32,7 +33,6 @@ class ValidatorAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-
 
         self.app.add_api_route(
             "/data/twitter/profile/{username}",
@@ -204,13 +204,13 @@ class ValidatorAPI:
 
     def get_axons(self):
         return self.validator.metagraph.axons
-    
+
     def healthcheck(self):
         return {
             "coldkey": self.validator.wallet.coldkeypub.ss58_address,
             "hotkey": self.validator.wallet.hotkey.ss58_address,
             "is_active": True,
-            "name": self.validator.config.neuron.name
+            "name": self.validator.config.neuron.name,
         }
 
     def start_server(self):

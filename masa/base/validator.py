@@ -29,6 +29,8 @@ from typing import List
 from traceback import print_exception
 
 from masa.base.neuron import BaseNeuron
+from masa.base.healthcheck import PingMiner, get_external_ip
+
 from masa.mock import MockDendrite
 from masa.utils.config import add_validator_args
 
@@ -50,6 +52,13 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+
+        # Get tempo from subnets hyperparameters
+        self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+
+        # Record versions of each axon, index == uid
+        self.versions = []
+        self.last_version_check_block = 0
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
         if self.config.mock:
@@ -82,8 +91,9 @@ class BaseValidatorNeuron(BaseNeuron):
         self.should_exit: bool = False
         self.is_running: bool = False
         self.thread: threading.Thread = None
+        self.miner_check_thread: threading.Thread = None
         self.lock = asyncio.Lock()
-        
+
         self.run_in_background_thread()
 
     def serve_axon(self):
@@ -115,6 +125,27 @@ class BaseValidatorNeuron(BaseNeuron):
         ]
         await asyncio.gather(*coroutines)
 
+    async def get_miner_versions(self):
+        dendrite = bt.dendrite(wallet=self.wallet)
+        request = PingMiner(sent_from=get_external_ip(), is_active=False, version=0)
+        responses = await dendrite(self.metagraph.axons, request, deserialize=False)
+        self.versions = [response.version for response in responses]
+        bt.logging.info(f"Axon Versions: {self.versions}")
+        self.last_version_check_block = self.block
+
+    async def run_miner_check(self):
+        while not self.should_exit:
+            try:
+                blocks_since_last_check = self.block - self.last_version_check_block
+                if blocks_since_last_check > self.tempo or len(self.versions) == 0:
+                    await self.get_miner_versions()
+            except Exception as e:
+                bt.logging.error(f"Error in run_miner_check: {e}")
+            await asyncio.sleep(60)
+
+    def run_miner_check_in_loop(self):
+        asyncio.run(self.run_miner_check())
+
     def run(self):
         """
         Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
@@ -144,7 +175,7 @@ class BaseValidatorNeuron(BaseNeuron):
         try:
             tmpBlock = self.block
             while True:
-                if (self.block != tmpBlock):
+                if self.block != tmpBlock:
                     bt.logging.info(f"Block: {self.block}")
                     tmpBlock = self.block
 
@@ -180,7 +211,11 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Starting validator in background thread.")
             self.should_exit = False
             self.thread = threading.Thread(target=self.run, daemon=True)
+            self.miner_check_thread = threading.Thread(
+                target=self.run_miner_check_in_loop, daemon=True
+            )
             self.thread.start()
+            self.miner_check_thread.start()
             self.is_running = True
             bt.logging.debug("Started")
 
@@ -192,6 +227,7 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
             self.thread.join(5)
+            self.miner_check_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
@@ -234,7 +270,7 @@ class BaseValidatorNeuron(BaseNeuron):
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
 
         bt.logging.debug("raw_weights", raw_weights)
-        bt.logging.debug("NET UID",  self.config.netuid)
+        bt.logging.debug("NET UID", self.config.netuid)
         # bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
         # Process the raw weights to final_weights via subtensor limitations.
         (
