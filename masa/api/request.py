@@ -4,7 +4,6 @@ from typing import Optional, Any
 
 
 class RequestType(Enum):
-    VERSION = "version"
     TWITTER_PROFILE = "twitter_profile"
     TWITTER_FOLLOWERS = "twitter_followers"
     TWITTER_TWEETS = "twitter_tweets"
