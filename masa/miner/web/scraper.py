@@ -28,9 +28,8 @@ class WebScraperRequest(MasaProtocolRequest):
 
     def format_scraped_data(self, data: requests.Response) -> WebScraperObject:
         bt.logging.info(f"Formatting scraped data: {data}")
-        scraped_data = json.loads(
-            data.json()["data"]
-        )  # Convert stringified json to dict
-        formatted_scraped_data = WebScraperObject(**scraped_data)
+        json_data = data.json()["data"]
+
+        formatted_scraped_data = WebScraperObject(**json_data)
 
         return formatted_scraped_data

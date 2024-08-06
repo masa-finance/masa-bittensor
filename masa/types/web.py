@@ -10,4 +10,4 @@ class Section(TypedDict, total=False):
 
 class WebScraperObject(TypedDict):
     sections: Optional[List[Section]]
-    pages: List[str]
+    pages: Optional[List[str]]

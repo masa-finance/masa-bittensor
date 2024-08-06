@@ -45,8 +45,7 @@ class Miner(BaseMinerNeuron):
         bt.logging.info("Miner initialized with config: {}".format(config))
 
     async def forward(self, synapse: Request) -> Request:
-        print(f"Sleeping for rate limiting purposes: {delay}s")
-        time.sleep(delay)
+        print(f"Getting request: {synapse.type}")
 
         try:
             self.handle_request(synapse)
