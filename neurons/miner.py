@@ -41,10 +41,10 @@ delay = 0
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
-        self.axon.attach(forward_fn=self.forward_ping_parent)
+        self.axon.attach(forward_fn=self.forward_ping_wrapper)
         bt.logging.info("Miner initialized with config: {}".format(config))
 
-    def forward_ping_parent(self, synapse: PingMiner) -> PingMiner:
+    def forward_ping_wrapper(self, synapse: PingMiner) -> PingMiner:
         return forward_ping(synapse, self.spec_version)
 
     async def forward(self, synapse: Request) -> Request:
