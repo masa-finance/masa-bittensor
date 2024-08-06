@@ -18,6 +18,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
+import time
 
 # Bittensor Validator Template:
 from masa.base.validator import BaseValidatorNeuron
@@ -40,4 +41,5 @@ class Validator(BaseValidatorNeuron):
 
 if __name__ == "__main__":
     with Validator() as validator:
-        validator.run_in_background_thread()
+        while True:
+            time.sleep(5)
