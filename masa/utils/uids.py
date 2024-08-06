@@ -143,7 +143,7 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         k = min(k, len(version_checked_uids))
         # Random sampling
         random_sample = random.sample(version_checked_uids, k)
-        print(f"Random sample: {version_checked_uids}")
+        print(f"Random sample: {random_sample}")
 
         uids = torch.tensor(random_sample)
         return uids

@@ -30,7 +30,7 @@ from sklearn.cluster import KMeans
 class Forwarder:
     def __init__(self, validator):
         self.validator = validator
-        self.minimum_accepted_score = 0.0
+        self.minimum_accepted_score = 0.8
 
     async def forward(
         self,
@@ -43,6 +43,8 @@ class Forwarder:
         miner_uids = await get_random_uids(
             self.validator, k=self.validator.config.neuron.sample_size
         )
+        bt.logging.info("Calling UIDS -----------------------------------------")
+        bt.logging.info(miner_uids)
 
         bt.logging.info("Calling UIDS -----------------------------------------")
         bt.logging.info(miner_uids)
@@ -58,8 +60,7 @@ class Forwarder:
         )
 
         responses = [synapse.response for synapse in synapses]
-        bt.logging.trace("Responses -----------------------------------------")
-        bt.logging.trace(responses)
+
         # Filter and parse valid responses
         valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(
             responses, miner_uids=miner_uids
@@ -123,15 +124,6 @@ class Forwarder:
         combined_responses = responses.copy()
         combined_responses.append(source_of_truth)
 
-        bt.logging.trace(
-            "Raw responses -----------------------------------------------"
-        )
-        bt.logging.trace(responses)
-        bt.logging.trace(
-            "Combined responses ----------------------------------------------------"
-        )
-        bt.logging.trace(combined_responses)
-
         embeddings = self.validator.model.encode(
             [str(response) for response in combined_responses]
         )
@@ -142,11 +134,10 @@ class Forwarder:
         cluster_labels = clustering_model.labels_
 
         source_of_truth_label = cluster_labels[-1] if len(cluster_labels) > 0 else None
-        bt.logging.trace("Source of truth -----------------------------------------")
-        bt.logging.trace(source_of_truth)
-        bt.logging.trace(f"Source of truth label: {source_of_truth_label}")
-        bt.logging.trace(f"labels: {cluster_labels}")
-        bt.logging.trace("Getting rewards...")
+        bt.logging.info("Source of truth -----------------------------------------")
+        bt.logging.info(source_of_truth)
+        bt.logging.info(f"Source of truth label: {source_of_truth_label}")
+        bt.logging.info(f"labels: {cluster_labels}")
         rewards_list = [
             (
                 1
@@ -156,8 +147,8 @@ class Forwarder:
             for i, response in enumerate(responses)
         ]
 
-        print("REWARDS LIST ---------------------")
-        print(rewards_list)
+        bt.logging.info("REWARDS LIST ----------------------------------------------")
+        bt.logging.info(rewards_list)
 
         return torch.FloatTensor(rewards_list).to(self.validator.device)
 
@@ -171,7 +162,6 @@ class Forwarder:
                 return max(score, 0)
 
         for key in dict1.keys():
-
             if key not in dict2 or dict2[key] is None:
                 score -= 0.1
             elif isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
@@ -180,8 +170,6 @@ class Forwarder:
                 if len(dict1[key]) != len(dict2[key]):
                     length_difference = abs(len(dict1[key]) - len(dict2[key]))
                     score -= 0.1 * (1 + length_difference)
-                    # print(
-                    #     f"Score for: {key} -{score}: array length difference of {length_difference} - dict1 length: {len(dict1[key])} dict2 length: {len(dict2[key])}")
                 else:
                     for item1, item2 in zip(dict1[key], dict2[key]):
                         score = self.score_dicts_difference(score, item1, item2)
@@ -196,6 +184,7 @@ class Forwarder:
         if response is None:
             return 0.0
 
+        bt.logging.info(f"Getting username from {response}")
         response = {"response": response}
 
         score = self.score_dicts_difference(1, source_of_truth, response)
@@ -220,7 +209,7 @@ class Forwarder:
             if self.validator.scores[uid] >= self.minimum_accepted_score
         )
         bt.logging.info(
-            f"Number of UIDs with score greater than or equal to the minimum accepted: {count_high_score_uids}"
+            f"Number of UIDs with score greater than the minimum accepted: {count_high_score_uids}"
         )
 
         if count_high_score_uids > 10:
