@@ -103,6 +103,13 @@ class BaseNeuron(ABC):
         # Check if the miner is registered on the Bittensor network before proceeding further.
         self.check_registered()
 
+        # Check code version.  If version is less than weights_version, warn the user.
+        weights_version = self.subtensor.get_subnet_hyperparameters(self.config.netuid).weights_version
+        if self.spec_version < weights_version:
+            bt.logging.warning(f"🟡 Code Is Outdated! Latest: {weights_version}, Local: {self.spec_version}")
+        else:
+            bt.logging.success(f"🟢 Code Is Up To Date! Version: {self.spec_version}")
+
         # Each miner gets a unique identity (UID) in the network for differentiation.
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
         bt.logging.info(

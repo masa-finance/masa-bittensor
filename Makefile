@@ -135,6 +135,9 @@ hyperparameters:
 metagraph:
 	btcli subnets metagraph --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)
 
+set-hyperparam:
+	btcli sudo set --param weights_version --value 10 --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT)
+
 ########################################################################
 #####                   DOCKER COMPOSE COMMANDS                    #####
 ########################################################################
