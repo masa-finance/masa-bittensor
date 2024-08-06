@@ -123,6 +123,12 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
             self.metagraph, self.config.neuron.vpermit_tao_limit
         )
         healthy_uids = remove_excluded_uids(avail_uids, exclude)
+        weights_version = self.subtensor.get_subnet_hyperparameters(
+            self.config.netuid
+        ).weights_version
+        version_checked_uids = [
+            uid for uid in healthy_uids if self.versions[uid] == weights_version
+        ]
 
         # healthy_uids, _ = await ping_uids(dendrite, self.metagraph, candidate_uids)
 
@@ -134,12 +140,12 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         #     healthy_uids, self.metagraph
         # )
 
-        k = min(k, len(healthy_uids))
+        k = min(k, len(version_checked_uids))
         # Random sampling
-        random_sample = random.sample(healthy_uids, k)
-        print(f"Random sample: {random_sample}")
+        random_sample = random.sample(version_checked_uids, k)
+        print(f"Random sample: {version_checked_uids}")
 
-        uids = torch.tensor(avail_uids)
+        uids = torch.tensor(random_sample)
         return uids
     except Exception as e:
         bt.logging.error(f"Failed to get random miner uids: {e}")

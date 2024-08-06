@@ -33,8 +33,7 @@ from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
 from masa.miner.web.scraper import WebScraperQuery, WebScraperRequest
 from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
 from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
-from masa.miner.version import MinerVersionRequest
-from masa.base.healthcheck import forward_ping
+from masa.base.healthcheck import forward_ping, PingMiner
 
 delay = 0
 
@@ -42,8 +41,11 @@ delay = 0
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
-        self.axon.attach(forward_fn=forward_ping)
+        self.axon.attach(forward_fn=self.forward_ping_parent)
         bt.logging.info("Miner initialized with config: {}".format(config))
+
+    def forward_ping_parent(self, synapse: PingMiner) -> PingMiner:
+        return forward_ping(synapse, self.spec_version)
 
     async def forward(self, synapse: Request) -> Request:
         print(f"Getting request: {synapse.type}")
@@ -79,15 +81,6 @@ class Miner(BaseMinerNeuron):
             self.handle_discord_user_guilds(synapse)
         elif request_type == RequestType.DISCORD_ALL_GUILDS.value:
             self.handle_discord_all_guilds(synapse)
-        elif request_type == RequestType.VERSION.value:
-            self.handle_version(synapse)
-
-    def handle_version(self, synapse: Request):
-        version = MinerVersionRequest().get_version(self)
-        if version is not None:
-            synapse.response = version
-        else:
-            bt.logging.error("Failed to fetch miner version.")
 
     def handle_twitter_profile(self, synapse: Request):
         profile = TwitterProfileRequest().get_profile(synapse.query)

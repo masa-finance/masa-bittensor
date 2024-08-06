@@ -16,7 +16,6 @@ from masa.validator.discord.guild_channels.forward import DiscordGuildChannelsFo
 from masa.validator.discord.user_guilds.forward import DiscordUserGuildsForwarder
 from masa.validator.discord.profile.forward import DiscordProfileForwarder
 from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
-from masa.validator.version import VersionForwarder
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -26,23 +25,13 @@ class ValidatorAPI:
         self.port = int(os.getenv("VALIDATOR_API_PORT", "8000"))
         self.validator = validator
         self.app = FastAPI()
-        
+
         self.app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
-        )
-
-
-        self.app.add_api_route(
-            "/version",
-            self.get_miner_version,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Get the version from each miner",
-            tags=["version"],
         )
 
         self.app.add_api_route(
@@ -145,11 +134,6 @@ class ValidatorAPI:
 
         self.start_server()
 
-    async def get_miner_version(self):
-        all_responses = await VersionForwarder(self.validator).forward_query()
-        if all_responses:
-            return all_responses
-        return []
     async def get_twitter_profile(self, username: str):
         all_responses = await TwitterProfileForwarder(self.validator).forward_query(
             query=username
@@ -220,13 +204,13 @@ class ValidatorAPI:
 
     def get_axons(self):
         return self.validator.metagraph.axons
-    
+
     def healthcheck(self):
         return {
             "coldkey": self.validator.wallet.coldkeypub.ss58_address,
             "hotkey": self.validator.wallet.hotkey.ss58_address,
             "is_active": True,
-            "name": self.validator.config.neuron.name
+            "name": self.validator.config.neuron.name,
         }
 
     def start_server(self):
