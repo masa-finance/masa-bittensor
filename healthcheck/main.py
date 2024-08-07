@@ -1,3 +1,4 @@
+import datetime
 import bittensor as bt
 from fastapi import FastAPI
 import json
@@ -49,9 +50,9 @@ def get_external_ip() -> str:
         str: The external IP address.
     """
     try:
-        response = requests.get('https://api.ipify.org?format=json')
+        response = requests.get("https://api.ipify.org?format=json")
         response.raise_for_status()
-        ip = response.json().get('ip')
+        ip = response.json().get("ip")
         return ip
     except requests.RequestException as e:
         print(f"An error occurred while fetching the external IP: {e}")
@@ -81,7 +82,7 @@ async def check_axon_health(axon):
             response = await client.get(url)
             if response.status_code == 200:
                 response_data = response.json()
-                hotkey = response_data.get('hotkey')
+                hotkey = response_data.get("hotkey")
                 return hotkey
     except httpx.RequestError as exc:
         print(f"An error occurred while requesting {exc.request.url!r}.")
@@ -132,7 +133,6 @@ async def ping_uids(dendrite, metagraph, uids, timeout=3):
             axons,
             request,
             deserialize=False,
-
             # timeout=timeout,
         )
 
@@ -155,9 +155,7 @@ async def ping_uids(dendrite, metagraph, uids, timeout=3):
                 print(corresponding_axon)
             print("-----------------------------------------------------")
         successful_uids = [
-            uid
-            for uid, response in zip(uids, responses)
-            if response.is_active
+            uid for uid, response in zip(uids, responses) if response.is_active
         ]
         failed_uids = [
             uid
@@ -190,19 +188,26 @@ async def store_uptime_report(axon_pk: int, status: str):
     # Assuming you have a database connection and a cursor
     # Replace `db_connection` and `db_cursor` with your actual database connection and cursor
 
-    await db_connection.execute('''
+    await db_connection.execute(
+        """
         CREATE TABLE IF NOT EXISTS uptime (
             pk TEXT,
             status TEXT,
             timestamp TIMESTAMP
         )
-    ''')
+    """
+    )
 
     # Ensure the timestamp is timezone-aware before inserting into the database
 
-    await db_connection.execute('''
+    await db_connection.execute(
+        """
         INSERT INTO uptime (pk, timestamp, status) VALUES($1, $2, $3)
-    ''', axon_pk, timestamp, status)
+    """,
+        axon_pk,
+        timestamp,
+        status,
+    )
 
     # Close the cursor and connection
     await db_connection.close()
@@ -234,8 +239,9 @@ async def get_connected_axons_by_ip(ip: str, subnet_id: int):
             "status": "",
             "staked_amount": 0,
             "uid": None,
-            "vpermit": False
-        } for axon in subnet.axons
+            "vpermit": False,
+        }
+        for axon in subnet.axons
     ]
 
     uids = subnet.uids.tolist()
@@ -283,7 +289,9 @@ async def get_connected_axons_by_ip(ip: str, subnet_id: int):
         unhealthy_validators = [
             uid for uid in validators_uids if uid not in healthy_validators]
         if unhealthy_validators:
-            healthy_unhealthy_validators, _ = await ping_uids(dendrite, subnet, unhealthy_validators)
+            healthy_unhealthy_validators, _ = await ping_uids(
+                dendrite, subnet, unhealthy_validators
+            )
             healthy_validators.extend(healthy_unhealthy_validators)
         connected_axon_uids = healthy_miners + healthy_validators
     except Exception as e:
@@ -322,8 +330,9 @@ async def get_axons(subnet_id: int):
             "status": "",
             "staked_amount": 0,
             "uid": None,
-            "vpermit": False
-        } for axon in subnet.axons
+            "vpermit": False,
+        }
+        for axon in subnet.axons
     ]
 
     uids = subnet.uids.tolist()
@@ -363,7 +372,9 @@ async def get_axons(subnet_id: int):
         unhealthy_validators = [
             uid for uid in validators_uids if uid not in healthy_validators]
         if unhealthy_validators:
-            healthy_unhealthy_validators, _ = await ping_uids(dendrite, subnet, unhealthy_validators)
+            healthy_unhealthy_validators, _ = await ping_uids(
+                dendrite, subnet, unhealthy_validators
+            )
             healthy_validators.extend(healthy_unhealthy_validators)
         connected_axons = healthy_miners + healthy_validators
     except Exception as e:
@@ -411,20 +422,55 @@ async def get_axons(subnet_id: int):
 
     for axon in axons:
         pk = f"{subnet_id}_{subtensor}_{axon['uid']}_{axon['hotkey']}"
-        existing_axon = await conn.fetchrow('SELECT * FROM axons WHERE pk = $1', pk)
+        existing_axon = await conn.fetchrow("SELECT * FROM axons WHERE pk = $1", pk)
         if existing_axon:
             timestamp = None
-            if axon['status'] == "connected":
+            if axon["status"] == "connected":
                 timestamp = datetime.now()
 
             if timestamp:
-                await conn.execute('''
+                await conn.execute(
+                    """
                     UPDATE axons SET version=$1, port=$2, ip_type=$3, coldkey=$4, protocol=$5, status=$6, staked_amount=$7, uid=$8, vpermit=$9, last_seen=$10, dividends=$11, incentive=$12, trust=$13, last_update=$14, ip=$15 WHERE pk=$16
-                ''', axon['version'], axon['port'], axon['ip_type'], axon['coldkey'], axon['protocol'], axon['status'], axon['staked_amount'], axon['uid'], axon['vpermit'], timestamp, axon['dividends'], axon['incentive'], axon['trust'], axon['last_update'], axon['ip'], pk)
+                """,
+                    axon["version"],
+                    axon["port"],
+                    axon["ip_type"],
+                    axon["coldkey"],
+                    axon["protocol"],
+                    axon["status"],
+                    axon["staked_amount"],
+                    axon["uid"],
+                    axon["vpermit"],
+                    timestamp,
+                    axon["dividends"],
+                    axon["incentive"],
+                    axon["trust"],
+                    axon["last_update"],
+                    axon["ip"],
+                    pk,
+                )
             else:
-                await conn.execute('''
+                await conn.execute(
+                    """
                     UPDATE axons SET version=$1, port=$2, ip_type=$3, coldkey=$4, protocol=$5, status=$6, staked_amount=$7, uid=$8, vpermit=$9, dividends=$10, incentive=$11, trust=$12, last_update=$13, ip=$14 WHERE pk=$15
-                ''', axon['version'], axon['port'], axon['ip_type'], axon['coldkey'], axon['protocol'], axon['status'], axon['staked_amount'], axon['uid'], axon['vpermit'], axon['dividends'], axon['incentive'], axon['trust'], axon['last_update'], axon['ip'], pk)
+                """,
+                    axon["version"],
+                    axon["port"],
+                    axon["ip_type"],
+                    axon["coldkey"],
+                    axon["protocol"],
+                    axon["status"],
+                    axon["staked_amount"],
+                    axon["uid"],
+                    axon["vpermit"],
+                    axon["dividends"],
+                    axon["incentive"],
+                    axon["trust"],
+                    axon["last_update"],
+                    axon["ip"],
+                    pk,
+                )
         else:
             if (axon['ip'] != '0.0.0.0'):
                 await conn.execute('''
@@ -473,10 +519,10 @@ async def get_subnet_weights(subnet: int):
     axons_info = []
     for axon in axons:
         axon_dict = dict(axon)
-        uid = axon_dict['uid']
+        uid = axon_dict["uid"]
         weight = next((w for u, w in zip(uids, weights) if u == uid), None)
         if weight is not None:
-            axon_dict['weight'] = weight
+            axon_dict["weight"] = weight
         axons_info.append(axon_dict)
     return {"weights_with_uids": weights_with_uids}
 
@@ -500,9 +546,12 @@ async def get_leaderboard(subnet: int):
         conn = await asyncpg.connect(os.getenv("POSTGRES_URL"))
 
         # Fetch axons and their trust values
-        axons = await conn.fetch('SELECT * FROM axons')
+        axons = await conn.fetch("SELECT * FROM axons")
         if not axons:
-            return JSONResponse(status_code=404, content={"message": "No axons found for the given subnet"})
+            return JSONResponse(
+                status_code=404,
+                content={"message": "No axons found for the given subnet"},
+            )
 
         weights = await get_subnet_weights(subnet)
 
@@ -527,12 +576,12 @@ async def get_leaderboard(subnet: int):
                             for w in weights['weights_with_uids'] if w['uid'] in validators_uids]
             if axon_weights:
                 average_weight = sum(axon_weights) / len(axon_weights)
-                axon_dict['average_weight'] = average_weight
+                axon_dict["average_weight"] = average_weight
             else:
                 axon_dict['average_weight'] = 0
 
             if uptime_percentage > 0:
-                axon_dict['uptime_percentage'] = uptime_percentage
+                axon_dict["uptime_percentage"] = uptime_percentage
                 leaderboard.append(axon_dict)
 
         # Sort axons based on trust value and uptime percentage
@@ -541,7 +590,7 @@ async def get_leaderboard(subnet: int):
 
         # Assign positions
         for position, axon in enumerate(leaderboard, start=1):
-            axon['position'] = position
+            axon["position"] = position
 
         await conn.close()
 
@@ -658,7 +707,9 @@ async def call_all_axons_with_vpermit(request: Request):
     body = request_data.get("body", {})
 
     if not method or not path:
-        return JSONResponse(status_code=400, content={"message": "Method and path are required"})
+        return JSONResponse(
+            status_code=400, content={"message": "Method and path are required"}
+        )
 
     for axon in axons_cache:
         if axon.get("vpermit"):
@@ -670,7 +721,7 @@ async def call_all_axons_with_vpermit(request: Request):
 
             # Construct the URL
             url = f"http://{axon['ip']}:8000/{path}"
-            if axon['ip'] == external_ip:
+            if axon["ip"] == external_ip:
                 url = f"http://localhost:8000/{path}"
 
             # Forward the request to the axon
@@ -721,7 +772,7 @@ async def get_subnet_block(subnet_id: int):
             "current_tempo": int(current_tempo),
             "block_within_tempo": int(block_within_tempo),
             "time_left_minutes": float(time_left_minutes),
-            "percentage_completed": float(percentage_completed)
+            "percentage_completed": float(percentage_completed),
         }
 
         return JSONResponse(status_code=200, content=response)
@@ -747,7 +798,7 @@ async def call_axon(uid: int, request: Request):
     try:
         # Get axons
         conn = await asyncpg.connect(os.getenv("POSTGRES_URL"))
-        axons = await conn.fetch('SELECT * FROM axons')
+        axons = await conn.fetch("SELECT * FROM axons")
         await conn.close()
 
         # Find the axon with the given UID
@@ -794,7 +845,9 @@ async def call_axon(uid: int, request: Request):
             elif method.upper() == "PATCH":
                 response = requests.patch(url, json=body)
             else:
-                return JSONResponse(status_code=405, content={"message": "Method not allowed"})
+                return JSONResponse(
+                    status_code=405, content={"message": "Method not allowed"}
+                )
         except requests.RequestException as e:
             return JSONResponse(status_code=500, content={"message": str(e)})
         print(f"RESPONSE: {response}")

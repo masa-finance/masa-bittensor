@@ -31,8 +31,20 @@ class Forwarder:
         self.validator = validator
         self.minimum_accepted_score = 0.8
 
-    async def forward(self, request, parser_object=None, parser_method=None, timeout=5, source_method=None):
-        miner_uids = await get_random_uids(self.validator, k=self.validator.config.neuron.sample_size)
+    async def forward(
+        self,
+        request,
+        parser_object=None,
+        parser_method=None,
+        timeout=5,
+        source_method=None,
+    ):
+        miner_uids = await get_random_uids(
+            self.validator, k=self.validator.config.neuron.sample_size
+        )
+        bt.logging.info("Calling UIDS -----------------------------------------")
+        bt.logging.info(miner_uids)
+
         bt.logging.info("Calling UIDS -----------------------------------------")
         bt.logging.info(miner_uids)
 
@@ -43,7 +55,7 @@ class Forwarder:
             axons=[self.validator.metagraph.axons[uid] for uid in miner_uids],
             synapse=request,
             deserialize=False,
-            timeout=timeout
+            timeout=timeout,
         )
 
         responses = [synapse.response for synapse in synapses]
@@ -54,6 +66,9 @@ class Forwarder:
         )
         parsed_responses = responses
 
+        bt.logging.trace("Parsed responses -----------------------------------------")
+        bt.logging.trace(parsed_responses)
+
         if parser_object:
             parsed_responses = [
                 parser_object(**response) for response in valid_responses
@@ -61,15 +76,23 @@ class Forwarder:
         elif parser_method:
             parsed_responses = parser_method(valid_responses)
 
-        process_times = [synapse.dendrite.process_time for synapse,
-                         uid in zip(synapses, miner_uids) if uid in valid_miner_uids]
+        process_times = [
+            synapse.dendrite.process_time
+            for synapse, uid in zip(synapses, miner_uids)
+            if uid in valid_miner_uids
+        ]
 
         source_of_truth = await self.get_source_of_truth(
-            responses=parsed_responses, miner_uids=miner_uids, source_method=source_method, query=request.query)
+            responses=parsed_responses,
+            miner_uids=miner_uids,
+            source_method=source_method,
+            query=request.query,
+        )
 
         # Score responses
-        rewards = self.get_rewards(responses=parsed_responses, source_of_truth=source_of_truth
-                                   )
+        rewards = self.get_rewards(
+            responses=parsed_responses, source_of_truth=source_of_truth
+        )
         # Update the scores based on the rewards
         if len(valid_miner_uids) > 0:
             self.validator.update_scores(rewards, valid_miner_uids)
@@ -81,25 +104,28 @@ class Forwarder:
 
         # Add corresponding uid to each response
         responses_with_metadata = [
-            {"response": response, "uid": int(
-                uid.item()), "score": score.item(), "latency": latency}
-            for response, latency, uid, score in zip(parsed_responses, process_times, valid_miner_uids, rewards)
+            {
+                "response": response,
+                "uid": int(uid.item()),
+                "score": score.item(),
+                "latency": latency,
+            }
+            for response, latency, uid, score in zip(
+                parsed_responses, process_times, valid_miner_uids, rewards
+            )
         ]
 
         responses_with_metadata.sort(key=lambda x: (-x["score"], x["latency"]))
         return responses_with_metadata
 
-    def get_rewards(
-        self,
-        responses: dict,
-        source_of_truth: dict
-    ) -> torch.FloatTensor:
+    def get_rewards(self, responses: dict, source_of_truth: dict) -> torch.FloatTensor:
 
         combined_responses = responses.copy()
         combined_responses.append(source_of_truth)
 
         embeddings = self.validator.model.encode(
-            [str(response) for response in combined_responses])
+            [str(response) for response in combined_responses]
+        )
 
         num_clusters = min(len(combined_responses), 2)
         clustering_model = KMeans(n_clusters=num_clusters)
@@ -112,17 +138,18 @@ class Forwarder:
         bt.logging.info(f"Source of truth label: {source_of_truth_label}")
         bt.logging.info(f"labels: {cluster_labels}")
         rewards_list = [
-            1 if cluster_labels[i] == source_of_truth_label else self.calculate_reward(
-                response, source_of_truth)
+            (
+                1
+                if cluster_labels[i] == source_of_truth_label
+                else self.calculate_reward(response, source_of_truth)
+            )
             for i, response in enumerate(responses)
         ]
 
         bt.logging.info("REWARDS LIST ----------------------------------------------")
         bt.logging.info(rewards_list)
 
-        return torch.FloatTensor(rewards_list).to(
-            self.validator.device
-        )
+        return torch.FloatTensor(rewards_list).to(self.validator.device)
 
     def score_dicts_difference(self, initialScore, dict1, dict2):
         score = initialScore
@@ -157,7 +184,7 @@ class Forwarder:
             return 0.0
 
         bt.logging.info(f"Getting username from {response}")
-        response = {'response': response}
+        response = {"response": response}
 
         score = self.score_dicts_difference(1, source_of_truth, response)
         return max(score, 0)  # Ensure the score doesn't go below 0
@@ -176,11 +203,15 @@ class Forwarder:
         weighted_responses = defaultdict(float)
         most_common_response = None
         count_high_score_uids = sum(
-            1 for uid in miner_uids if self.validator.scores[uid] > self.minimum_accepted_score)
+            1
+            for uid in miner_uids
+            if self.validator.scores[uid] >= self.minimum_accepted_score
+        )
         bt.logging.info(
-            f"Number of UIDs with score greater than the minimum accepted: {count_high_score_uids}")
+            f"Number of UIDs with score greater than the minimum accepted: {count_high_score_uids}"
+        )
 
-        if (count_high_score_uids > 10):
+        if count_high_score_uids > 10:
             for response, uid in zip(responses_str, miner_uids):
                 score = self.validator.scores[uid]
                 exponential_weight = math.exp(score)
@@ -197,9 +228,10 @@ class Forwarder:
                 most_common_response = eval(most_common_response)
             except Exception as e:
                 bt.logging.error(
-                    f"Failed to transform most_common_response to dict: {e}")
+                    f"Failed to transform most_common_response to dict: {e}"
+                )
                 most_common_response = {}
 
-        most_common_response = {'response': most_common_response}
+        most_common_response = {"response": most_common_response}
 
         return most_common_response
