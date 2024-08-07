@@ -43,8 +43,6 @@ class Forwarder:
         miner_uids = await get_random_uids(
             self.validator, k=self.validator.config.neuron.sample_size
         )
-        bt.logging.info("Calling UIDS -----------------------------------------")
-        bt.logging.info(miner_uids)
 
         bt.logging.info("Calling UIDS -----------------------------------------")
         bt.logging.info(miner_uids)
