@@ -184,7 +184,6 @@ class Forwarder:
         if response is None:
             return 0.0
 
-        bt.logging.info(f"Getting username from {response}")
         response = {"response": response}
 
         score = self.score_dicts_difference(1, source_of_truth, response)
