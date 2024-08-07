@@ -21,7 +21,9 @@ import bittensor as bt
 from masa.types.twitter import TwitterProfileObject
 
 
-def calculate_reward(query: str, response: TwitterProfileObject, source_of_truth: TwitterProfileObject) -> float:
+def calculate_reward(
+    query: str, response: TwitterProfileObject, source_of_truth: TwitterProfileObject
+) -> float:
 
     # Return a reward of 0.0 if the response is None
     if response is None:
@@ -35,11 +37,16 @@ def calculate_reward(query: str, response: TwitterProfileObject, source_of_truth
     # Get all required keys from TwitterProfileObject
     required_keys = TwitterProfileObject.__annotations__.keys()
     missing_keys = sum(
-        1 for key in required_keys if key not in response or response[key] is None)
+        1 for key in required_keys if key not in response or response[key] is None
+    )
     score -= 0.1 * missing_keys
 
     for key in required_keys:
-        if key in response and key in source_of_truth and response[key] != source_of_truth[key]:
+        if (
+            key in response
+            and key in source_of_truth
+            and response[key] != source_of_truth[key]
+        ):
             score -= 0.1
 
-    return max(score, 0)  
+    return max(score, 0)
