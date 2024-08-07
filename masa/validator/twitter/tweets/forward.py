@@ -32,7 +32,7 @@ class TwitterTweetsForwarder(Forwarder):
     async def forward_query(self, tweet_query):
         try:
 
-            def source_method():
+            def source_method(query):
                 return TwitterTweetsRequest().get_recent_tweets(query=tweet_query)
 
             return await self.forward(
