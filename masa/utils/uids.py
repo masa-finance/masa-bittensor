@@ -145,7 +145,7 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         random_sample = random.sample(version_checked_uids, k)
         print(f"Random sample: {random_sample}")
 
-        uids = torch.tensor(avail_uids)
+        uids = torch.tensor(random_sample)
         return uids
     except Exception as e:
         bt.logging.error(f"Failed to get random miner uids: {e}")
