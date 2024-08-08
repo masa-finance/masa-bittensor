@@ -17,7 +17,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Get release notes
-        id: get_release_notes
         run: |
           RELEASE_NOTES=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .body)
           echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
@@ -33,13 +32,13 @@ jobs:
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
           git add docs/RELEASE_NOTES.md
-          git commit -m "Update release notes"
+          git commit -m "chore: update release notes"
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: Update release notes
+          commit-message: "chore: update release notes"
           branch: docs/update-release-notes
-          title: "Update release notes"
+          title: "chore: update release notes"
           body: "This PR updates the release notes in docs/RELEASE_NOTES.md"
