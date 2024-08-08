@@ -20,11 +20,11 @@ jobs:
         id: get_release_notes
         run: |
           RELEASE_NOTES=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .body)
-          echo "release_notes=$RELEASE_NOTES" >> $GITHUB_ENV
+          echo "::set-output name=release_notes::$RELEASE_NOTES"
 
       - name: Update RELEASE_NOTES.md
         run: |
-          echo -e "## Release Notes\n\n[All Release Notes](https://github.com/${{ github.repository }}/releases)\n\n$RELEASE_NOTES" > docs/RELEASE_NOTES.md
+          echo -e "## Release Notes\n\n[All Release Notes](https://github.com/${{ github.repository }}/releases)\n\n${{ steps.get_release_notes.outputs.release_notes }}" > docs/RELEASE_NOTES.md
 
       - name: Commit changes
         run: |
