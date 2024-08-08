@@ -30,8 +30,8 @@ jobs:
 
       - name: Commit changes
         run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
+          git config --global user.name 'grantdfoster'
+          git config --global user.email 'grant@masa.ai'
           git add docs/RELEASE_NOTES.md
           git commit -m "chore: update release notes"
 
