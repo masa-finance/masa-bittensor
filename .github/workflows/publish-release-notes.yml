@@ -35,8 +35,9 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.API_TOKEN_GITHUB }}
           commit-message: "chore: update release notes"
           branch: docs/update-release-notes
           title: "chore: update release notes"
           body: "**Description:**\n\nThis PR is automated and orchestrated by the release workflow.  It updates the release notes in docs/RELEASE_NOTES.md every time a new release is published.  This automation ensures that our documentation is always up to date with the latest release notes, and links out to all previous release notes as well.  This bot makes the description of this PR just a little bit longer as to pass our CI checks!  I will write one more sentence to make the PR description longer\n\nI will write one more sentence to make the PR description longer. I need to say just a bit more about this PR to pass the checks, but I'm fairly sure including this last sentence will do it! Kidding, this bot needs to write just a bit more to do it! Oh, how you've just gotta love CI and automation in general! Let me say that sentence one more time: this bot needs to write more characters so that the we pass all of our checks!"
+          base: main
