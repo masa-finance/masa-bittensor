@@ -31,6 +31,7 @@ class TwitterTweetsForwarder(Forwarder):
 
     async def forward_query(self, tweet_query):
         try:
+
             def source_method(query):
                 return TwitterTweetsRequest().get_recent_tweets(query=tweet_query)
 
@@ -41,7 +42,7 @@ class TwitterTweetsForwarder(Forwarder):
                     type=RequestType.TWITTER_TWEETS.value,
                 ),
                 parser_method=tweets_parser,
-                source_method=source_method
+                source_method=source_method,
             )
 
         except Exception as e:

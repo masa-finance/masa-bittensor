@@ -36,7 +36,7 @@ class DiscordGuildChannelsForwarder(Forwarder):
                     query=query, type=RequestType.DISCORD_GUILD_CHANNELS.value
                 ),
                 parser_method=guild_channels_parser,
-                source_method=DiscordGuildChannelsRequest().get_discord_guild_channels
+                source_method=DiscordGuildChannelsRequest().get_discord_guild_channels,
             )
 
         except Exception as e:

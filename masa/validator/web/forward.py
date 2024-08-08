@@ -32,6 +32,7 @@ class WebScraperForwarder(Forwarder):
 
     async def forward_query(self, web_scraper_query: WebScraperQuery):
         try:
+
             def source_method(query):
                 return WebScraperRequest().scrape_web(web_scraper_query)
 
@@ -42,7 +43,8 @@ class WebScraperForwarder(Forwarder):
                     type=RequestType.WEB_SCRAPER.value,
                 ),
                 parser_method=web_scraper_parser,
-                source_method=source_method)
+                source_method=source_method,
+            )
 
         except Exception as e:
             bt.logging.error(
