@@ -8,7 +8,7 @@ jobs:
   publish-release-notes:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
     steps:
       - name: Checkout repository
