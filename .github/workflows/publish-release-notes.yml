@@ -1,8 +1,10 @@
 name: Publish Release Notes
 
-on:
-  release:
-    types: [published]
+# on:
+#   release:
+#     types: [published]
+
+on: [push]
 
 jobs:
   publish-release-notes:
