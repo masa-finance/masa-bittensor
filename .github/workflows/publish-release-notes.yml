@@ -39,4 +39,4 @@ jobs:
           commit-message: "chore: update release notes"
           branch: docs/update-release-notes
           title: "chore: update release notes"
-          body: "This PR updates the release notes in docs/RELEASE_NOTES.md"
+          body: "This PR is automated and orchestrated by the release workflow.  It updates the release notes in docs/RELEASE_NOTES.md every time a new release is published.  This automation ensures that our documentation is always up to date with the latest release notes, and links out to all previous release notes as well.  This bot makes the description of this PR just a little bit longer as to pass our CI checks!"
