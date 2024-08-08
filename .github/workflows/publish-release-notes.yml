@@ -1,0 +1,38 @@
+name: Publish Release Notes
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get release notes
+        id: get_release_notes
+        run: |
+          RELEASE_NOTES=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .body)
+          echo "::set-output name=release_notes::$RELEASE_NOTES"
+
+      - name: Update RELEASE_NOTES.md
+        run: |
+          echo -e "## Release Notes\n\n[All Release Notes](https://github.com/${{ github.repository }}/releases)\n\n$RELEASE_NOTES" > docs/RELEASE_NOTES.md
+
+      - name: Commit changes
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add docs/RELEASE_NOTES.md
+          git commit -m "Update release notes"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: Update release notes
+          branch: docs/update-release-notes
+          title: "Update release notes"
+          body: "This PR updates the release notes in docs/RELEASE_NOTES.md"
