@@ -36,7 +36,7 @@ class DiscordChannelMessagesForwarder(Forwarder):
                     query=query, type=RequestType.DISCORD_CHANNEL_MESSAGES.value
                 ),
                 parser_method=channel_messages_parser,
-                source_method=DiscordChannelMessagesRequest().get_discord_channel_messages
+                source_method=DiscordChannelMessagesRequest().get_discord_channel_messages,
             )
 
         except Exception as e:

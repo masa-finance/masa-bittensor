@@ -34,7 +34,7 @@ class TwitterFollowersForwarder(Forwarder):
             return await self.forward(
                 request=Request(query=query, type=RequestType.TWITTER_FOLLOWERS.value),
                 parser_method=followers_parser,
-                source_method=TwitterFollowersRequest().get_followers
+                source_method=TwitterFollowersRequest().get_followers,
             )
 
         except Exception as e:

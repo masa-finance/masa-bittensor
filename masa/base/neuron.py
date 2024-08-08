@@ -104,9 +104,13 @@ class BaseNeuron(ABC):
         self.check_registered()
 
         # Check code version.  If version is less than weights_version, warn the user.
-        weights_version = self.subtensor.get_subnet_hyperparameters(self.config.netuid).weights_version
+        weights_version = self.subtensor.get_subnet_hyperparameters(
+            self.config.netuid
+        ).weights_version
         if self.spec_version < weights_version:
-            bt.logging.warning(f"🟡 Code Is Outdated! Latest: {weights_version}, Local: {self.spec_version}")
+            bt.logging.warning(
+                f"🟡 Code Is Outdated! Latest: {weights_version}, Local: {self.spec_version}"
+            )
         else:
             bt.logging.success(f"🟢 Code Is Up To Date! Version: {self.spec_version}")
 

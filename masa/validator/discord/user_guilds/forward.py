@@ -34,7 +34,7 @@ class DiscordUserGuildsForwarder(Forwarder):
             return await self.forward(
                 request=Request(type=RequestType.DISCORD_USER_GUILDS.value),
                 parser_method=user_guilds_parser,
-                source_method=DiscordUserGuildsRequest().get_discord_user_guilds
+                source_method=DiscordUserGuildsRequest().get_discord_user_guilds,
             )
 
         except Exception as e:

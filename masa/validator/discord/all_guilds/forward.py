@@ -35,11 +35,12 @@ class DiscordAllGuildsForwarder(Forwarder):
 
             def source_method(query):
                 return DiscordAllGuildsRequest().get_discord_all_guilds()
+
             return await self.forward(
                 request=Request(type=RequestType.DISCORD_ALL_GUILDS.value),
                 parser_method=all_guilds_parser,
                 timeout=REQUEST_TIMEOUT_IN_SECONDS,
-                source_method=source_method
+                source_method=source_method,
             )
 
         except Exception as e:
