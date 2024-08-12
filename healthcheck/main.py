@@ -724,20 +724,20 @@ async def tao_leaderboard():
 
         records = await conn.fetch(
             """
-            SELECT DISTINCT coldkey FROM axons
+            SELECT DISTINCT hotkey FROM axons
         """
         )
 
         await conn.close()
 
-        coldkeys = [record["coldkey"] for record in records]
-        subtensor = bt.subtensor("ws://100.28.51.29:9945")
+        hotkeys = [record["hotkey"] for record in records]
+        subtensor_network = bt.subtensor(subtensor)
 
         leaderboard = []
-        for coldkey in coldkeys:
-            print(f"getting balance for key: {coldkey}")
-            balance = subtensor.get_balance(address=coldkey)
-            leaderboard.append({"coldkey": coldkey, "balance": balance.tao})
+        for hotkey in hotkeys:
+            print(f"getting balance for key: {hotkey}")
+            staked = subtensor_network.get_total_stake_for_hotkey(hotkey)
+            leaderboard.append({"address": hotkey, "balance": staked.tao})
 
         leaderboard.sort(key=lambda x: x["balance"], reverse=True)
         for index, entry in enumerate(leaderboard, start=1):
