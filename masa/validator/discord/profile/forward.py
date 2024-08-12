@@ -34,7 +34,7 @@ class DiscordProfileForwarder(Forwarder):
             return await self.forward(
                 request=Request(query=query, type=RequestType.DISCORD_PROFILE.value),
                 parser_object=DiscordProfileObject,
-                source_method=DiscordProfileRequest().get_profile
+                source_method=DiscordProfileRequest().get_profile,
             )
 
         except Exception as e:

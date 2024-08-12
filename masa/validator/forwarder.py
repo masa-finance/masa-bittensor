@@ -42,8 +42,6 @@ class Forwarder:
         miner_uids = await get_random_uids(
             self.validator, k=self.validator.config.neuron.sample_size
         )
-        bt.logging.info("Calling UIDS -----------------------------------------")
-        bt.logging.info(miner_uids)
 
         bt.logging.info("Calling UIDS -----------------------------------------")
         bt.logging.info(miner_uids)
@@ -183,7 +181,6 @@ class Forwarder:
         if response is None:
             return 0.0
 
-        bt.logging.info(f"Getting username from {response}")
         response = {"response": response}
 
         score = self.score_dicts_difference(1, source_of_truth, response)

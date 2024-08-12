@@ -34,7 +34,7 @@ class TwitterProfileForwarder(Forwarder):
             return await self.forward(
                 request=Request(query=query, type=RequestType.TWITTER_PROFILE.value),
                 parser_object=TwitterProfileObject,
-                source_method=TwitterProfileRequest().get_profile
+                source_method=TwitterProfileRequest().get_profile,
             )
 
         except Exception as e:
