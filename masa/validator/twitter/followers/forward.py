@@ -29,12 +29,13 @@ class TwitterFollowersForwarder(Forwarder):
     def __init__(self, validator):
         super(TwitterFollowersForwarder, self).__init__(validator)
 
-    async def forward_query(self, query):
+    async def forward_query(self, query, limit):
         try:
             return await self.forward(
                 request=Request(query=query, type=RequestType.TWITTER_FOLLOWERS.value),
                 parser_method=followers_parser,
                 source_method=TwitterFollowersRequest().get_followers,
+                limit=limit,
             )
 
         except Exception as e:

@@ -29,7 +29,7 @@ class TwitterTweetsForwarder(Forwarder):
     def __init__(self, validator):
         super(TwitterTweetsForwarder, self).__init__(validator)
 
-    async def forward_query(self, tweet_query):
+    async def forward_query(self, tweet_query, limit):
         try:
 
             def source_method(query):
@@ -43,6 +43,7 @@ class TwitterTweetsForwarder(Forwarder):
                 ),
                 parser_method=tweets_parser,
                 source_method=source_method,
+                limit=limit,
             )
 
         except Exception as e:
