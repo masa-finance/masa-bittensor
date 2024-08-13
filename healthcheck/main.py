@@ -1,21 +1,20 @@
+import threading
 import bittensor as bt
-from typing import Union, Optional
 from fastapi import FastAPI
-import socket
+import json
 import os
 import nest_asyncio
 import httpx
 import requests
-import threading
+
 import asyncio
 import asyncpg
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
-from datetime import datetime, timezone
 from cachetools import TTLCache
-
+from datetime import datetime
 
 from masa.base.healthcheck import PingMiner
 
@@ -40,6 +39,8 @@ subtensor = "ws://100.28.51.29:9945"
 
 # Create a cache with a TTL of 60 seconds
 leaderboard_cache = TTLCache(maxsize=100, ttl=60 * 5)
+tao_leaderboard_cache = TTLCache(maxsize=100, ttl=60 * 10)
+miners_versions_cache = TTLCache(maxsize=100, ttl=60 * 10)
 
 
 def get_external_ip() -> str:
@@ -128,13 +129,8 @@ async def ping_uids(dendrite, metagraph, uids, timeout=3):
     """
     axons = [metagraph.axons[uid] for uid in uids]
     try:
-        request = PingMiner(sent_from=external_ip, is_active=False, version=None)
-        responses = await dendrite(
-            axons,
-            request,
-            deserialize=False,
-            # timeout=timeout,
-        )
+        request = PingMiner(sent_from=external_ip, is_active=False, version=0)
+        responses = await dendrite(axons, request, deserialize=False)
 
         print("RESSPONSES")
         print(responses)
@@ -146,9 +142,6 @@ async def ping_uids(dendrite, metagraph, uids, timeout=3):
             print(f"status code: {response.dendrite.status_code}")
             print(f"Is Axon serving: {corresponding_axon.is_serving}")
 
-            if corresponding_axon.ip == "179.24.204.155":
-                print(f"THIS IS LOCAL *** {corresponding_axon.ip}")
-                print(response)
             if response.dendrite.status_code == 404:
                 print(f"AXON UID: {response_index}")
                 print(corresponding_axon)
@@ -318,6 +311,51 @@ async def get_connected_axons_by_ip(ip: str, subnet_id: int):
     return connected_axons
 
 
+@app.get("/subnet/{subnet_id}/axons/versions")
+async def get_miners_versions(subnet_id):
+    """
+    Get the versions of miners using PingMiner and return full axons info.
+
+    Returns:
+        list: A list of dictionaries containing axon information along with their versions.
+    """
+
+    if miners_versions_cache and miners_versions_cache[0]:
+        return miners_versions_cache[0]
+
+    print(f"SUBNET ID : {subnet_id}")
+    subnet = bt.metagraph(subnet_id, subtensor, lite=False)
+    uids = subnet.uids.tolist()
+    axons = [subnet.axons[uid] for uid in uids]
+
+    wallet = bt.wallet("validator")
+    dendrite = bt.dendrite(wallet=wallet)  # Added timeout of 10 seconds
+
+    try:
+        request = PingMiner(sent_from=external_ip, is_active=False, version=0)
+        responses = await dendrite(axons, request, deserialize=False, timeout=10)
+
+        print(f"Got responses:   {len(responses)}")
+        num_responses_with_version = sum(
+            1 for response in responses if response.version != 0
+        )
+        print(f"Number of responses with version != 0: {num_responses_with_version}")
+
+        if num_responses_with_version == 0:
+            return []
+
+        versions = [
+            {"uid": uid, "response": response}
+            for uid, response in zip(uids, responses)
+            if response.dendrite.status_code == 200
+        ]
+        miners_versions_cache[0] = versions
+        return versions
+    except Exception as e:
+        bt.logging.error(f"Failed to get miners versions: {e}")
+        return []
+
+
 async def get_axons(subnet_id: int):
     subnet = bt.metagraph(subnet_id, subtensor, lite=False)
     subnet.sync()
@@ -350,6 +388,11 @@ async def get_axons(subnet_id: int):
 
         stake = stakes.tolist()[uid]
         print(stake)
+
+        print("VERSION UPDATE")
+        print(miners_versions_cache)
+        if miners_versions_cache and miners_versions_cache[0]:
+            axon["version"] = miners_versions_cache[0][uid]
 
         axon["staked_amount"] = stake
         if stake > min_tao_required_for_vpermit:
@@ -508,9 +551,8 @@ async def get_axons(subnet_id: int):
 
 async def periodic_axons_update():
     while True:
-        await get_axons(
-            subnet_id=1
-        )  # Replace '1' with the appropriate subnet value if needed
+        # Replace '1' with the appropriate subnet value if needed
+        await get_axons(subnet_id=1)
         await asyncio.sleep(60)
 
 
@@ -670,6 +712,43 @@ async def get_axon_uptime(subnet: int, uid: int):
     await conn.close()
 
     return {"uptime": [dict(record) for record in uptime_records]}
+
+
+@app.get("/axon/tao")
+async def tao_leaderboard():
+    print(tao_leaderboard_cache)
+    if tao_leaderboard_cache and tao_leaderboard_cache[0]:
+        return tao_leaderboard_cache[0]
+    try:
+        conn = await asyncpg.connect(os.getenv("POSTGRES_URL"))
+
+        records = await conn.fetch(
+            """
+            SELECT DISTINCT hotkey FROM axons
+        """
+        )
+
+        await conn.close()
+
+        hotkeys = [record["hotkey"] for record in records]
+        subtensor_network = bt.subtensor(subtensor)
+
+        leaderboard = []
+        for hotkey in hotkeys:
+            print(f"getting balance for key: {hotkey}")
+            staked = subtensor_network.get_total_stake_for_hotkey(hotkey)
+            leaderboard.append({"address": hotkey, "balance": staked.tao})
+
+        leaderboard.sort(key=lambda x: x["balance"], reverse=True)
+        for index, entry in enumerate(leaderboard, start=1):
+            entry["position"] = index
+
+        tao_leaderboard_cache[0] = leaderboard
+
+        return {"leaderboard": leaderboard}
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"message": str(e)})
 
 
 @app.post("/axons/setup/{subnet}")
@@ -846,7 +925,8 @@ async def call_axon(uid: int, request: Request):
         request_data = await request.json()
         method = request_data.get("method")
         path = request_data.get("path")
-        body = request_data.get("body", {})
+        body_str = request_data.get("body", "{}")
+        body = json.loads(body_str)
 
         if not method or not path:
             return JSONResponse(
