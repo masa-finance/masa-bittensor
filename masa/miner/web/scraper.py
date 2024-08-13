@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import json
 import requests
 import bittensor as bt
 from masa.miner.masa_protocol_request import MasaProtocolRequest

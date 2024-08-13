@@ -29,12 +29,13 @@ class DiscordProfileForwarder(Forwarder):
     def __init__(self, validator):
         super(DiscordProfileForwarder, self).__init__(validator)
 
-    async def forward_query(self, query):
+    async def forward_query(self, query, limit):
         try:
             return await self.forward(
                 request=Request(query=query, type=RequestType.DISCORD_PROFILE.value),
                 parser_object=DiscordProfileObject,
                 source_method=DiscordProfileRequest().get_profile,
+                limit=limit,
             )
 
         except Exception as e:

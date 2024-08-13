@@ -29,7 +29,7 @@ class DiscordGuildChannelsForwarder(Forwarder):
     def __init__(self, validator):
         super(DiscordGuildChannelsForwarder, self).__init__(validator)
 
-    async def forward_query(self, query):
+    async def forward_query(self, query, limit):
         try:
             return await self.forward(
                 request=Request(
@@ -37,6 +37,7 @@ class DiscordGuildChannelsForwarder(Forwarder):
                 ),
                 parser_method=guild_channels_parser,
                 source_method=DiscordGuildChannelsRequest().get_discord_guild_channels,
+                limit=limit,
             )
 
         except Exception as e:
