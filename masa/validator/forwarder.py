@@ -4,14 +4,14 @@
 # Copyright © 2023 <your name>
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
-# documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+# documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
 # and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
 # The above copyright notice and this permission notice shall be included in all copies or substantial portions of
 # the Software.
 
-# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
 # THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
@@ -23,6 +23,7 @@ import torch
 from collections import defaultdict
 import math
 from sklearn.cluster import KMeans
+
 # this forwarder needs to able to handle multiple requests, driven off of an API request
 
 
@@ -123,7 +124,10 @@ class Forwarder:
     def get_rewards(self, responses: dict, source_of_truth: dict) -> torch.FloatTensor:
 
         combined_responses = responses.copy()
-        combined_responses.append(source_of_truth)
+        if "response" in source_of_truth:
+            combined_responses.append(source_of_truth["response"])
+        else:
+            combined_responses.append(source_of_truth)
 
         embeddings = self.validator.model.encode(
             [str(response) for response in combined_responses]
@@ -139,11 +143,18 @@ class Forwarder:
         bt.logging.info(source_of_truth)
         bt.logging.info(f"Source of truth label: {source_of_truth_label}")
         bt.logging.info(f"labels: {cluster_labels}")
+
+        similarity_percentages = [
+            self.calculate_similarity_percentage(embeddings[i], embeddings[-1])
+            for i in range(len(responses))
+        ]
+        bt.logging.info(f"Similarity percentages: {similarity_percentages}")
+
         rewards_list = [
             (
                 1
                 if cluster_labels[i] == source_of_truth_label
-                else self.calculate_reward(response, source_of_truth)
+                else similarity_percentages[i] * 0.6 / 100
             )
             for i, response in enumerate(responses)
         ]
@@ -153,31 +164,15 @@ class Forwarder:
 
         return torch.FloatTensor(rewards_list).to(self.validator.device)
 
-    def score_dicts_difference(self, initialScore, dict1, dict2):
-        score = initialScore
-
-        if not isinstance(dict1, dict) and not isinstance(dict2, dict):
-            if dict1 != dict2:
-                return max(score - 0.1, 0)
-            else:
-                return max(score, 0)
-
-        for key in dict1.keys():
-            if key not in dict2 or dict2[key] is None:
-                score -= 0.1
-            elif isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
-                score = self.score_dicts_difference(score, dict1[key], dict2[key])
-            elif isinstance(dict1[key], list) and isinstance(dict2[key], list):
-                if len(dict1[key]) != len(dict2[key]):
-                    length_difference = abs(len(dict1[key]) - len(dict2[key]))
-                    score -= 0.1 * (1 + length_difference)
-                else:
-                    for item1, item2 in zip(dict1[key], dict2[key]):
-                        score = self.score_dicts_difference(score, item1, item2)
-            elif str(dict1[key]) != str(dict2[key]):
-                score -= 0.1
-
-        return max(score, 0)
+    def calculate_similarity_percentage(self, response_embedding, source_embedding):
+        # Calculate the cosine similarity between the response and the source of truth
+        cosine_similarity = torch.nn.functional.cosine_similarity(
+            torch.tensor(response_embedding).unsqueeze(0),
+            torch.tensor(source_embedding).unsqueeze(0),
+        ).item()
+        # Convert cosine similarity to percentage
+        similarity_percentage = (cosine_similarity + 1) / 2 * 100
+        return similarity_percentage
 
     def calculate_reward(self, response: dict, source_of_truth: dict) -> float:
 
