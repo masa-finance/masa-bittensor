@@ -39,6 +39,7 @@ class Forwarder:
         parser_method=None,
         timeout=5,
         source_method=None,
+        limit=None,
     ):
         miner_uids = await get_random_uids(
             self.validator, k=self.validator.config.neuron.sample_size
@@ -115,6 +116,9 @@ class Forwarder:
         ]
 
         responses_with_metadata.sort(key=lambda x: (-x["score"], x["latency"]))
+
+        if limit:
+            return responses_with_metadata[: int(limit)]
         return responses_with_metadata
 
     def get_rewards(self, responses: dict, source_of_truth: dict) -> torch.FloatTensor:

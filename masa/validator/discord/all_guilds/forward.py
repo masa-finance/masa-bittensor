@@ -30,7 +30,7 @@ class DiscordAllGuildsForwarder(Forwarder):
     def __init__(self, validator):
         super(DiscordAllGuildsForwarder, self).__init__(validator)
 
-    async def forward_query(self):
+    async def forward_query(self, limit):
         try:
 
             def source_method(query):
@@ -41,6 +41,7 @@ class DiscordAllGuildsForwarder(Forwarder):
                 parser_method=all_guilds_parser,
                 timeout=REQUEST_TIMEOUT_IN_SECONDS,
                 source_method=source_method,
+                limit=limit,
             )
 
         except Exception as e:

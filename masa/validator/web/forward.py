@@ -30,7 +30,7 @@ class WebScraperForwarder(Forwarder):
     def __init__(self, validator):
         super(WebScraperForwarder, self).__init__(validator)
 
-    async def forward_query(self, web_scraper_query: WebScraperQuery):
+    async def forward_query(self, web_scraper_query: WebScraperQuery, limit):
         try:
 
             def source_method(query):
@@ -44,6 +44,7 @@ class WebScraperForwarder(Forwarder):
                 ),
                 parser_method=web_scraper_parser,
                 source_method=source_method,
+                limit=limit,
             )
 
         except Exception as e:
