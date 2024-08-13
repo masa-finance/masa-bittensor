@@ -1,6 +1,6 @@
 import bittensor as bt
 import os
-from fastapi import FastAPI, Depends
+from fastapi import params, params, FastAPI, Depends
 import asyncio
 import uvicorn
 from masa.miner.twitter.tweets import RecentTweetsQuery
@@ -17,6 +17,7 @@ from masa.validator.discord.user_guilds.forward import DiscordUserGuildsForwarde
 from masa.validator.discord.profile.forward import DiscordProfileForwarder
 from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
 
 
 class ValidatorAPI:
@@ -134,70 +135,82 @@ class ValidatorAPI:
 
         self.start_server()
 
-    async def get_twitter_profile(self, username: str):
+    async def get_twitter_profile(self, username: str, limit: Optional[str] = None):
         all_responses = await TwitterProfileForwarder(self.validator).forward_query(
-            query=username
+            query=username, limit=limit
         )
         if all_responses:
             return all_responses
         return []
 
-    async def get_twitter_followers(self, username: str):
+    async def get_twitter_followers(self, username: str, limit: Optional[str] = None):
         all_responses = await TwitterFollowersForwarder(self.validator).forward_query(
-            query=username
+            query=username, limit=limit
         )
         if all_responses:
             return all_responses
         return []
 
-    async def get_recent_tweets(self, tweet_query: RecentTweetsQuery):
+    async def get_recent_tweets(
+        self, tweet_query: RecentTweetsQuery, limit: Optional[str] = None
+    ):
         all_responses = await TwitterTweetsForwarder(self.validator).forward_query(
-            tweet_query=tweet_query
+            tweet_query=tweet_query, limit=limit
         )
         if all_responses:
             return all_responses
         return []
 
-    async def scrape_web(self, web_scraper_query: WebScraperQuery):
+    async def scrape_web(
+        self, web_scraper_query: WebScraperQuery, limit: Optional[str] = None
+    ):
         all_responses = await WebScraperForwarder(self.validator).forward_query(
-            web_scraper_query=web_scraper_query
+            web_scraper_query=web_scraper_query, limit=limit
         )
         if all_responses:
             return all_responses
         return []
 
-    async def get_discord_profile(self, user_id: str):
+    async def get_discord_profile(self, user_id: str, limit: Optional[str] = None):
         all_responses = await DiscordProfileForwarder(self.validator).forward_query(
-            query=user_id
+            query=user_id, limit=limit
         )
         if all_responses:
             return all_responses
         return []
 
-    async def get_discord_channel_messages(self, channel_id: str):
+    async def get_discord_channel_messages(
+        self, channel_id: str, limit: Optional[str] = None
+    ):
         all_responses = await DiscordChannelMessagesForwarder(
             self.validator
-        ).forward_query(query=channel_id)
+        ).forward_query(query=channel_id, limit=limit)
         if all_responses:
             return all_responses
         return []
 
-    async def get_discord_guild_channels(self, guild_id: str):
+    async def get_discord_guild_channels(
+        self, guild_id: str, limit: Optional[str] = None
+    ):
         all_responses = await DiscordGuildChannelsForwarder(
             self.validator
-        ).forward_query(query=guild_id)
+        ).forward_query(query=guild_id, limit=limit)
         if all_responses:
             return all_responses
         return []
 
-    async def get_discord_user_guilds(self):
-        all_responses = await DiscordUserGuildsForwarder(self.validator).forward_query()
+    async def get_discord_user_guilds(self, limit: Optional[str] = None):
+        all_responses = await DiscordUserGuildsForwarder(self.validator).forward_query(
+            limit=limit
+        )
         if all_responses:
             return all_responses
         return []
 
-    async def get_discord_all_guilds(self):
-        all_responses = await DiscordAllGuildsForwarder(self.validator).forward_query()
+    async def get_discord_all_guilds(self, limit: Optional[str] = None):
+        all_responses = await DiscordAllGuildsForwarder(self.validator).forward_query(
+            limit=limit
+        )
         if all_responses:
             return all_responses
         return []

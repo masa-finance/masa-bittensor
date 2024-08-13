@@ -29,12 +29,13 @@ class TwitterProfileForwarder(Forwarder):
     def __init__(self, validator):
         super(TwitterProfileForwarder, self).__init__(validator)
 
-    async def forward_query(self, query):
+    async def forward_query(self, query, limit):
         try:
             return await self.forward(
                 request=Request(query=query, type=RequestType.TWITTER_PROFILE.value),
                 parser_object=TwitterProfileObject,
                 source_method=TwitterProfileRequest().get_profile,
+                limit=limit,
             )
 
         except Exception as e:
