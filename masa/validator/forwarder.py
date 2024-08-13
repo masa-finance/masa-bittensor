@@ -23,7 +23,6 @@ import torch
 from collections import defaultdict
 import math
 from sklearn.cluster import KMeans
-
 # this forwarder needs to able to handle multiple requests, driven off of an API request
 
 
