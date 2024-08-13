@@ -1,6 +1,9 @@
 name: Publish Release Notes
 
 on:
+  push:
+    branches:
+      - "**"
   release:
     types: [published]
 
