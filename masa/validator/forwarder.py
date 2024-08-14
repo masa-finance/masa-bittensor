@@ -154,7 +154,7 @@ class Forwarder:
             (
                 1
                 if cluster_labels[i] == source_of_truth_label
-                else similarity_percentages[i] * 0.6 / 100
+                else similarity_percentages[i] / 100
             )
             for i, response in enumerate(responses)
         ]

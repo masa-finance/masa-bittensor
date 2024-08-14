@@ -126,17 +126,10 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         weights_version = self.subtensor.get_subnet_hyperparameters(
             self.config.netuid
         ).weights_version
-        version_checked_uids = healthy_uids
 
-        # healthy_uids, _ = await ping_uids(dendrite, self.metagraph, candidate_uids)
-
-        # guard against deployed validators not finding any healthy ids via ping...
-        # if (len(healthy_uids) == 0):
-        #     healthy_uids = candidate_uids
-
-        # filtered_uids = filter_duplicated_axon_ips_for_uids(
-        #     healthy_uids, self.metagraph
-        # )
+        version_checked_uids = [
+            uid for uid in healthy_uids if self.versions[uid] == weights_version
+        ]
 
         k = min(k, len(version_checked_uids))
         # Random sampling
