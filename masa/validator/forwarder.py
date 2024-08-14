@@ -37,7 +37,7 @@ class Forwarder:
         request,
         parser_object=None,
         parser_method=None,
-        timeout=5,
+        timeout=10,
         source_method=None,
         limit=None,
     ):
