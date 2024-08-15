@@ -128,7 +128,7 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
         ).weights_version
 
         version_checked_uids = [
-            uid for uid in healthy_uids if self.versions[uid] == weights_version
+            uid for uid in healthy_uids if self.versions[uid] >= weights_version
         ]
 
         k = min(k, len(version_checked_uids))
