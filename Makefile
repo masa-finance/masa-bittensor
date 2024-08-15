@@ -13,8 +13,8 @@ INCENTIVIZED_TESTNET = chain_endpoint $(INCENTIVIZED_TESTNET_ENDPOINT)
 TESTNET = network test
 MAINNET = network finney
 
-# NETUID = 1 # devnet
-NETUID = 165 # testnet
+NETUID = 1 # devnet
+# NETUID = 165 # testnet
 # NETUID = 42 # mainnet
 
 
@@ -22,9 +22,9 @@ NETUID = 165 # testnet
 #####                       SELECT YOUR ENV                        #####
 ########################################################################
 # SUBTENSOR_ENVIRONMENT = $(LOCALNET)
-# SUBTENSOR_ENVIRONMENT = $(INCENTIVIZED_TESTNET)
 # SUBTENSOR_ENVIRONMENT = $(DEVNET)
-SUBTENSOR_ENVIRONMENT = $(TESTNET)
+SUBTENSOR_ENVIRONMENT = $(INCENTIVIZED_TESTNET)
+# SUBTENSOR_ENVIRONMENT = $(TESTNET)
 # SUBTENSOR_ENVIRONMENT = $(MAINNET)
 
 
