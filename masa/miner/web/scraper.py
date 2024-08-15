@@ -16,7 +16,7 @@ class WebScraperRequest(MasaProtocolRequest):
         super().__init__()
 
     def scrape_web(self, query: WebScraperQuery) -> WebScraperObject:
-        bt.logging.info(f"Getting recent tweets from worker with query: {query}")
+        bt.logging.info(f"Getting scraped data from worker with query: {query}")
         response = self.post("/data/web", body={"url": query.url, "depth": query.depth})
 
         if response.status_code == 504:
