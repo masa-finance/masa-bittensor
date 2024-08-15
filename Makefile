@@ -11,9 +11,11 @@ INCENTIVIZED_TESTNET_ENDPOINT = ws://100.28.51.29:9945
 INCENTIVIZED_TESTNET = chain_endpoint $(INCENTIVIZED_TESTNET_ENDPOINT)
 
 TESTNET = network test
+MAINNET = network finney
 
 # NETUID = 1 # devnet
 NETUID = 165 # testnet
+# NETUID = 42 # mainnet
 
 
 ########################################################################
@@ -23,6 +25,7 @@ NETUID = 165 # testnet
 # SUBTENSOR_ENVIRONMENT = $(INCENTIVIZED_TESTNET)
 # SUBTENSOR_ENVIRONMENT = $(DEVNET)
 SUBTENSOR_ENVIRONMENT = $(TESTNET)
+# SUBTENSOR_ENVIRONMENT = $(MAINNET)
 
 
 ########################################################################
