@@ -131,9 +131,29 @@ class Forwarder:
         webhook_url = self.analytic_webhook
         headers = {"Content-Type": "application/json"}
 
+        # Add additional metadata fields
+        for response in responses_with_metadata:
+            uid = response["uid"]
+            axon = self.validator.metagraph.axons[uid]
+            response["axon"] = axon
+            response["axon_version"] = (
+                axon.version if hasattr(axon, "version") else "unknown"
+            )
+            response["version"] = (
+                self.validator.versions[uid]
+                if uid in self.validator.versions
+                else "unknown"
+            )
+
+        # Add root level metadata
+        analytics_payload = {
+            "own_axon": self.validator.axon,
+            "responses": responses_with_metadata,
+        }
+
         try:
             response = requests.post(
-                webhook_url, headers=headers, data=json.dumps(responses_with_metadata)
+                webhook_url, headers=headers, data=json.dumps(analytics_payload)
             )
             response.raise_for_status()
             bt.logging.info(
