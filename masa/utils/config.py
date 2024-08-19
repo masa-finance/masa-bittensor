@@ -262,6 +262,13 @@ def add_validator_args(cls, parser):
         default=False,
     )
 
+    parser.add_argument(
+        "--analytics.webhook_endpoint",
+        type=str,
+        help="Webhook where to report analytics.",
+        default="https://api.masa.ai/validator/report",
+    )
+
 
 def config(cls):
     """

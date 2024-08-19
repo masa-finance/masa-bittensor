@@ -17,6 +17,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import requests
+import json
 from masa.utils.uids import get_random_uids
 import bittensor as bt
 import torch
@@ -31,6 +33,7 @@ class Forwarder:
     def __init__(self, validator):
         self.validator = validator
         self.minimum_accepted_score = 0.8
+        self.analytic_webhook = validator.config.analytics.webhook_endpoint
 
     async def forward(
         self,
@@ -119,7 +122,25 @@ class Forwarder:
 
         if limit:
             return responses_with_metadata[: int(limit)]
+
+        self.send_analytics_to_webhook(responses_with_metadata)
+
         return responses_with_metadata
+
+    def send_analytics_to_webhook(self, responses_with_metadata):
+        webhook_url = self.analytic_webhook
+        headers = {"Content-Type": "application/json"}
+
+        try:
+            response = requests.post(
+                webhook_url, headers=headers, data=json.dumps(responses_with_metadata)
+            )
+            response.raise_for_status()
+            bt.logging.info(
+                f"Successfully sent data to webhook: {response.status_code}"
+            )
+        except requests.exceptions.RequestException as e:
+            bt.logging.error(f"Failed to send data to webhook: {e}")
 
     def get_rewards(self, responses: dict, source_of_truth: dict) -> torch.FloatTensor:
 
