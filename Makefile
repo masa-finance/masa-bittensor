@@ -1,32 +1,23 @@
 BRANCH_NAME := $(shell git rev-parse --abbrev-ref HEAD)
 DOCKER_COMPOSE := BRANCH_NAME=$(BRANCH_NAME) docker compose
 
-LOCAL_ENDPOINT = ws://127.0.0.1:9945
-LOCALNET = chain_endpoint $(LOCAL_ENDPOINT)
-
-DEVNET_ENDPOINT = ws://54.205.45.3:9945
-DEVNET = chain_endpoint $(DEVNET_ENDPOINT)
-
-INCENTIVIZED_TESTNET_ENDPOINT = ws://100.28.51.29:9945
-INCENTIVIZED_TESTNET = chain_endpoint $(INCENTIVIZED_TESTNET_ENDPOINT)
+DEV_NET_ENDPOINT = ws://100.28.51.29:9945
+DEV_NET = chain_endpoint $(DEV_NET_ENDPOINT)
 
 TESTNET = network test
 MAINNET = network finney
 
-# NETUID = 1 # devnet
-# NETUID = 165 # testnet
-NETUID = 42 # mainnet
-
-
 ########################################################################
 #####                       SELECT YOUR ENV                        #####
 ########################################################################
-# SUBTENSOR_ENVIRONMENT = $(LOCALNET)
-# SUBTENSOR_ENVIRONMENT = $(DEVNET)
-# SUBTENSOR_ENVIRONMENT = $(INCENTIVIZED_TESTNET)
+
+# SUBTENSOR_ENVIRONMENT = $(DEV_NET)
 # SUBTENSOR_ENVIRONMENT = $(TESTNET)
 SUBTENSOR_ENVIRONMENT = $(MAINNET)
 
+# NETUID = 1 # devnet
+# NETUID = 165 # testnet
+NETUID = 42 # mainnet
 
 ########################################################################
 #####                       USEFUL COMMANDS                        #####
@@ -65,17 +56,17 @@ list-subnets:
 
 ## Validator setup
 stake-validator:
-	btcli stake add --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT)
+	btcli stake add --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)
 
 register-validator:
-	btcli subnet register --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT)
+	btcli subnet register --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)
 
 register-validator-root:
 	btcli root register --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 ## Register miner + Key Registration Validation
 register-miner:
-	btcli subnet register --wallet.name miner --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT)
+	btcli subnet register --wallet.name miner --wallet.hotkey default --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)
 
 validate-key-registration:
 	btcli subnet list --subtensor.$(SUBTENSOR_ENVIRONMENT)
