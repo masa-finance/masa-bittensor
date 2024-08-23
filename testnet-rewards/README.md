@@ -4,7 +4,7 @@
 
 1. **Clone the Repository**: Start by cloning our company's GitHub repository to access the necessary scripts.
     ```bash
-    git clone <GitHub Repository URL>
+    git clone https://github.com/masa-finance/masa-bittensor/tree/feature/verify-tao-signature
     ```
 
 2. **Navigate to the Directory**: Change your directory to where the `generate-proof.py` script is located.
