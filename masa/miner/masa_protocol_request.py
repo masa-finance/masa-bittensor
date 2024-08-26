@@ -8,8 +8,7 @@ REQUEST_TIMEOUT_IN_SECONDS = 90
 class MasaProtocolRequest:
     def __init__(self):
         self.base_url = os.getenv("ORACLE_BASE_URL", "http://localhost:8080/api/v1")
-        self.authorization = os.getenv("ORACLE_AUTHORIZATION", "")
-        self.headers = {"Authorization": self.authorization}
+        self.headers = {"Authorization": ""}
 
     def get(self, path) -> requests.Response:
         return requests.get(
