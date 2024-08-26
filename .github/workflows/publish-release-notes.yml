@@ -31,7 +31,7 @@ jobs:
 
       - name: Update RELEASE_NOTES.md
         run: |
-          echo -e "## Masa Bittensor Release Notes\n\n${{ env.RELEASE_NOTES }}\n\n[All Releases](https://github.com/${{ github.repository }}/releases)" > docs/RELEASE_NOTES.md
+          echo -e "---\ntitle: Masa Bittensor Release Notes\n---\n\n${{ env.RELEASE_NOTES }}\n\n[All Releases](https://github.com/${{ github.repository }}/releases)" > docs/RELEASE_NOTES.md
 
       - name: Commit changes
         run: |
