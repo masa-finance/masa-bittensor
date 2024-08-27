@@ -14,7 +14,9 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 ### Run Miner
 
 ```bash
-make run-miner
+sudo apt install nodejs npm
+sudo npm install -g pm2
+pm2 "make run-miner"
 ```
 
 Your miner should now be running! By default, the miner will only respond to neurons with a validator permit and at least 10 TAO staked. To adjust this configuration, you can pass the following flags to the `run-miner` command:

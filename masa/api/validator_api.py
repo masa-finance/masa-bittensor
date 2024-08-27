@@ -36,6 +36,15 @@ class ValidatorAPI:
         )
 
         self.app.add_api_route(
+            "/versions",
+            self.validator.get_miner_versions,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get miner versions",
+            tags=["versions"],
+        )
+
+        self.app.add_api_route(
             "/data/twitter/profile/{username}",
             self.get_twitter_profile,
             methods=["GET"],
