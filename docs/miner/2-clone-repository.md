@@ -29,12 +29,6 @@ sudo apt install python3
 sudo apt install python3-venv
 python3 -m venv bittensor
 source bittensor/bin/activate
-pip install -r requirements.txt
-```
-
-```bash
-sudo apt install -y python3.10 \
-python3.10-venv && python3.10 -m venv venv && source venv/bin/activate && echo "source venv/bin/activate">>~/.bashrc
 ```
 
 ## Install required packages
