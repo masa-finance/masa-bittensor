@@ -35,10 +35,10 @@ class Forwarder:
     async def forward(
         self,
         request,
-        parser_object=None,
-        parser_method=None,
+        # parser_object=None,
+        # parser_method=None,
         timeout=10,
-        source_method=None,
+        # source_method=None,
         limit=None,
     ):
         miner_uids = await get_random_uids(
@@ -66,15 +66,12 @@ class Forwarder:
         )
         parsed_responses = responses
 
-        bt.logging.trace("Parsed responses -----------------------------------------")
-        bt.logging.trace(parsed_responses)
-
-        if parser_object:
-            parsed_responses = [
-                parser_object(**response) for response in valid_responses
-            ]
-        elif parser_method:
-            parsed_responses = parser_method(valid_responses)
+        # if parser_object:
+        #     parsed_responses = [
+        #         parser_object(**response) for response in valid_responses
+        #     ]
+        # elif parser_method:
+        #     parsed_responses = parser_method(valid_responses)
 
         process_times = [
             synapse.dendrite.process_time
@@ -82,40 +79,41 @@ class Forwarder:
             if uid in valid_miner_uids
         ]
 
-        source_of_truth = await self.get_source_of_truth(
-            responses=parsed_responses,
-            miner_uids=miner_uids,
-            source_method=source_method,
-            query=request.query,
-        )
+        # source_of_truth = await self.get_source_of_truth(
+        #     responses=parsed_responses,
+        #     miner_uids=miner_uids,
+        #     source_method=source_method,
+        #     query=request.query,
+        # )
 
         # Score responses
-        rewards = self.get_rewards(
-            responses=parsed_responses, source_of_truth=source_of_truth
-        )
+        # rewards = self.get_rewards(
+        #     responses=parsed_responses, source_of_truth=source_of_truth
+        # )
+
         # Update the scores based on the rewards
-        if len(valid_miner_uids) > 0:
-            self.validator.update_scores(rewards, valid_miner_uids)
-            if self.validator.should_set_weights():
-                try:
-                    self.validator.set_weights()
-                except Exception as e:
-                    bt.logging.error(f"Failed to set weights: {e}")
+        # if len(valid_miner_uids) > 0:
+        #     self.validator.update_scores(rewards, valid_miner_uids)
+        #     if self.validator.should_set_weights():
+        #         try:
+        #             self.validator.set_weights()
+        #         except Exception as e:
+        #             bt.logging.error(f"Failed to set weights: {e}")
 
         # Add corresponding uid to each response
         responses_with_metadata = [
             {
                 "response": response,
                 "uid": int(uid.item()),
-                "score": score.item(),
+                # "score": score.item(),
                 "latency": latency,
             }
-            for response, latency, uid, score in zip(
-                parsed_responses, process_times, valid_miner_uids, rewards
+            for response, latency, uid in zip(
+                parsed_responses, process_times, valid_miner_uids
             )
         ]
 
-        responses_with_metadata.sort(key=lambda x: (-x["score"], x["latency"]))
+        responses_with_metadata.sort(key=lambda x: (x["latency"]))
 
         if limit:
             return responses_with_metadata[: int(limit)]

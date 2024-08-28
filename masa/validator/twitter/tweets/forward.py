@@ -32,8 +32,8 @@ class TwitterTweetsForwarder(Forwarder):
     async def forward_query(self, tweet_query, limit):
         try:
 
-            def source_method(query):
-                return TwitterTweetsRequest().get_recent_tweets(query=tweet_query)
+            # def source_method(query):
+            #     return TwitterTweetsRequest().get_recent_tweets(query=tweet_query)
 
             return await self.forward(
                 request=Request(
@@ -41,8 +41,8 @@ class TwitterTweetsForwarder(Forwarder):
                     count=tweet_query.count,
                     type=RequestType.TWITTER_TWEETS.value,
                 ),
-                parser_method=tweets_parser,
-                source_method=source_method,
+                # parser_method=tweets_parser,
+                # source_method=source_method,
                 limit=limit,
             )
 

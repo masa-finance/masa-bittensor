@@ -184,12 +184,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # This loop maintains the validator's operations until intentionally stopped.
         try:
-            tmpBlock = self.block
             while True:
-                if self.block != tmpBlock:
-                    bt.logging.info(f"Block: {self.block}")
-                    tmpBlock = self.block
-
                 # Run multiple forwards concurrently.
                 self.loop.run_until_complete(self.concurrent_forward())
 
