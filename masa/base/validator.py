@@ -128,12 +128,21 @@ class BaseValidatorNeuron(BaseNeuron):
     async def get_miner_versions(self):
         dendrite = bt.dendrite(wallet=self.wallet)
         request = PingMiner(sent_from=get_external_ip(), is_active=False, version=0)
-        responses = await dendrite(
-            self.metagraph.axons, request, deserialize=False, timeout=5
-        )
+        responses = []
+        sample_size = self.config.neuron.sample_size
+        for i in range(0, len(self.metagraph.axons), sample_size):
+            batch = self.metagraph.axons[i : i + sample_size]
+            batch_responses = await dendrite(
+                batch,
+                request,
+                deserialize=False,
+                timeout=5,
+            )
+            responses.extend(batch_responses)
         self.versions = [response.version for response in responses]
         bt.logging.info(f"Axon Versions: {self.versions}")
         self.last_version_check_block = self.block
+        return self.versions
 
     async def run_miner_check(self):
         while not self.should_exit:

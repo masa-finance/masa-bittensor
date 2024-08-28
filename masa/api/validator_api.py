@@ -141,8 +141,22 @@ class ValidatorAPI:
             response_description="Get healthcheck status",
             tags=["metagraph"],
         )
+        self.app.add_api_route(
+            "/versions",
+            self.get_miners_versions,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get miners versions",
+            tags=["metagraph"],
+        )
 
         self.start_server()
+
+    async def get_miners_versions(self):
+        versions = await self.validator.get_miner_versions()
+        if versions:
+            return versions
+        return []
 
     async def get_twitter_profile(self, username: str, limit: Optional[str] = None):
         all_responses = await TwitterProfileForwarder(self.validator).forward_query(
