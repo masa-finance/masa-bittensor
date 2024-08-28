@@ -49,10 +49,20 @@ class Scorer:
             )
             responses.extend(batch_responses)
 
+        # return responses
+
         formatted_responses = []
         for i, response in enumerate(responses):
             response_dict = dict(response)
-            formatted_response = {"response": response_dict["response"], "uid": i}
+            formatted_response = {
+                "uid": i,
+                "total_size": response_dict.get("total_size", None),
+                "status_code": dict(response_dict["dendrite"]).get("status_code", None),
+                "status_message": dict(response_dict["dendrite"]).get(
+                    "status_message", None
+                ),
+                "response": response_dict.get("response", None),
+            }
             formatted_responses.append(formatted_response)
         return formatted_responses
 
