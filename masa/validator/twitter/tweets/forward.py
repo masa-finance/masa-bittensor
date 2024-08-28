@@ -20,8 +20,6 @@
 import bittensor as bt
 from masa.api.request import Request, RequestType
 from masa.validator.forwarder import Forwarder
-from masa.validator.twitter.tweets.parser import tweets_parser
-from masa.miner.twitter.tweets import TwitterTweetsRequest
 
 
 class TwitterTweetsForwarder(Forwarder):
@@ -31,18 +29,12 @@ class TwitterTweetsForwarder(Forwarder):
 
     async def forward_query(self, tweet_query, limit):
         try:
-
-            # def source_method(query):
-            #     return TwitterTweetsRequest().get_recent_tweets(query=tweet_query)
-
             return await self.forward(
                 request=Request(
                     query=tweet_query.query,
                     count=tweet_query.count,
                     type=RequestType.TWITTER_TWEETS.value,
                 ),
-                # parser_method=tweets_parser,
-                # source_method=source_method,
                 limit=limit,
             )
 

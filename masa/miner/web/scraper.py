@@ -18,17 +18,11 @@ class WebScraperRequest(MasaProtocolRequest):
     def scrape_web(self, query: WebScraperQuery) -> WebScraperObject:
         bt.logging.info(f"Getting scraped data from worker with query: {query}")
         response = self.post("/data/web", body={"url": query.url, "depth": query.depth})
-
-        if response.status_code == 504:
-            bt.logging.error("Worker request failed")
+        if response.ok:
+            data = self.format(response)
+            return data
+        else:
+            bt.logging.error(
+                f"Worker request failed with response: {response.status_code}"
+            )
             return None
-        scraped_data = self.format_scraped_data(response)
-        return scraped_data
-
-    def format_scraped_data(self, data: requests.Response) -> WebScraperObject:
-        bt.logging.info(f"Formatting scraped data: {data}")
-        json_data = data.json()["data"]
-
-        formatted_scraped_data = WebScraperObject(**json_data)
-
-        return formatted_scraped_data

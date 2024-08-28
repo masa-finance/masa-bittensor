@@ -18,6 +18,7 @@ from masa.validator.discord.profile.forward import DiscordProfileForwarder
 from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
+from masa.validator.scorer import Scorer
 
 
 class ValidatorAPI:
@@ -33,6 +34,15 @@ class ValidatorAPI:
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
+        )
+
+        self.app.add_api_route(
+            "/scoring",
+            Scorer(self.validator).get_miner_responses_for_scoring,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get scores and capacity of miners",
+            tags=["scoring"],
         )
 
         self.app.add_api_route(

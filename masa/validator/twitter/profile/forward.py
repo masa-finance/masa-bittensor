@@ -20,8 +20,6 @@
 import bittensor as bt
 from masa.api.request import Request, RequestType
 from masa.validator.forwarder import Forwarder
-from masa.types.twitter import TwitterProfileObject
-from masa.miner.twitter.profile import TwitterProfileRequest
 
 
 class TwitterProfileForwarder(Forwarder):
@@ -33,8 +31,6 @@ class TwitterProfileForwarder(Forwarder):
         try:
             return await self.forward(
                 request=Request(query=query, type=RequestType.TWITTER_PROFILE.value),
-                parser_object=TwitterProfileObject,
-                source_method=TwitterProfileRequest().get_profile,
                 limit=limit,
             )
 
