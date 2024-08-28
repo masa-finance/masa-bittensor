@@ -21,7 +21,14 @@ class TwitterProfileRequest(MasaProtocolRequest):
 
     def format_profile(self, data: requests.Response) -> TwitterProfileObject:
         bt.logging.info(f"Formatting twitter profile data: {data}")
-        profile_data = data.json()["data"]
-        twitter_profile = TwitterProfileObject(**profile_data)
+        try:
+            profile_data = data.json().get("data", {})
+            if not profile_data:
+                bt.logging.error("No profile data found")
+                return None
+            twitter_profile = TwitterProfileObject(**profile_data)
+        except (ValueError, KeyError) as e:
+            bt.logging.error(f"Error parsing profile data: {e}")
+            return None
 
         return twitter_profile
