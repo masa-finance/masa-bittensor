@@ -11,24 +11,11 @@ class TwitterProfileRequest(MasaProtocolRequest):
     def get_profile(self, profile) -> TwitterProfileObject:
         bt.logging.info(f"Getting profile from worker {profile}")
         response = self.get(f"/data/twitter/profile/{profile}")
-
-        if response.status_code == 504:
-            bt.logging.error("Worker request failed")
+        if response.ok:
+            data = self.format(response)
+            return data
+        else:
+            bt.logging.error(
+                f"Worker request failed with response: {response.status_code}"
+            )
             return None
-        twitter_profile = self.format_profile(response)
-
-        return twitter_profile
-
-    def format_profile(self, data: requests.Response) -> TwitterProfileObject:
-        bt.logging.info(f"Formatting twitter profile data: {data}")
-        try:
-            profile_data = data.json().get("data", {})
-            if not profile_data:
-                bt.logging.error("No profile data found")
-                return None
-            twitter_profile = TwitterProfileObject(**profile_data)
-        except (ValueError, KeyError) as e:
-            bt.logging.error(f"Error parsing profile data: {e}")
-            return None
-
-        return twitter_profile

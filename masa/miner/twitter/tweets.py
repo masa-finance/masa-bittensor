@@ -25,8 +25,8 @@ class TwitterTweetsRequest(MasaProtocolRequest):
             body={"query": query.query, "count": query.count},
         )
         if response.ok:
-            tweets = self.format(response)
-            return tweets
+            data = self.format(response)
+            return data
         else:
             bt.logging.error(
                 f"Worker request failed with response: {response.status_code}"
