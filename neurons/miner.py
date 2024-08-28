@@ -30,7 +30,6 @@ from masa.miner.discord.user_guilds import DiscordUserGuildsRequest
 from masa.miner.twitter.profile import TwitterProfileRequest
 from masa.miner.twitter.followers import TwitterFollowersRequest
 from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
-from masa.miner.web.scraper import WebScraperQuery, WebScraperRequest
 from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
 from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
 from masa.base.healthcheck import forward_ping, PingMiner
@@ -69,8 +68,6 @@ class Miner(BaseMinerNeuron):
             self.handle_twitter_followers(synapse)
         elif request_type == RequestType.TWITTER_TWEETS.value:
             self.handle_twitter_tweets(synapse)
-        elif request_type == RequestType.WEB_SCRAPER.value:
-            self.handle_web_scraper(synapse)
         elif request_type == RequestType.DISCORD_PROFILE.value:
             self.handle_discord_profile(synapse)
         elif request_type == RequestType.DISCORD_CHANNEL_MESSAGES.value:
@@ -105,15 +102,6 @@ class Miner(BaseMinerNeuron):
             synapse.response = tweets
         else:
             bt.logging.error(f"Failed to fetch Twitter tweets for {synapse.query}.")
-
-    def handle_web_scraper(self, synapse: Request):
-        web_scraped_data = WebScraperRequest().scrape_web(
-            WebScraperQuery(url=synapse.url, depth=synapse.depth)
-        )
-        if web_scraped_data is not None:
-            synapse.response = web_scraped_data
-        else:
-            bt.logging.error(f"Failed to scrape for {synapse.url}.")
 
     def handle_discord_profile(self, synapse: Request):
         discord_profile = DiscordProfileRequest().get_profile(synapse.query)

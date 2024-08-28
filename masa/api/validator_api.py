@@ -1,14 +1,11 @@
-import bittensor as bt
 import os
-from fastapi import params, params, FastAPI, Depends
+from fastapi import FastAPI, Depends
 import asyncio
 import uvicorn
 from masa.miner.twitter.tweets import RecentTweetsQuery
-from masa.miner.web.scraper import WebScraperQuery
 from masa.validator.twitter.profile.forward import TwitterProfileForwarder
 from masa.validator.twitter.followers.forward import TwitterFollowersForwarder
 from masa.validator.twitter.tweets.forward import TwitterTweetsForwarder
-from masa.validator.web.forward import WebScraperForwarder
 from masa.validator.discord.channel_messages.forward import (
     DiscordChannelMessagesForwarder,
 )
@@ -70,15 +67,6 @@ class ValidatorAPI:
             dependencies=[Depends(self.get_self)],
             response_description="Get recent tweets given a query",
             tags=["twitter"],
-        )
-
-        self.app.add_api_route(
-            "/data/web",
-            self.scrape_web,
-            methods=["POST"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Scrape a website given a url",
-            tags=["web"],
         )
 
         self.app.add_api_route(
@@ -180,16 +168,6 @@ class ValidatorAPI:
     ):
         all_responses = await TwitterTweetsForwarder(self.validator).forward_query(
             tweet_query=tweet_query, limit=limit
-        )
-        if all_responses:
-            return all_responses
-        return []
-
-    async def scrape_web(
-        self, web_scraper_query: WebScraperQuery, limit: Optional[str] = None
-    ):
-        all_responses = await WebScraperForwarder(self.validator).forward_query(
-            web_scraper_query=web_scraper_query, limit=limit
         )
         if all_responses:
             return all_responses
