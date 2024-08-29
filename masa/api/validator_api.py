@@ -43,6 +43,15 @@ class ValidatorAPI:
         )
 
         self.app.add_api_route(
+            "/volumes",
+            self.show_volumes,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get scores and capacity of miners",
+            tags=["scoring"],
+        )
+
+        self.app.add_api_route(
             "/data/twitter/profile/{username}",
             self.get_twitter_profile,
             methods=["GET"],
@@ -140,6 +149,12 @@ class ValidatorAPI:
         )
 
         self.start_server()
+
+    async def show_volumes(self):
+        volumes = self.validator.volumes
+        if volumes:
+            return volumes
+        return []
 
     async def get_miners_versions(self):
         versions = await self.validator.get_miner_versions()
