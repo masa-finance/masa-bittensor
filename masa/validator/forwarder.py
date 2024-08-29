@@ -84,7 +84,7 @@ class Forwarder:
             volume = len(
                 response_metadata["response"]
             )  # Assuming volume is the length of the response
-            self.validator.add_volume(miner_uid, volume)
+            self.validator.scorer.add_volume(miner_uid, volume)
 
         if limit:
             return responses_with_metadata[: int(limit)]

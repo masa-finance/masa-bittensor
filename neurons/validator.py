@@ -24,6 +24,7 @@ import time
 from masa.base.validator import BaseValidatorNeuron
 from masa.api.validator_api import ValidatorAPI
 from sentence_transformers import SentenceTransformer
+from masa.validator.scorer import Scorer
 
 
 class Validator(BaseValidatorNeuron):
@@ -32,27 +33,29 @@ class Validator(BaseValidatorNeuron):
         self.model = SentenceTransformer(
             "all-MiniLM-L6-v2"
         )  # Load a pre-trained model for embeddings
-        self.volumes = []
+        self.scorer = Scorer(self)
         self.API = ValidatorAPI(self)
         bt.logging.info("Validator initialized with config: {}".format(config))
 
     def add_volume(self, miner_uid, volume):
         """
-        Adds the volume returned by a miner to the hourly counter.
+        Adds the volume returned by a miner to the block counter, grouped every 360 blocks.
 
         Args:
             miner_uid (str): The unique identifier of the miner.
             volume (float): The volume to be added.
         """
-        current_time = int(time.time() // 3600)  # Current hour timestamp
-        if not self.volumes or self.volumes[-1]["timestamp"] != current_time:
-            # If volumes list is empty or the last entry is not for the current hour, add a new entry
-            self.volumes.append({"timestamp": current_time, "data": {}})
+        current_block = bt.metagraph(42).block  # Get the current block number
+        block_group = current_block // 360  # Group blocks by 360
 
-        if miner_uid not in self.volumes[-1]["data"]:
-            self.volumes[-1]["data"][miner_uid] = 0
+        if not self.volumes or self.volumes[-1]["block_group"] != block_group:
+            # If volumes list is empty or the last entry is not for the current block group, add a new entry
+            self.volumes.append({"block_group": block_group, "miners": {}})
 
-        self.volumes[-1]["data"][miner_uid] += volume
+        if miner_uid not in self.volumes[-1]["miners"]:
+            self.volumes[-1]["miners"][miner_uid] = 0
+
+        self.volumes[-1]["miners"][miner_uid] += volume
 
     async def forward(self):
         pass
