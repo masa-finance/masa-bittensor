@@ -28,7 +28,7 @@ class MasaProtocolRequest:
 
     def format(self, response: requests.Response):
         try:
-            data = response.json().get("data", [])
+            data = dict(response.json()).get("data", [])
             if not data:
                 bt.logging.error("No data found in protocol response")
                 return []
