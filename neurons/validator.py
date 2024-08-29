@@ -37,26 +37,6 @@ class Validator(BaseValidatorNeuron):
         self.API = ValidatorAPI(self)
         bt.logging.info("Validator initialized with config: {}".format(config))
 
-    def add_volume(self, miner_uid, volume):
-        """
-        Adds the volume returned by a miner to the block counter, grouped every 360 blocks.
-
-        Args:
-            miner_uid (str): The unique identifier of the miner.
-            volume (float): The volume to be added.
-        """
-        current_block = bt.metagraph(42).block  # Get the current block number
-        block_group = current_block // 360  # Group blocks by 360
-
-        if not self.volumes or self.volumes[-1]["block_group"] != block_group:
-            # If volumes list is empty or the last entry is not for the current block group, add a new entry
-            self.volumes.append({"block_group": block_group, "miners": {}})
-
-        if miner_uid not in self.volumes[-1]["miners"]:
-            self.volumes[-1]["miners"][miner_uid] = 0
-
-        self.volumes[-1]["miners"][miner_uid] += volume
-
     async def forward(self):
         pass
 
