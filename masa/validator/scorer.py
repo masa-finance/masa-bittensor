@@ -20,7 +20,6 @@
 import bittensor as bt
 import torch
 from fastapi.responses import JSONResponse
-from sklearn.cluster import KMeans
 
 
 class Scorer:
