@@ -58,15 +58,44 @@ class Scorer:
     async def score_miner_volumes(self):
         volumes = self.validator.volumes
 
-        # save the state of the validator
-        self.validator.save_state()
+        # Extract the miner UIDs and their corresponding volumes
+        miner_volumes = {}
+        for volume in volumes:
+            for miner_uid, vol in volume["miners"].items():
+                if miner_uid not in miner_volumes:
+                    miner_volumes[miner_uid] = 0
+                miner_volumes[miner_uid] += vol
+
+        # Get the list of valid miner UIDs
+        valid_miner_uids = list(miner_volumes.keys())
+
+        # Normalize the volumes to get rewards
+        max_volume = max(miner_volumes.values())
+        rewards = [miner_volumes[uid] / max_volume for uid in valid_miner_uids]
+
+        # Update the scores based on the rewards
+        scores = torch.FloatTensor(rewards).to(self.validator.device)
+        # note this also saves validator state
+        self.validator.update_scores(scores, valid_miner_uids)
+
+        if self.validator.should_set_weights():
+            try:
+                self.validator.set_weights()
+            except Exception as e:
+                bt.logging.error(f"Failed to set weights: {e}")
 
         # return the volumes along with their scores!
         if volumes:
             serializable_volumes = [
                 {
                     "block_group": int(volume["block_group"]),
-                    "miners": {int(k): float(v) for k, v in volume["miners"].items()},
+                    "miners": {
+                        int(k): {
+                            "volume": float(v),
+                            "score": rewards[valid_miner_uids.index(int(k))],
+                        }
+                        for k, v in volume["miners"].items()
+                    },
                 }
                 for volume in volumes
             ]
