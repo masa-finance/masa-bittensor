@@ -55,7 +55,7 @@ class Scorer:
         dendrite = bt.dendrite(wallet=self.validator.wallet)
 
         request = Request(
-            query="(trump) since:2024-08-27",
+            query="(bitcoin) since:2024-08-27",
             count=1,
             type=RequestType.TWITTER_TWEETS.value,
         )

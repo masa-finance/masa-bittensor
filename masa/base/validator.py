@@ -136,7 +136,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 batch,
                 request,
                 deserialize=False,
-                timeout=5,
+                timeout=10,
             )
             responses.extend(batch_responses)
         self.versions = [response.version for response in responses]
