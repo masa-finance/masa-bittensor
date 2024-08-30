@@ -54,7 +54,6 @@ class Scorer:
 
         self.validator.volumes[-1]["miners"][miner_uid] += volume
 
-    # TODO take self.validator.volumes and score them based on a bell curve!
     async def score_miner_volumes(self):
         volumes = self.validator.volumes
 
@@ -96,17 +95,6 @@ class Scorer:
             ]
             return JSONResponse(content=serializable_volumes)
         return JSONResponse(content=[])
-
-        # note, for when we want to see how each neuron responds
-        # formatted_response = {
-        #     "uid": i,
-        #     "total_size": response_dict.get("total_size", None),
-        #     "status_code": dict(response_dict["dendrite"]).get("status_code", None),
-        #     "status_message": dict(response_dict["dendrite"]).get(
-        #         "status_message", None
-        #     ),
-        #     "response": response_dict.get("response", None),
-        # }
 
     # TODO use this to validate that a tweet is actually a tweet
     def calculate_similarity_percentage(self, response_embedding, source_embedding):

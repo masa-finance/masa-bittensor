@@ -43,10 +43,12 @@ class Validator(BaseValidatorNeuron):
         self.API = ValidatorAPI(self)
         bt.logging.info("Validator initialized with config: {}".format(config))
 
+    # note, this function is called
     async def forward(self):
-        print("Forward method!")
-        keywords_url = self.config.validator.twitter_keywords_url
+        pass
 
+    async def test_miner_volume(self):
+        keywords_url = self.config.validator.twitter_keywords_url
         await self.get_tweets_from_keywords(keywords_url)
 
     async def fetch_keywords_from_github(self, url: str):

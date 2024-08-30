@@ -18,6 +18,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 from masa.utils.uids import get_random_uids
+from masa.api.request import RequestType
 import bittensor as bt
 
 # this forwarder needs to able to handle multiple requests, driven off of an API request
@@ -79,14 +80,16 @@ class Forwarder:
 
         responses_with_metadata.sort(key=lambda x: (x["latency"]))
 
-        for response_metadata in responses_with_metadata:
-            miner_uid = response_metadata["uid"]
+        # note, we are only scoring twitter tweets for volume now
+        if request.type == RequestType.TWITTER_TWEETS.value:
+            for response_metadata in responses_with_metadata:
+                miner_uid = response_metadata["uid"]
 
-            # TODO ensure that volume includes only data that passes a tweet similarity score
-            volume = len(
-                response_metadata["response"]
-            )  # Assuming volume is the length of the response
-            self.validator.scorer.add_volume(miner_uid, volume)
+                # TODO ensure that volume includes only data that passes a tweet similarity score
+                volume = len(
+                    response_metadata["response"]
+                )  # Assuming volume is the length of the response
+                self.validator.scorer.add_volume(miner_uid, volume)
 
         if limit:
             return responses_with_metadata[: int(limit)]
