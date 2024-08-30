@@ -31,7 +31,7 @@ class Forwarder:
     async def forward(
         self,
         request,
-        timeout=10,
+        timeout=15,
         limit=None,
     ):
         miner_uids = await get_random_uids(

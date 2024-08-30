@@ -33,7 +33,7 @@ class Scorer:
     async def get_miner_responses_for_scoring(self):
         dendrite = bt.dendrite(wallet=self.validator.wallet)
         request = Request(
-            query="(trump) since:2024-08-27",
+            query="(bitcoin) since:2024-08-27",
             count=1,
             type=RequestType.TWITTER_TWEETS.value,
         )
@@ -45,7 +45,7 @@ class Scorer:
                 batch,
                 request,
                 deserialize=False,
-                timeout=5,
+                timeout=15,
             )
             responses.extend(batch_responses)
 
