@@ -88,16 +88,11 @@ class Scorer:
         if volumes:
             serializable_volumes = [
                 {
-                    "block_group": int(volume["block_group"]),
-                    "miners": {
-                        int(k): {
-                            "volume": float(v),
-                            "score": rewards[valid_miner_uids.index(int(k))],
-                        }
-                        for k, v in volume["miners"].items()
-                    },
+                    "uid": int(miner_uid),
+                    "volume": float(miner_volumes[miner_uid]),
+                    "score": rewards[valid_miner_uids.index(miner_uid)],
                 }
-                for volume in volumes
+                for miner_uid in valid_miner_uids
             ]
             return JSONResponse(content=serializable_volumes)
         return JSONResponse(content=[])
