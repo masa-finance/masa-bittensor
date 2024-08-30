@@ -16,6 +16,7 @@ from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from masa.validator.scorer import Scorer
+from fastapi.responses import JSONResponse
 
 
 class ValidatorAPI:
@@ -35,7 +36,16 @@ class ValidatorAPI:
 
         self.app.add_api_route(
             "/scoring",
-            Scorer(self.validator).get_miner_responses_for_scoring,
+            validator.scorer.get_miner_responses_for_scoring,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get scores and capacity of miners",
+            tags=["scoring"],
+        )
+
+        self.app.add_api_route(
+            "/volumes",
+            self.show_volumes,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get scores and capacity of miners",
@@ -140,6 +150,22 @@ class ValidatorAPI:
         )
 
         self.start_server()
+
+    async def show_volumes(self):
+        print("VOLUMES")
+        print(self.validator.scorer.volumes)
+        volumes = self.validator.scorer.volumes
+        if volumes:
+            # Convert all elements in volumes to a JSON serializable format
+            serializable_volumes = [
+                {
+                    "block_group": int(volume["block_group"]),
+                    "miners": {int(k): float(v) for k, v in volume["miners"].items()},
+                }
+                for volume in volumes
+            ]
+            return JSONResponse(content=serializable_volumes)
+        return JSONResponse(content=[])
 
     async def get_miners_versions(self):
         versions = await self.validator.get_miner_versions()

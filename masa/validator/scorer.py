@@ -28,24 +28,47 @@ from masa.api.request import Request, RequestType
 class Scorer:
     def __init__(self, validator):
         self.validator = validator
+        self.volumes = []
         # self.minimum_accepted_score = 0.8
+
+    def add_volume(self, miner_uid, volume):
+        """
+        Adds the volume returned by a miner to the block counter, grouped every 360 blocks.
+
+        Args:
+            miner_uid (str): The unique identifier of the miner.
+            volume (float): The volume to be added.
+        """
+        current_block = bt.metagraph(42).block  # Get the current block number
+        block_group = current_block // 360  # Group blocks by 360
+
+        if not self.volumes or self.volumes[-1]["block_group"] != block_group:
+            # If volumes list is empty or the last entry is not for the current block group, add a new entry
+            self.volumes.append({"block_group": block_group, "miners": {}})
+
+        if miner_uid not in self.volumes[-1]["miners"]:
+            self.volumes[-1]["miners"][miner_uid] = 0
+
+        self.volumes[-1]["miners"][miner_uid] += volume
 
     async def get_miner_responses_for_scoring(self):
         dendrite = bt.dendrite(wallet=self.validator.wallet)
+
         request = Request(
             query="(bitcoin) since:2024-08-27",
             count=1,
             type=RequestType.TWITTER_TWEETS.value,
         )
         responses = []
-        sample_size = self.validator.config.neuron.sample_size
+        # sample_size = self.validator.config.neuron.sample_size
+        sample_size = 40
         for i in range(0, len(self.validator.metagraph.axons), sample_size):
             batch = self.validator.metagraph.axons[i : i + sample_size]
             batch_responses = await dendrite(
                 batch,
                 request,
                 deserialize=False,
-                timeout=15,
+                timeout=8,
             )
             responses.extend(batch_responses)
 

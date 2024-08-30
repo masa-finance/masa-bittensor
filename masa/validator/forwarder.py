@@ -79,6 +79,13 @@ class Forwarder:
 
         responses_with_metadata.sort(key=lambda x: (x["latency"]))
 
+        for response_metadata in responses_with_metadata:
+            miner_uid = response_metadata["uid"]
+            volume = len(
+                response_metadata["response"]
+            )  # Assuming volume is the length of the response
+            self.validator.scorer.add_volume(miner_uid, volume)
+
         if limit:
             return responses_with_metadata[: int(limit)]
         return responses_with_metadata
