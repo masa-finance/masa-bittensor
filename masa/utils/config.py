@@ -262,6 +262,13 @@ def add_validator_args(cls, parser):
         default=False,
     )
 
+    parser.add_argument(
+        "--validator.twitter_keywords_url",
+        type=str,
+        help="URL For twitter keywords file.",
+        default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/feature/volume-calculation-per-hour/scrape_twitter_keywords.txt",
+    )
+
 
 def config(cls):
     """
