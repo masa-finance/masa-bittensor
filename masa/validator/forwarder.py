@@ -81,6 +81,8 @@ class Forwarder:
 
         for response_metadata in responses_with_metadata:
             miner_uid = response_metadata["uid"]
+
+            # TODO ensure that volume includes only data that passes a tweet similarity score
             volume = len(
                 response_metadata["response"]
             )  # Assuming volume is the length of the response

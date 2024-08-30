@@ -205,6 +205,13 @@ def add_validator_args(cls, parser):
     )
 
     parser.add_argument(
+        "--neuron.sample_size_versioning",
+        type=int,
+        help="The number of miners to query for versioning.",
+        default=25,
+    )
+
+    parser.add_argument(
         "--neuron.disable_set_weights",
         action="store_true",
         help="Disables setting weights.",
@@ -266,7 +273,7 @@ def add_validator_args(cls, parser):
         "--validator.twitter_keywords_url",
         type=str,
         help="URL For twitter keywords file.",
-        default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/feature/volume-calculation-per-hour/scrape_twitter_keywords.txt",
+        default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/feat--improved-rewards-system/scrape_twitter_keywords.txt",
     )
 
 

@@ -15,7 +15,6 @@ from masa.validator.discord.profile.forward import DiscordProfileForwarder
 from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
-from masa.validator.scorer import Scorer
 from fastapi.responses import JSONResponse
 
 
@@ -35,11 +34,11 @@ class ValidatorAPI:
         )
 
         self.app.add_api_route(
-            "/scoring",
-            validator.scorer.get_miner_responses_for_scoring,
+            "/score",
+            validator.scorer.score_miner_volumes,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
-            response_description="Get scores and capacity of miners",
+            response_description="Score miner volumes",
             tags=["scoring"],
         )
 
@@ -152,9 +151,7 @@ class ValidatorAPI:
         self.start_server()
 
     async def show_volumes(self):
-        print("VOLUMES")
-        print(self.validator.scorer.volumes)
-        volumes = self.validator.scorer.volumes
+        volumes = self.validator.volumes
         if volumes:
             # Convert all elements in volumes to a JSON serializable format
             serializable_volumes = [

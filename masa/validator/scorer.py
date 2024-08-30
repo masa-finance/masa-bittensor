@@ -19,17 +19,13 @@
 
 import bittensor as bt
 import torch
-from collections import defaultdict
-import math
+from fastapi.responses import JSONResponse
 from sklearn.cluster import KMeans
-from masa.api.request import Request, RequestType
 
 
 class Scorer:
     def __init__(self, validator):
         self.validator = validator
-        self.volumes = []
-        # self.minimum_accepted_score = 0.8
 
     def add_volume(self, miner_uid, volume):
         """
@@ -39,99 +35,56 @@ class Scorer:
             miner_uid (str): The unique identifier of the miner.
             volume (float): The volume to be added.
         """
-        current_block = bt.metagraph(42).block  # Get the current block number
+        current_block = bt.metagraph(
+            # TODO ensure this works?
+            self.validator.config.netuid,
+            self.validator.config.subtensor,
+        ).block  # Get the current block number
         block_group = current_block // 360  # Group blocks by 360
 
-        if not self.volumes or self.volumes[-1]["block_group"] != block_group:
+        if (
+            not self.validator.volumes
+            or self.validator.volumes[-1]["block_group"] != block_group
+        ):
             # If volumes list is empty or the last entry is not for the current block group, add a new entry
-            self.volumes.append({"block_group": block_group, "miners": {}})
+            self.validator.volumes.append({"block_group": block_group, "miners": {}})
 
-        if miner_uid not in self.volumes[-1]["miners"]:
-            self.volumes[-1]["miners"][miner_uid] = 0
+        if miner_uid not in self.validator.volumes[-1]["miners"]:
+            self.validator.volumes[-1]["miners"][miner_uid] = 0
 
-        self.volumes[-1]["miners"][miner_uid] += volume
+        self.validator.volumes[-1]["miners"][miner_uid] += volume
 
-    async def get_miner_responses_for_scoring(self):
-        dendrite = bt.dendrite(wallet=self.validator.wallet)
+    # TODO take self.validator.volumes and score them based on a bell curve!
+    async def score_miner_volumes(self):
+        volumes = self.validator.volumes
 
-        request = Request(
-            query="(bitcoin) since:2024-08-27",
-            count=1,
-            type=RequestType.TWITTER_TWEETS.value,
-        )
-        responses = []
-        # sample_size = self.validator.config.neuron.sample_size
-        sample_size = 40
-        for i in range(0, len(self.validator.metagraph.axons), sample_size):
-            batch = self.validator.metagraph.axons[i : i + sample_size]
-            batch_responses = await dendrite(
-                batch,
-                request,
-                deserialize=False,
-                timeout=8,
-            )
-            responses.extend(batch_responses)
+        # save the state of the validator
+        self.validator.save_state()
 
-        # return responses
+        # return the volumes along with their scores!
+        if volumes:
+            serializable_volumes = [
+                {
+                    "block_group": int(volume["block_group"]),
+                    "miners": {int(k): float(v) for k, v in volume["miners"].items()},
+                }
+                for volume in volumes
+            ]
+            return JSONResponse(content=serializable_volumes)
+        return JSONResponse(content=[])
 
-        formatted_responses = []
-        for i, response in enumerate(responses):
-            response_dict = dict(response)
-            formatted_response = {
-                "uid": i,
-                "total_size": response_dict.get("total_size", None),
-                "status_code": dict(response_dict["dendrite"]).get("status_code", None),
-                "status_message": dict(response_dict["dendrite"]).get(
-                    "status_message", None
-                ),
-                "response": response_dict.get("response", None),
-            }
-            formatted_responses.append(formatted_response)
-        return formatted_responses
+        # note, for when we want to see how each neuron responds
+        # formatted_response = {
+        #     "uid": i,
+        #     "total_size": response_dict.get("total_size", None),
+        #     "status_code": dict(response_dict["dendrite"]).get("status_code", None),
+        #     "status_message": dict(response_dict["dendrite"]).get(
+        #         "status_message", None
+        #     ),
+        #     "response": response_dict.get("response", None),
+        # }
 
-    def get_rewards(self, responses: dict, source_of_truth: dict) -> torch.FloatTensor:
-
-        combined_responses = responses.copy()
-        if "response" in source_of_truth:
-            combined_responses.append(source_of_truth["response"])
-        else:
-            combined_responses.append(source_of_truth)
-
-        embeddings = self.validator.model.encode(
-            [str(response) for response in combined_responses]
-        )
-
-        num_clusters = min(len(combined_responses), 2)
-        clustering_model = KMeans(n_clusters=num_clusters)
-        clustering_model.fit(embeddings)
-        cluster_labels = clustering_model.labels_
-
-        source_of_truth_label = cluster_labels[-1] if len(cluster_labels) > 0 else None
-        bt.logging.info("Source of truth -----------------------------------------")
-        bt.logging.info(source_of_truth)
-        bt.logging.info(f"Source of truth label: {source_of_truth_label}")
-        bt.logging.info(f"labels: {cluster_labels}")
-
-        similarity_percentages = [
-            self.calculate_similarity_percentage(embeddings[i], embeddings[-1])
-            for i in range(len(responses))
-        ]
-        bt.logging.info(f"Similarity percentages: {similarity_percentages}")
-
-        rewards_list = [
-            (
-                1
-                if cluster_labels[i] == source_of_truth_label
-                else similarity_percentages[i] / 100
-            )
-            for i, response in enumerate(responses)
-        ]
-
-        bt.logging.info("REWARDS LIST ----------------------------------------------")
-        bt.logging.info(rewards_list)
-
-        return torch.FloatTensor(rewards_list).to(self.validator.device)
-
+    # TODO use this to validate that a tweet is actually a tweet
     def calculate_similarity_percentage(self, response_embedding, source_embedding):
         # Calculate the cosine similarity between the response and the source of truth
         cosine_similarity = torch.nn.functional.cosine_similarity(
@@ -141,62 +94,3 @@ class Scorer:
         # Convert cosine similarity to percentage
         similarity_percentage = (cosine_similarity + 1) / 2 * 100
         return similarity_percentage
-
-    def calculate_reward(self, response: dict, source_of_truth: dict) -> float:
-
-        # Return a reward of 0.0 if the response is None
-        if response is None:
-            return 0.0
-
-        response = {"response": response}
-
-        score = self.score_dicts_difference(1, source_of_truth, response)
-        return max(score, 0)  # Ensure the score doesn't go below 0
-
-    def sanitize_responses_and_uids(self, responses, miner_uids):
-        valid_responses = [response for response in responses if response is not None]
-        valid_miner_uids = [
-            miner_uids[i]
-            for i, response in enumerate(responses)
-            if response is not None
-        ]
-        return valid_responses, valid_miner_uids
-
-    async def get_source_of_truth(self, responses, miner_uids, source_method, query):
-        responses_str = [str(response) for response in responses]
-        weighted_responses = defaultdict(float)
-        most_common_response = None
-        count_high_score_uids = sum(
-            1
-            for uid in miner_uids
-            if uid in self.validator.scores
-            and self.validator.scores[uid] >= self.minimum_accepted_score
-        )
-        bt.logging.info(
-            f"Number of UIDs with score greater than the minimum accepted: {count_high_score_uids}"
-        )
-
-        if count_high_score_uids > 10:
-            for response, uid in zip(responses_str, miner_uids):
-                score = self.validator.scores[uid]
-                exponential_weight = math.exp(score)
-
-                weighted_responses[response] += exponential_weight
-
-            most_common_response = max(weighted_responses, key=weighted_responses.get)
-        else:
-            if source_method:
-                most_common_response = source_method(query)
-
-        if isinstance(most_common_response, str):
-            try:
-                most_common_response = eval(most_common_response)
-            except Exception as e:
-                bt.logging.error(
-                    f"Failed to transform most_common_response to dict: {e}"
-                )
-                most_common_response = {}
-
-        most_common_response = {"response": most_common_response}
-
-        return most_common_response

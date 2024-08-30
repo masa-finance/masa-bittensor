@@ -82,7 +82,7 @@ class Validator(BaseValidatorNeuron):
 
         bt.logging.info(f"Fetching {query} from miner")
         responses = await TwitterTweetsForwarder(self).forward_query(
-            tweet_query=RecentTweetsQuery(query=query, count=10), limit=limit
+            tweet_query=RecentTweetsQuery(query=query, count=1), limit=limit
         )
         all_responses.extend(responses)
 

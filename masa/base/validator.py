@@ -129,14 +129,14 @@ class BaseValidatorNeuron(BaseNeuron):
         dendrite = bt.dendrite(wallet=self.wallet)
         request = PingMiner(sent_from=get_external_ip(), is_active=False, version=0)
         responses = []
-        sample_size = self.config.neuron.sample_size
+        sample_size = self.config.neuron.sample_size_versioning
         for i in range(0, len(self.metagraph.axons), sample_size):
             batch = self.metagraph.axons[i : i + sample_size]
             batch_responses = await dendrite(
                 batch,
                 request,
                 deserialize=False,
-                timeout=10,
+                timeout=5,
             )
             responses.extend(batch_responses)
         self.versions = [response.version for response in responses]
@@ -410,6 +410,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 "step": self.step,
                 "scores": self.scores,
                 "hotkeys": self.hotkeys,
+                "volumes": self.volumes,
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -422,9 +423,10 @@ class BaseValidatorNeuron(BaseNeuron):
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
             state = torch.load(state_path)
-            self.step = state["step"]
-            self.scores = state["scores"]
-            self.hotkeys = state["hotkeys"]
+            self.step = dict(state).get("step", None)
+            self.scores = dict(state).get("scores", [])
+            self.hotkeys = dict(state).get("hotkeys", [])
+            self.volumes = dict(state).get("volumes", [])
         else:
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
