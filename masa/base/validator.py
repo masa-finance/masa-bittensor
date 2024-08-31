@@ -441,11 +441,15 @@ class BaseValidatorNeuron(BaseNeuron):
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
             state = torch.load(state_path)
-            self.step = dict(state).get("step", None)
+            self.step = dict(state).get("step", 0)
             self.scores = dict(state).get("scores", [])
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
         else:
+            self.step = 0
+            self.scores = torch.zeros(self.metagraph.n)
+            self.hotkeys = []
+            self.volumes = []
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )
