@@ -86,10 +86,11 @@ class Forwarder:
                 miner_uid = response_metadata["uid"]
 
                 # TODO ensure that volume includes only data that passes a tweet similarity score
-                volume = len(
-                    response_metadata["response"]
-                )  # Assuming volume is the length of the response
-                self.validator.scorer.add_volume(miner_uid, volume)
+                if response_metadata["response"]:
+                    volume = len(
+                        response_metadata["response"]
+                    )  # Assuming volume is the length of the response
+                    self.validator.scorer.add_volume(miner_uid, volume)
 
         if limit:
             return responses_with_metadata[: int(limit)]
