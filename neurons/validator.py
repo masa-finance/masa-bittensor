@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2023 Masa
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -83,6 +82,9 @@ class Validator(BaseValidatorNeuron):
         query = f"({random_keyword.strip()}) since:2024-08-27"
 
         bt.logging.info(f"Fetching {query} from miner")
+
+        # TODO this needs to be it's own dendrite call, don't go through the organic forwarder
+        # TODO also, this could pose an issue if we expose scoring via organic - someone can just DDOS it
         responses = await TwitterTweetsForwarder(self).forward_query(
             tweet_query=RecentTweetsQuery(query=query, count=3), limit=limit
         )

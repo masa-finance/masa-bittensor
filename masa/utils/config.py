@@ -29,7 +29,7 @@ def check_config(cls, config: "bt.Config"):
 
     full_path = os.path.expanduser(
         "{}/{}/{}/netuid{}/{}".format(
-            config.logging.logging_dir,  # TODO: change from ~/.bittensor/miners to ~/.bittensor/neurons
+            config.logging.logging_dir,
             config.wallet.name,
             config.wallet.hotkey,
             config.netuid,
@@ -194,7 +194,7 @@ def add_validator_args(cls, parser):
         "--neuron.num_concurrent_forwards",
         type=int,
         help="The number of concurrent forwards running at any time.",
-        default=2,
+        default=1,
     )
 
     parser.add_argument(
@@ -205,10 +205,17 @@ def add_validator_args(cls, parser):
     )
 
     parser.add_argument(
-        "--neuron.sample_size_versioning",
+        "--neuron.sample_size_version",
         type=int,
-        help="The number of miners to query for versioning.",
+        help="The number of miners to query for version testing.",
         default=25,
+    )
+
+    parser.add_argument(
+        "--neuron.sample_size_volume",
+        type=int,
+        help="The number of miners to query for volume testing.",
+        default=1,
     )
 
     parser.add_argument(

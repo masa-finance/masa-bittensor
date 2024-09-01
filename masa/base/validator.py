@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2023 Masa
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -125,11 +124,12 @@ class BaseValidatorNeuron(BaseNeuron):
         ]
         await asyncio.gather(*coroutines)
 
+    # TODO we can move this to it's own class I believe
     async def get_miner_versions(self):
         dendrite = bt.dendrite(wallet=self.wallet)
         request = PingMiner(sent_from=get_external_ip(), is_active=False, version=0)
         responses = []
-        sample_size = self.config.neuron.sample_size_versioning
+        sample_size = self.config.neuron.sample_size_version
         for i in range(0, len(self.metagraph.axons), sample_size):
             batch = self.metagraph.axons[i : i + sample_size]
             batch_responses = await dendrite(
@@ -140,7 +140,7 @@ class BaseValidatorNeuron(BaseNeuron):
             )
             responses.extend(batch_responses)
         self.versions = [response.version for response in responses]
-        bt.logging.info(f"Axon Versions: {self.versions}")
+        bt.logging.info(f"Miner Versions: {self.versions}")
         self.last_version_check_block = self.block
         return self.versions
 
@@ -238,7 +238,7 @@ class BaseValidatorNeuron(BaseNeuron):
             )
             self.thread.start()
             self.miner_version_thread.start()
-            self.miner_volume_thread.start()
+            # self.miner_volume_thread.start()
             self.is_running = True
             bt.logging.debug("Started")
 

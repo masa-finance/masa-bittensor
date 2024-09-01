@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2023 Masa
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the "Software"), to deal in the Software without restriction, including without limitation
@@ -57,7 +56,6 @@ class Forwarder:
         valid_responses, valid_miner_uids = self.sanitize_responses_and_uids(
             responses, miner_uids=miner_uids
         )
-        parsed_responses = responses
 
         process_times = [
             synapse.dendrite.process_time
@@ -73,12 +71,13 @@ class Forwarder:
                 "latency": latency,
             }
             for response, latency, uid in zip(
-                parsed_responses, process_times, valid_miner_uids
+                responses, process_times, valid_miner_uids
             )
         ]
 
         responses_with_metadata.sort(key=lambda x: (x["latency"]))
 
+        # TODO note, that this needs to move into the dedicated function for scoring
         # note, we are only scoring twitter tweets for volume now
         if request.type == RequestType.TWITTER_TWEETS.value:
             for response_metadata in responses_with_metadata:
