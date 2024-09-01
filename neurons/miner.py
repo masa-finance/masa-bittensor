@@ -150,8 +150,8 @@ class Miner(BaseMinerNeuron):
         hotkey = synapse.dendrite.hotkey
         uid = self.metagraph.hotkeys.index(hotkey)
 
-        bt.logging.info(f"Neurons Staked: {self.neurons_permit_stake}")
-        bt.logging.info(f"Validator Permit: {self.metagraph.validator_permit[uid]}")
+        bt.logging.trace(f"Neurons Staked: {self.neurons_permit_stake}")
+        bt.logging.trace(f"Validator Permit: {self.metagraph.validator_permit[uid]}")
 
         if (
             not self.config.blacklist.allow_non_registered
@@ -173,7 +173,7 @@ class Miner(BaseMinerNeuron):
             )
             return True, "Non-staked neuron"
 
-        bt.logging.info(f"Not Blacklisting recognized hotkey {hotkey}")
+        bt.logging.trace(f"Not Blacklisting recognized hotkey {hotkey}")
         return False, "Hotkey recognized!"
 
     async def priority(self, synapse: Request) -> float:
@@ -214,12 +214,12 @@ class Miner(BaseMinerNeuron):
             blocks_since_last_check
             >= self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
         ):
-            bt.logging.info(
+            bt.logging.trace(
                 f"A tempo has passed.  Blocks since last check: {blocks_since_last_check}"
             )
             return True
         else:
-            bt.logging.info(
+            bt.logging.trace(
                 f"Not yet a tempo since last check. Blocks since last check: {blocks_since_last_check}"
             )
             return False

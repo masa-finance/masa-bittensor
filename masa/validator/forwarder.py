@@ -39,8 +39,7 @@ class Forwarder:
             self.validator, k=self.validator.config.neuron.sample_size
         )
 
-        bt.logging.info("Calling UIDS -----------------------------------------")
-        bt.logging.info(miner_uids)
+        bt.logging.info(f"Calling miners: {miner_uids}")
 
         if miner_uids is None:
             return []

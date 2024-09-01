@@ -15,8 +15,9 @@ class PingMiner(bt.Synapse):
 def forward_ping(synapse: PingMiner, spec_version: int) -> PingMiner:
     synapse.is_active = True
     synapse.version = spec_version
-    bt.logging.info(f"Got ping from {synapse.sent_from}")
-    bt.logging.info(f"Passing back version {synapse.version}")
+    bt.logging.info(
+        f"Validator requesting version: {synapse.sent_from}, Passing back: {synapse.version}"
+    )
 
     return synapse
 
