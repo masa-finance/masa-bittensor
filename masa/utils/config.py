@@ -187,21 +187,21 @@ def add_validator_args(cls, parser):
         "--neuron.timeout",
         type=float,
         help="The timeout for each forward call in seconds.",
-        default=8,
+        default=10,
     )
 
     parser.add_argument(
         "--neuron.num_concurrent_forwards",
         type=int,
         help="The number of concurrent forwards running at any time.",
-        default=1,
+        default=2,
     )
 
     parser.add_argument(
         "--neuron.sample_size",
         type=int,
         help="The number of miners to query in a single step.",
-        default=30,
+        default=3,
     )
 
     parser.add_argument(

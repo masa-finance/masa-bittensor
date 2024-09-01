@@ -34,11 +34,7 @@ class Scorer:
             miner_uid (str): The unique identifier of the miner.
             volume (float): The volume to be added.
         """
-        current_block = bt.metagraph(
-            # TODO ensure this works?
-            self.validator.config.netuid,
-            self.validator.config.subtensor,
-        ).block  # Get the current block number
+        current_block = self.validator.subtensor.block  # Get the current block number
         block_group = current_block // 360  # Group blocks by 360
 
         if (

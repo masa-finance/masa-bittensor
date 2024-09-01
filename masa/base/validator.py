@@ -91,7 +91,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.should_exit: bool = False
         self.is_running: bool = False
         self.thread: threading.Thread = None
-        self.miner_check_thread: threading.Thread = None
+        self.miner_version_thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
         self.run_in_background_thread()
@@ -164,10 +164,10 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.error(f"Error in run_miner_check: {e}")
             await asyncio.sleep(3)
 
-    def run_miner_check_in_loop(self):
+    def run_miner_version_in_loop(self):
         asyncio.run(self.run_miner_check())
 
-    def run_miner_pulse_in_loop(self):
+    def run_miner_volume_in_loop(self):
         asyncio.run(self.run_miner_pulse())
 
     def run(self):
@@ -230,15 +230,15 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Starting validator in background thread.")
             self.should_exit = False
             self.thread = threading.Thread(target=self.run, daemon=True)
-            self.miner_pulse_thread = threading.Thread(
-                target=self.run_miner_pulse_in_loop, daemon=True
+            self.miner_volume_thread = threading.Thread(
+                target=self.run_miner_volume_in_loop, daemon=True
             )
-            self.miner_check_thread = threading.Thread(
-                target=self.run_miner_check_in_loop, daemon=True
+            self.miner_version_thread = threading.Thread(
+                target=self.run_miner_version_in_loop, daemon=True
             )
             self.thread.start()
-            self.miner_check_thread.start()
-            self.miner_pulse_thread.start()
+            self.miner_version_thread.start()
+            self.miner_volume_thread.start()
             self.is_running = True
             bt.logging.debug("Started")
 
@@ -250,8 +250,8 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
             self.thread.join(5)
-            self.miner_check_thread.join(5)
-            self.miner_pulse_thread.join(5)
+            self.miner_version_thread.join(5)
+            self.miner_volume_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
