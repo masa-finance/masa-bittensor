@@ -224,12 +224,10 @@ class BaseValidatorNeuron(BaseNeuron):
     async def run_miner_volume(self):
         while not self.should_exit:
             try:
-                blocks_since_last_check = self.block - self.last_version_check_block
-                if blocks_since_last_check >= 1:
-                    await self.get_miner_volumes()
+                await self.get_miner_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner volume check: {e}")
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
 
     def run_miner_version_in_loop(self):
         asyncio.run(self.run_miner_version())
