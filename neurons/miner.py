@@ -126,8 +126,7 @@ class Miner(BaseMinerNeuron):
         else:
             bt.logging.error("Failed to fetch all guilds.")
 
-    async def blacklist(self, synapse: RecentTweetsSynapse) -> typing.Tuple[bool, str]:
-
+    async def run_blacklist_logic(self, synapse):
         if self.check_tempo(synapse):
             self.check_stake(synapse)
 
@@ -159,6 +158,14 @@ class Miner(BaseMinerNeuron):
 
         bt.logging.trace(f"Not Blacklisting recognized hotkey {hotkey}")
         return False, "Hotkey recognized!"
+
+    async def blacklist_forward(self, synapse: Request) -> typing.Tuple[bool, str]:
+        await self.run_blacklist_logic(synapse)
+
+    async def blacklist_recent_tweets(
+        self, synapse: RecentTweetsSynapse
+    ) -> typing.Tuple[bool, str]:
+        await self.run_blacklist_logic(synapse)
 
     async def priority(self, synapse: Request) -> float:
         caller_uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)

@@ -67,7 +67,7 @@ class BaseMinerNeuron(BaseNeuron):
         # TODO refactor forward function out in favor of synapses
         self.axon.attach(
             forward_fn=self.forward,
-            # blacklist_fn=self.blacklist,
+            blacklist_fn=self.blacklist_forward,
             priority_fn=self.priority,
         )
 
@@ -75,7 +75,7 @@ class BaseMinerNeuron(BaseNeuron):
         self.axon.attach(forward_fn=self.forward_ping_synapse)
         self.axon.attach(
             forward_fn=forward_recent_tweets,
-            blacklist_fn=self.blacklist,
+            blacklist_fn=self.blacklist_recent_tweets,
         )
 
         bt.logging.info(f"Axon created: {self.axon}")
