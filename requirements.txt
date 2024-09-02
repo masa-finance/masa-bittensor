@@ -2,6 +2,5 @@ bittensor==7.3.1
 loguru==0.7.2
 python-dotenv==0.21.0
 torch==2.3.0
-watchfiles==0.22.0
 scikit-learn==1.5.1
 sentence-transformers==3.0.1

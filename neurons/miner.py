@@ -31,7 +31,7 @@ from masa.miner.twitter.followers import TwitterFollowersRequest
 from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
 from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
 from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
-from masa.base.healthcheck import forward_ping, PingMiner
+
 
 delay = 0
 
@@ -39,11 +39,7 @@ delay = 0
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
-        self.axon.attach(forward_fn=self.forward_ping_wrapper)
         bt.logging.info("Miner initialized with config: {}".format(config))
-
-    def forward_ping_wrapper(self, synapse: PingMiner) -> PingMiner:
-        return forward_ping(synapse, self.spec_version)
 
     async def forward(self, synapse: Request) -> Request:
         print(f"Getting request: {synapse.type}")

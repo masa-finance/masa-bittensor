@@ -48,6 +48,7 @@ class Scorer:
 
         self.validator.volumes[-1]["miners"][miner_uid] += volume
 
+    # TODO put this on a thread / timer
     async def score_miner_volumes(self):
         volumes = self.validator.volumes
 

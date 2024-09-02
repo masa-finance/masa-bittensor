@@ -31,7 +31,7 @@ class Forwarder:
     async def forward(
         self,
         request,
-        timeout=15,
+        timeout=8,
         limit=None,
     ):
         miner_uids = await get_random_uids(
@@ -76,19 +76,6 @@ class Forwarder:
         ]
 
         responses_with_metadata.sort(key=lambda x: (x["latency"]))
-
-        # TODO note, that this needs to move into the dedicated function for scoring
-        # note, we are only scoring twitter tweets for volume now
-        if request.type == RequestType.TWITTER_TWEETS.value:
-            for response_metadata in responses_with_metadata:
-                miner_uid = response_metadata["uid"]
-
-                # TODO ensure that volume includes only data that passes a tweet similarity score
-                if response_metadata["response"]:
-                    volume = len(
-                        response_metadata["response"]
-                    )  # Assuming volume is the length of the response
-                    self.validator.scorer.add_volume(miner_uid, volume)
 
         if limit:
             return responses_with_metadata[: int(limit)]

@@ -130,7 +130,7 @@ async def ping_uids(dendrite, metagraph, uids, timeout=3):
     axons = [metagraph.axons[uid] for uid in uids]
     try:
         request = PingMiner(sent_from=external_ip, is_active=False, version=0)
-        responses = await dendrite(axons, request, deserialize=False)
+        responses = await dendrite(axons, request, deserialize=False, timeout=timeout)
 
         print("RESSPONSES")
         print(responses)

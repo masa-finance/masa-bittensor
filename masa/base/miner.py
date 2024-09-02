@@ -29,6 +29,8 @@ from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_miner_args
 
 from typing import Dict
+from masa.base.healthcheck import forward_ping, PingMiner
+from masa.miner.twitter.tweets import forward_volume, PingVolume
 
 
 class BaseMinerNeuron(BaseNeuron):
@@ -61,11 +63,18 @@ class BaseMinerNeuron(BaseNeuron):
 
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info("Attaching forward function to miner axon.")
+
+        # TODO refactor forward function out in favor of synapses
         self.axon.attach(
             forward_fn=self.forward,
             blacklist_fn=self.blacklist,
             priority_fn=self.priority,
         )
+
+        # TODO add blacklist and priority functions?
+        self.axon.attach(forward_fn=self.forward_ping_wrapper)
+        self.axon.attach(forward_fn=forward_volume)
+
         bt.logging.info(f"Axon created: {self.axon}")
 
         # Instantiate runners
@@ -82,6 +91,9 @@ class BaseMinerNeuron(BaseNeuron):
         )  # note, this will be variable per environment
 
         self.load_state()
+
+    def forward_ping_wrapper(self, synapse: PingMiner) -> PingMiner:
+        return forward_ping(synapse, self.spec_version)
 
     def run(self):
         """

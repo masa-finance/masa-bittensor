@@ -276,6 +276,7 @@ def add_validator_args(cls, parser):
         default=False,
     )
 
+    # TODO update this to main when we have it
     parser.add_argument(
         "--validator.twitter_keywords_url",
         type=str,

@@ -21,8 +21,10 @@ import copy
 import torch
 import asyncio
 import argparse
+import random
 import threading
 import bittensor as bt
+import aiohttp
 
 from typing import List
 from traceback import print_exception
@@ -32,6 +34,9 @@ from masa.base.healthcheck import PingMiner, get_external_ip
 
 from masa.mock import MockDendrite
 from masa.utils.config import add_validator_args
+
+from masa.miner.twitter.tweets import PingVolume
+from masa.utils.uids import get_random_uids
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -90,6 +95,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.should_exit: bool = False
         self.is_running: bool = False
         self.thread: threading.Thread = None
+        self.miner_volume_thread: threading.Thread = None
         self.miner_version_thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
@@ -136,7 +142,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 batch,
                 request,
                 deserialize=False,
-                timeout=5,
+                timeout=8,
             )
             responses.extend(batch_responses)
         self.versions = [response.version for response in responses]
@@ -144,31 +150,88 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_version_check_block = self.block
         return self.versions
 
-    async def run_miner_check(self):
+    async def fetch_keywords_from_github(self, url: str):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    text_data = await response.text()
+                    return {"keywords": text_data}
+                else:
+                    bt.logging.error(
+                        f"Failed to fetch keywords from GitHub: {response.status}"
+                    )
+                    return None
+
+    async def get_miner_volumes(self):
+        dendrite = bt.dendrite(wallet=self.wallet)
+        keywords_data = await self.fetch_keywords_from_github(
+            self.config.validator.twitter_keywords_url
+        )
+        if not keywords_data:
+            return []
+
+        keywords = keywords_data.get("keywords", "")
+        if not keywords:
+            bt.logging.error("No keywords found in the fetched data.")
+            return []
+
+        keywords_list = keywords.split(",")
+        random_keyword = random.choice(keywords_list)
+        query = f"({random_keyword.strip()}) since:2024-08-27"
+
+        request = PingVolume(query=query, count=1)
+        miner_uids = await get_random_uids(
+            self, k=self.config.neuron.sample_size_volume
+        )
+        responses = await dendrite(
+            [self.metagraph.axons[uid] for uid in miner_uids],
+            request,
+            deserialize=True,
+            timeout=8,
+        )
+
+        formatted_responses = []
+        for response, uid in zip(responses, miner_uids):
+            formatted_response = {
+                "uid": int(uid),
+                "response": response,
+            }
+            # TODO only count tweets / responses that meet a certain sameness threshold!
+            if response:
+                volume = len(response)
+            else:
+                volume = 0
+            self.scorer.add_volume(int(uid), volume)
+
+            formatted_responses.append(formatted_response)
+
+        bt.logging.info(f"Responses: {formatted_responses}")
+
+    async def run_miner_version(self):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_version_check_block
                 if blocks_since_last_check > self.tempo or len(self.versions) == 0:
                     await self.get_miner_versions()
             except Exception as e:
-                bt.logging.error(f"Error in run_miner_check: {e}")
+                bt.logging.error(f"Error running miner version check: {e}")
             await asyncio.sleep(60)
 
-    async def run_miner_pulse(self):
+    async def run_miner_volume(self):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_version_check_block
                 if blocks_since_last_check >= 1:
-                    await self.test_miner_volume()
+                    await self.get_miner_volumes()
             except Exception as e:
-                bt.logging.error(f"Error in run_miner_check: {e}")
+                bt.logging.error(f"Error running miner volume check: {e}")
             await asyncio.sleep(3)
 
     def run_miner_version_in_loop(self):
-        asyncio.run(self.run_miner_check())
+        asyncio.run(self.run_miner_version())
 
     def run_miner_volume_in_loop(self):
-        asyncio.run(self.run_miner_pulse())
+        asyncio.run(self.run_miner_volume())
 
     def run(self):
         """
@@ -238,7 +301,7 @@ class BaseValidatorNeuron(BaseNeuron):
             )
             self.thread.start()
             self.miner_version_thread.start()
-            # self.miner_volume_thread.start()
+            self.miner_volume_thread.start()
             self.is_running = True
             bt.logging.debug("Started")
 
