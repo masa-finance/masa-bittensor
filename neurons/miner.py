@@ -126,12 +126,7 @@ class Miner(BaseMinerNeuron):
         else:
             bt.logging.error("Failed to fetch all guilds.")
 
-    async def blacklist_recent_tweets(
-        self, synapse: RecentTweetsSynapse
-    ) -> typing.Tuple[bool, str]:
-        return self.blacklist(synapse)
-
-    async def blacklist(self, synapse: typing.Any) -> typing.Tuple[bool, str]:
+    async def blacklist(self, synapse: RecentTweetsSynapse) -> typing.Tuple[bool, str]:
 
         if self.check_tempo(synapse):
             self.check_stake(synapse)

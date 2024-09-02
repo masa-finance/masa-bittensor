@@ -75,8 +75,7 @@ class BaseMinerNeuron(BaseNeuron):
         self.axon.attach(forward_fn=self.forward_ping_synapse)
         self.axon.attach(
             forward_fn=forward_recent_tweets,
-            # blacklist_fn=self.blacklist_recent_tweets,
-            # blacklist_fn=self.blacklist_recent_tweets,
+            blacklist_fn=self.blacklist,
         )
 
         bt.logging.info(f"Axon created: {self.axon}")
