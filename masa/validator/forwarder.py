@@ -16,7 +16,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from masa.utils.uids import get_random_uids
+from masa.utils.uids import get_random_miner_uids
 from masa.api.request import RequestType
 import bittensor as bt
 
@@ -34,7 +34,7 @@ class Forwarder:
         timeout=8,
         limit=None,
     ):
-        miner_uids = await get_random_uids(
+        miner_uids = await get_random_miner_uids(
             self.validator, k=self.validator.config.neuron.sample_size
         )
 

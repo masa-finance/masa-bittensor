@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from fastapi.responses import JSONResponse
 
-from masa.base.validator import get_random_uids
+from masa.base.validator import get_random_miner_uids
 
 
 class ValidatorAPI:
@@ -198,20 +198,17 @@ class ValidatorAPI:
         count: int = 3,
     ):
         request = PingVolume(query=query, count=count)
-        miner_uids = await get_random_uids(
+        miner_uids = await get_random_miner_uids(
             self.validator, k=self.validator.config.neuron.sample_size
         )
         dendrite = bt.dendrite(wallet=self.validator.wallet)
-        all_responses = await dendrite(
+        responses = await dendrite(
             [self.validator.metagraph.axons[uid] for uid in miner_uids],
             request,
             deserialize=False,
             timeout=8,
         )
-
-        if all_responses:
-            return all_responses
-        return []
+        return responses
 
     async def get_discord_profile(self, user_id: str, limit: Optional[str] = None):
         all_responses = await DiscordProfileForwarder(self.validator).forward_query(

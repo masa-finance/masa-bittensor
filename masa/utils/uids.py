@@ -4,9 +4,7 @@ import bittensor as bt
 from typing import List
 
 
-def check_uid_availability(
-    metagraph: "bt.metagraph.Metagraph", uid: int, vpermit_tao_limit: int
-) -> bool:
+def check_uid_availability(metagraph: "bt.metagraph.Metagraph", uid: int) -> bool:
     """
     Check if uid is available. The UID should be available if it is serving and has less
     than vpermit_tao_limit stake
@@ -34,13 +32,11 @@ def check_uid_availability(
     return True
 
 
-def get_available_uids(
-    metagraph: "bt.metagraph.Metagraph", vpermit_tao_limit: int
-) -> List[int]:
+def get_available_uids(metagraph: "bt.metagraph.Metagraph") -> List[int]:
     return [
         uid
         for uid in range(metagraph.n.item())
-        if check_uid_availability(metagraph, uid, vpermit_tao_limit)
+        if check_uid_availability(metagraph, uid)
     ]
 
 
@@ -102,7 +98,9 @@ def filter_duplicated_axon_ips_for_uids(uids, metagraph):
     return miner_ip_filtered_uids
 
 
-async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor:
+async def get_random_miner_uids(
+    self, k: int, exclude: List[int] = None
+) -> torch.LongTensor:
     """
     Returns at most k available random uids from the metagraph.
 
@@ -119,9 +117,7 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
 
     try:
         # Generic sanitation
-        avail_uids = get_available_uids(
-            self.metagraph, self.config.neuron.vpermit_tao_limit
-        )
+        avail_uids = get_available_uids(self.metagraph)
         healthy_uids = remove_excluded_uids(avail_uids, exclude)
         weights_version = self.subtensor.get_subnet_hyperparameters(
             self.config.netuid

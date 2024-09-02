@@ -30,7 +30,7 @@ from masa.utils.config import add_miner_args
 
 from typing import Dict
 from masa.base.healthcheck import forward_ping, PingMiner
-from masa.miner.twitter.tweets import forward_volume, PingVolume
+from masa.miner.twitter.tweets import forward_volume
 
 
 class BaseMinerNeuron(BaseNeuron):

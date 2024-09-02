@@ -24,7 +24,7 @@ import bittensor as bt
 from neurons.validator import Neuron as Validator
 
 from masa.api.dummy import Dummy
-from masa.utils.uids import get_random_uids
+from masa.utils.uids import get_random_miner_uids
 from masa.validator.twitter.profile.reward import get_rewards
 from masa.base.validator import BaseValidatorNeuron
 
@@ -45,7 +45,7 @@ class TemplateValidatorNeuronTestCase(unittest.TestCase):
         config.metagraph._mock = True
         config.subtensor._mock = True
         self.neuron = Validator(config)
-        self.miner_uids = await get_random_uids(self, k=10)
+        self.miner_uids = await get_random_miner_uids(self, k=10)
 
     def test_run_single_step(self):
         # TODO: Test a single step

@@ -37,7 +37,7 @@ from masa.mock import MockDendrite
 from masa.utils.config import add_validator_args
 
 from masa.miner.twitter.tweets import PingVolume
-from masa.utils.uids import get_random_uids
+from masa.utils.uids import get_random_miner_uids
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -184,7 +184,7 @@ class BaseValidatorNeuron(BaseNeuron):
         )
 
         request = PingVolume(query=query, count=1)
-        miner_uids = await get_random_uids(
+        miner_uids = await get_random_miner_uids(
             self, k=self.config.neuron.sample_size_volume
         )
         responses = await dendrite(
