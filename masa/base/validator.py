@@ -62,7 +62,6 @@ class BaseValidatorNeuron(BaseNeuron):
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
 
         # Record versions of each axon, index == uid
-        self.versions = []
         self.last_version_check_block = 0
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
@@ -227,7 +226,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 await self.get_miner_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner volume check: {e}")
-            await asyncio.sleep(5)
+            await asyncio.sleep(10)
 
     def run_miner_version_in_loop(self):
         asyncio.run(self.run_miner_version())
@@ -494,6 +493,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 "scores": self.scores,
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
+                "versions": self.versions,
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -510,11 +510,13 @@ class BaseValidatorNeuron(BaseNeuron):
             self.scores = dict(state).get("scores", [])
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
+            self.versions = dict(state).get("versions", [])
         else:
             self.step = 0
             self.scores = torch.zeros(self.metagraph.n)
             self.hotkeys = []
             self.volumes = []
+            self.versions = []
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )

@@ -30,7 +30,7 @@ from masa.utils.config import add_miner_args
 
 from typing import Dict
 from masa.base.healthcheck import forward_ping, PingMiner
-from masa.miner.twitter.tweets import handle_recent_tweets_synapse
+from masa.miner.twitter.tweets import forward_recent_tweets
 
 
 class BaseMinerNeuron(BaseNeuron):
@@ -67,13 +67,17 @@ class BaseMinerNeuron(BaseNeuron):
         # TODO refactor forward function out in favor of synapses
         self.axon.attach(
             forward_fn=self.forward,
-            blacklist_fn=self.blacklist,
+            # blacklist_fn=self.blacklist,
             priority_fn=self.priority,
         )
 
         # TODO add blacklist and priority functions?
-        self.axon.attach(forward_fn=self.forward_ping_wrapper)
-        self.axon.attach(forward_fn=handle_recent_tweets_synapse)
+        self.axon.attach(forward_fn=self.forward_ping_synapse)
+        self.axon.attach(
+            forward_fn=forward_recent_tweets,
+            # blacklist_fn=self.blacklist_recent_tweets,
+            # blacklist_fn=self.blacklist_recent_tweets,
+        )
 
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -92,7 +96,7 @@ class BaseMinerNeuron(BaseNeuron):
 
         self.load_state()
 
-    def forward_ping_wrapper(self, synapse: PingMiner) -> PingMiner:
+    def forward_ping_synapse(self, synapse: PingMiner) -> PingMiner:
         return forward_ping(synapse, self.spec_version)
 
     def run(self):

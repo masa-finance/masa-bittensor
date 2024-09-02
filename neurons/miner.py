@@ -30,7 +30,7 @@ from masa.miner.twitter.profile import TwitterProfileRequest
 from masa.miner.twitter.followers import TwitterFollowersRequest
 from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
 from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
-
+from masa.miner.twitter.tweets import RecentTweetsSynapse
 
 delay = 0
 
@@ -126,7 +126,12 @@ class Miner(BaseMinerNeuron):
         else:
             bt.logging.error("Failed to fetch all guilds.")
 
-    async def blacklist(self, synapse: Request) -> typing.Tuple[bool, str]:
+    async def blacklist_recent_tweets(
+        self, synapse: RecentTweetsSynapse
+    ) -> typing.Tuple[bool, str]:
+        return self.blacklist(synapse)
+
+    async def blacklist(self, synapse: typing.Any) -> typing.Tuple[bool, str]:
 
         if self.check_tempo(synapse):
             self.check_stake(synapse)

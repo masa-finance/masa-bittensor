@@ -13,7 +13,7 @@ class RecentTweetsSynapse(bt.Synapse):
         return self.response
 
 
-def handle_recent_tweets_synapse(synapse: RecentTweetsSynapse) -> RecentTweetsSynapse:
+def forward_recent_tweets(synapse: RecentTweetsSynapse) -> RecentTweetsSynapse:
     synapse.response = TwitterTweetsRequest().get_recent_tweets(synapse)
     return synapse
 
