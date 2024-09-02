@@ -5,7 +5,7 @@ import uvicorn
 import bittensor as bt
 from datetime import datetime
 
-from masa.miner.twitter.tweets import PingVolume
+from masa.miner.twitter.tweets import RecentTweetsSynapse
 from masa.validator.twitter.profile.forward import TwitterProfileForwarder
 from masa.validator.twitter.followers.forward import TwitterFollowersForwarder
 
@@ -22,6 +22,7 @@ from typing import Optional
 from fastapi.responses import JSONResponse
 
 from masa.base.validator import get_random_miner_uids
+from typing import Any
 
 
 class ValidatorAPI:
@@ -192,12 +193,7 @@ class ValidatorAPI:
             return all_responses
         return []
 
-    async def get_recent_tweets(
-        self,
-        query: str = f"(Bitcoin) since:{datetime.now().strftime('%Y-%m-%d')}",
-        count: int = 3,
-    ):
-        request = PingVolume(query=query, count=count)
+    async def send_dendrite_request(self, request: Any):
         miner_uids = await get_random_miner_uids(
             self.validator, k=self.validator.config.neuron.sample_size
         )
@@ -205,10 +201,23 @@ class ValidatorAPI:
         responses = await dendrite(
             [self.validator.metagraph.axons[uid] for uid in miner_uids],
             request,
-            deserialize=False,
+            deserialize=True,
             timeout=8,
         )
-        return responses
+
+        formatted_responses = [
+            {"uid": int(uid), "response": response}
+            for uid, response in zip(miner_uids, responses)
+        ]
+        return formatted_responses
+
+    async def get_recent_tweets(
+        self,
+        query: str = f"(Bitcoin) since:{datetime.now().strftime('%Y-%m-%d')}",
+        count: int = 1,
+    ):
+        request = RecentTweetsSynapse(query=query, count=count)
+        return await self.send_dendrite_request(request)
 
     async def get_discord_profile(self, user_id: str, limit: Optional[str] = None):
         all_responses = await DiscordProfileForwarder(self.validator).forward_query(

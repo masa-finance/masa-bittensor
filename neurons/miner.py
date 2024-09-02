@@ -28,7 +28,6 @@ from masa.miner.discord.profile import DiscordProfileRequest
 from masa.miner.discord.user_guilds import DiscordUserGuildsRequest
 from masa.miner.twitter.profile import TwitterProfileRequest
 from masa.miner.twitter.followers import TwitterFollowersRequest
-from masa.miner.twitter.tweets import RecentTweetsQuery, TwitterTweetsRequest
 from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
 from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
 
@@ -41,6 +40,7 @@ class Miner(BaseMinerNeuron):
         super(Miner, self).__init__(config=config)
         bt.logging.info("Miner initialized with config: {}".format(config))
 
+    # TODO this eventually goes away, lets do it!
     async def forward(self, synapse: Request) -> Request:
         print(f"Getting request: {synapse.type}")
 
@@ -61,8 +61,6 @@ class Miner(BaseMinerNeuron):
             self.handle_twitter_profile(synapse)
         elif request_type == RequestType.TWITTER_FOLLOWERS.value:
             self.handle_twitter_followers(synapse)
-        elif request_type == RequestType.TWITTER_TWEETS.value:
-            self.handle_twitter_tweets(synapse)
         elif request_type == RequestType.DISCORD_PROFILE.value:
             self.handle_discord_profile(synapse)
         elif request_type == RequestType.DISCORD_CHANNEL_MESSAGES.value:
@@ -88,15 +86,6 @@ class Miner(BaseMinerNeuron):
             synapse.response = followers
         else:
             bt.logging.error(f"Failed to fetch Twitter followers for {synapse.query}.")
-
-    def handle_twitter_tweets(self, synapse: Request):
-        tweets = TwitterTweetsRequest().get_recent_tweets(
-            RecentTweetsQuery(query=synapse.query, count=synapse.count)
-        )
-        if tweets is not None:
-            synapse.response = tweets
-        else:
-            bt.logging.error(f"Failed to fetch Twitter tweets for {synapse.query}.")
 
     def handle_discord_profile(self, synapse: Request):
         discord_profile = DiscordProfileRequest().get_profile(synapse.query)
