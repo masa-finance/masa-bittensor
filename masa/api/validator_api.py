@@ -2,10 +2,14 @@ import os
 from fastapi import FastAPI, Depends
 import asyncio
 import uvicorn
-from masa.miner.twitter.tweets import RecentTweetsQuery
+import bittensor as bt
+from datetime import datetime
+
+from masa.miner.twitter.tweets import PingVolume
 from masa.validator.twitter.profile.forward import TwitterProfileForwarder
 from masa.validator.twitter.followers.forward import TwitterFollowersForwarder
-from masa.validator.twitter.tweets.forward import TwitterTweetsForwarder
+
+# from masa.validator.twitter.tweets.forward import TwitterTweetsForwarder
 from masa.validator.discord.channel_messages.forward import (
     DiscordChannelMessagesForwarder,
 )
@@ -16,6 +20,8 @@ from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from fastapi.responses import JSONResponse
+
+from masa.base.validator import get_random_uids
 
 
 class ValidatorAPI:
@@ -187,11 +193,22 @@ class ValidatorAPI:
         return []
 
     async def get_recent_tweets(
-        self, tweet_query: RecentTweetsQuery, limit: Optional[str] = None
+        self,
+        query: str = f"(Bitcoin) since:{datetime.now().strftime('%Y-%m-%d')}",
+        count: int = 3,
     ):
-        all_responses = await TwitterTweetsForwarder(self.validator).forward_query(
-            tweet_query=tweet_query, limit=limit
+        request = PingVolume(query=query, count=count)
+        miner_uids = await get_random_uids(
+            self.validator, k=self.validator.config.neuron.sample_size
         )
+        dendrite = bt.dendrite(wallet=self.validator.wallet)
+        all_responses = await dendrite(
+            [self.validator.metagraph.axons[uid] for uid in miner_uids],
+            request,
+            deserialize=False,
+            timeout=8,
+        )
+
         if all_responses:
             return all_responses
         return []

@@ -25,6 +25,7 @@ import random
 import threading
 import bittensor as bt
 import aiohttp
+from datetime import datetime
 
 from typing import List
 from traceback import print_exception
@@ -164,6 +165,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
     async def get_miner_volumes(self):
         dendrite = bt.dendrite(wallet=self.wallet)
+        # TODO fetch this every time?  Maybe only once on load
         keywords_data = await self.fetch_keywords_from_github(
             self.config.validator.twitter_keywords_url
         )
@@ -177,7 +179,9 @@ class BaseValidatorNeuron(BaseNeuron):
 
         keywords_list = keywords.split(",")
         random_keyword = random.choice(keywords_list)
-        query = f"({random_keyword.strip()}) since:2024-08-27"
+        query = (
+            f"({random_keyword.strip()}) since:{datetime.now().strftime('%Y-%m-%d')}"
+        )
 
         request = PingVolume(query=query, count=1)
         miner_uids = await get_random_uids(
