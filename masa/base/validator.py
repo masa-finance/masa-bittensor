@@ -107,52 +107,42 @@ class BaseValidatorNeuron(BaseNeuron):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_sync_block
-                if blocks_since_last_check >= 1:  # note, 1 block, or 12 seconds
+                if blocks_since_last_check >= 3:
                     self.sync()
                     self.step += 1
                     self.last_sync_block = self.block
             except Exception as e:
                 bt.logging.error(f"Error running sync: {e}")
-            await asyncio.sleep(12)
+            await asyncio.sleep(3 * 12)
 
     async def run_miner_version(self):
         while not self.should_exit:
             try:
-                if self.forwarder.check_tempo():  # note, 360 blocks, or 72 minutes
+                if self.forwarder.check_tempo():
                     await self.forwarder.ping_axons()
             except Exception as e:
                 bt.logging.error(f"Error running miner ping: {e}")
-            await asyncio.sleep(
-                self.tempo * 12 / 2
-            )  # note, 12 seconds per block, twice as fast
+            await asyncio.sleep(self.tempo * 12 / 2)
 
     async def run_miner_volume(self):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_volume_block
-                if (
-                    blocks_since_last_check >= self.tempo / 100
-                ):  # note, 3.6 blocks, or 40 seconds
+                if blocks_since_last_check >= self.tempo / 100:
                     await self.forwarder.get_miners_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner volume: {e}")
-            await asyncio.sleep(
-                self.tempo / 200 * 12
-            )  # note, 12 seconds per block, twice as fast
+            await asyncio.sleep(self.tempo / 200 * 12)
 
     async def run_miner_scoring(self):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_scoring_block
-                if (
-                    blocks_since_last_check >= self.tempo / 100
-                ):  # note, 3.6 blocks, or 40 seconds
+                if blocks_since_last_check >= self.tempo / 2:
                     await self.scorer.score_miner_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner scoring: {e}")
-                await asyncio.sleep(
-                    self.tempo / 200 * 12
-                )  # note, 12 seconds per block, twice as fast
+                await asyncio.sleep(self.tempo / 4 * 12)
 
     def run_sync_in_loop(self):
         asyncio.run(self.run_sync())

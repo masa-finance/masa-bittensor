@@ -121,7 +121,7 @@ class API:
 
         self.app.add_api_route(
             "/volumes",
-            self.show_volumes,
+            self.show_miner_volumes,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get scores and capacity of miners",
@@ -130,10 +130,19 @@ class API:
 
         self.app.add_api_route(
             "/volumes",
-            self.delete_volumes,
+            self.delete_miner_volumes,
             methods=["DELETE"],
             dependencies=[Depends(self.get_self)],
             response_description="Delete volumes state",
+            tags=["metagraph"],
+        )
+
+        self.app.add_api_route(
+            "/score",
+            self.validator.scorer.score_miner_volumes,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Score miner volumes",
             tags=["metagraph"],
         )
 
@@ -148,7 +157,7 @@ class API:
 
         self.app.add_api_route(
             "/tweets",
-            self.delete_tweets,
+            self.delete_indexed_tweets,
             methods=["DELETE"],
             dependencies=[Depends(self.get_self)],
             response_description="Delete indexed tweets",
@@ -157,7 +166,7 @@ class API:
 
         self.start_server()
 
-    async def show_volumes(self):
+    async def show_miner_volumes(self):
         volumes = self.validator.volumes
         if volumes:
             serializable_volumes = [
@@ -176,7 +185,7 @@ class API:
             return JSONResponse(content=tweets)
         return JSONResponse(content=[])
 
-    def delete_volumes(self):
+    def delete_miner_volumes(self):
         self.validator.volumes = []
         return JSONResponse(
             content={
@@ -185,7 +194,7 @@ class API:
             }
         )
 
-    def delete_tweets(self):
+    def delete_indexed_tweets(self):
         self.validator.indexed_tweets = []
         return JSONResponse(
             content={
