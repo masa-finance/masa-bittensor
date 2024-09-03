@@ -206,19 +206,19 @@ class API:
         return await self.send_dendrite_request(request)
 
     async def get_discord_profile(self, user_id: str = "449222160687300608"):
-        return []
+        return ["Not yet implemented"]
 
     async def get_discord_channel_messages(self, channel_id: str):
-        return []
+        return ["Not yet implemented"]
 
     async def get_discord_guild_channels(self, guild_id: str):
-        return []
+        return ["Not yet implemented"]
 
     async def get_discord_user_guilds(self):
-        return []
+        return ["Not yet implemented"]
 
     async def get_discord_all_guilds(self):
-        return []
+        return ["Not yet implemented"]
 
     def get_axons(self):
         return self.validator.metagraph.axons
