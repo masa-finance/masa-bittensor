@@ -117,6 +117,7 @@ class Forwarder:
         return self.validator.versions
 
     async def get_miners_volumes(self):
+        # TODO this should come from github I think
         with open("scrape_twitter_keywords.txt", "r") as file:
             keywords_data = file.read()
 

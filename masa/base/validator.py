@@ -46,28 +46,16 @@ class BaseValidatorNeuron(BaseNeuron):
     def __init__(self, config=None):
         super().__init__(config=config)
 
-        # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
-
-        # Get tempo from subnets hyperparameters
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
-
-        # Record versions of each axon, index == uid
         self.last_version_check_block = 0
 
-        # Dendrite lets us send messages to other nodes (axons) in the network.
         self.dendrite = bt.dendrite(wallet=self.wallet)
-        bt.logging.info(f"Dendrite: {self.dendrite}")
-
-        # Set up initial scoring weights for validation
-        bt.logging.info("Building validation weights.")
         self.scores = torch.zeros(
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
-
         # Init sync with the network. Updates the metagraph.
         self.sync()
-
         self.load_state()
 
         # Serve axon to enable external connections.
