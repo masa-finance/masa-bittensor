@@ -124,12 +124,6 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
             pass
 
-    async def concurrent_forward(self):
-        coroutines = [
-            self.forward() for _ in range(self.config.neuron.num_concurrent_forwards)
-        ]
-        await asyncio.gather(*coroutines)
-
     # TODO we can move this to it's own class I believe
     async def get_miner_versions(self):
         dendrite = bt.dendrite(wallet=self.wallet)
@@ -194,6 +188,11 @@ class BaseValidatorNeuron(BaseNeuron):
         )
 
         formatted_responses = []
+
+        if responses is None or miner_uids is None:
+            bt.logging.error("Responses or miner_uids is None")
+            return formatted_responses
+
         for response, uid in zip(responses, miner_uids):
             formatted_response = {
                 "uid": int(uid),
@@ -235,43 +234,13 @@ class BaseValidatorNeuron(BaseNeuron):
         asyncio.run(self.run_miner_volume())
 
     def run(self):
-        """
-        Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
-
-        This function performs the following primary tasks:
-        1. Check for registration on the Bittensor network.
-        2. Continuously forwards queries to the miners on the network, rewarding their responses and updating the scores accordingly.
-        3. Periodically resynchronizes with the chain; updating the metagraph with the latest network state and setting weights.
-
-        The essence of the validator's operations is in the forward function, which is called every step. The forward function is responsible for querying the network and scoring the responses.
-
-        Note:
-            - The function leverages the global configurations set during the initialization of the miner.
-            - The miner's axon serves as its interface to the Bittensor network, handling incoming and outgoing requests.
-
-        Raises:
-            KeyboardInterrupt: If the miner is stopped by a manual interruption.
-            Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
-        """
-
-        # Check that validator is registered on the network.
         self.sync()
-
         bt.logging.info(f"Validator starting at block: {self.block}")
-
-        # This loop maintains the validator's operations until intentionally stopped.
         try:
             while True:
-                # Run multiple forwards concurrently.
-                self.loop.run_until_complete(self.concurrent_forward())
-
-                # Check if we should exit.
                 if self.should_exit:
                     break
-
-                # Sync metagraph and potentially set weights.
                 self.sync()
-
                 self.step += 1
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
@@ -340,6 +309,8 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
             self.thread.join(5)
+            self.miner_version_thread.join(5)
+            self.miner_volume_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
@@ -357,8 +328,8 @@ class BaseValidatorNeuron(BaseNeuron):
         # Replace any NaN values with 0.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
 
-        bt.logging.debug("raw_weights", raw_weights)
-        bt.logging.debug("NET UID", self.config.netuid)
+        bt.logging.trace("raw_weights", raw_weights)
+        bt.logging.trace("NET UID", self.config.netuid)
         # bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
         # Process the raw weights to final_weights via subtensor limitations.
         (

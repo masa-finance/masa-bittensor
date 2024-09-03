@@ -1,28 +1,22 @@
 import os
-from fastapi import FastAPI, Depends
 import asyncio
 import uvicorn
 import bittensor as bt
+from typing import Any
 from datetime import datetime
 
 from masa.miner.twitter.tweets import RecentTweetsSynapse
-from masa.validator.twitter.profile.forward import TwitterProfileForwarder
-from masa.validator.twitter.followers.forward import TwitterFollowersForwarder
-
-# from masa.validator.twitter.tweets.forward import TwitterTweetsForwarder
-from masa.validator.discord.channel_messages.forward import (
-    DiscordChannelMessagesForwarder,
-)
-from masa.validator.discord.guild_channels.forward import DiscordGuildChannelsForwarder
-from masa.validator.discord.user_guilds.forward import DiscordUserGuildsForwarder
-from masa.validator.discord.profile.forward import DiscordProfileForwarder
-from masa.validator.discord.all_guilds.forward import DiscordAllGuildsForwarder
-from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
-from fastapi.responses import JSONResponse
+from masa.miner.twitter.profile import TwitterProfileSynapse
+from masa.miner.twitter.followers import TwitterFollowersSynapse
 
 from masa.base.validator import get_random_miner_uids
-from typing import Any
+
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+
+TIMEOUT = 8
 
 
 class ValidatorAPI:
@@ -59,7 +53,7 @@ class ValidatorAPI:
         )
 
         self.app.add_api_route(
-            "/data/twitter/profile/{username}",
+            "/data/twitter/profile",
             self.get_twitter_profile,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
@@ -68,7 +62,7 @@ class ValidatorAPI:
         )
 
         self.app.add_api_route(
-            "/data/twitter/followers/{username}",
+            "/data/twitter/followers",
             self.get_twitter_followers,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
@@ -177,22 +171,6 @@ class ValidatorAPI:
             return versions
         return []
 
-    async def get_twitter_profile(self, username: str, limit: Optional[str] = None):
-        all_responses = await TwitterProfileForwarder(self.validator).forward_query(
-            query=username, limit=limit
-        )
-        if all_responses:
-            return all_responses
-        return []
-
-    async def get_twitter_followers(self, username: str, limit: Optional[str] = None):
-        all_responses = await TwitterFollowersForwarder(self.validator).forward_query(
-            query=username, limit=limit
-        )
-        if all_responses:
-            return all_responses
-        return []
-
     async def send_dendrite_request(self, request: Any):
         miner_uids = await get_random_miner_uids(
             self.validator, k=self.validator.config.neuron.sample_size
@@ -202,7 +180,7 @@ class ValidatorAPI:
             [self.validator.metagraph.axons[uid] for uid in miner_uids],
             request,
             deserialize=True,
-            timeout=8,
+            timeout=TIMEOUT,
         )
 
         formatted_responses = [
@@ -210,6 +188,14 @@ class ValidatorAPI:
             for uid, response in zip(miner_uids, responses)
         ]
         return formatted_responses
+
+    async def get_twitter_profile(self, username: str = "getmasafi"):
+        request = TwitterProfileSynapse(username=username)
+        return await self.send_dendrite_request(request)
+
+    async def get_twitter_followers(self, username: str = "getmasafi", count: int = 10):
+        request = TwitterFollowersSynapse(username=username, count=count)
+        return await self.send_dendrite_request(request)
 
     async def get_recent_tweets(
         self,
@@ -219,48 +205,26 @@ class ValidatorAPI:
         request = RecentTweetsSynapse(query=query, count=count)
         return await self.send_dendrite_request(request)
 
-    async def get_discord_profile(self, user_id: str, limit: Optional[str] = None):
-        all_responses = await DiscordProfileForwarder(self.validator).forward_query(
-            query=user_id, limit=limit
-        )
-        if all_responses:
-            return all_responses
+    async def get_discord_profile(self, user_id: str):
+
         return []
 
-    async def get_discord_channel_messages(
-        self, channel_id: str, limit: Optional[str] = None
+    async def get_discord_channel_messages(self, channel_id: str):
+
+        return []
+
+    async def get_discord_guild_channels(self, guild_id: str):
+
+        return []
+
+    async def get_discord_user_guilds(self):
+
+        return []
+
+    async def get_discord_all_guilds(
+        self,
     ):
-        all_responses = await DiscordChannelMessagesForwarder(
-            self.validator
-        ).forward_query(query=channel_id, limit=limit)
-        if all_responses:
-            return all_responses
-        return []
 
-    async def get_discord_guild_channels(
-        self, guild_id: str, limit: Optional[str] = None
-    ):
-        all_responses = await DiscordGuildChannelsForwarder(
-            self.validator
-        ).forward_query(query=guild_id, limit=limit)
-        if all_responses:
-            return all_responses
-        return []
-
-    async def get_discord_user_guilds(self, limit: Optional[str] = None):
-        all_responses = await DiscordUserGuildsForwarder(self.validator).forward_query(
-            limit=limit
-        )
-        if all_responses:
-            return all_responses
-        return []
-
-    async def get_discord_all_guilds(self, limit: Optional[str] = None):
-        all_responses = await DiscordAllGuildsForwarder(self.validator).forward_query(
-            limit=limit
-        )
-        if all_responses:
-            return all_responses
         return []
 
     def get_axons(self):

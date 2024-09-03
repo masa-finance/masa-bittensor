@@ -9,7 +9,7 @@ class RecentTweetsSynapse(bt.Synapse):
     count: int
     response: Optional[Any] = None
 
-    def deserialize(self) -> Any:
+    def deserialize(self) -> Optional[Any]:
         return self.response
 
 
@@ -24,8 +24,8 @@ class TwitterTweetsRequest(MasaProtocolRequest):
 
     def get_recent_tweets(
         self, synapse: RecentTweetsSynapse
-    ) -> List[ProtocolTwitterTweetResponse]:
-        bt.logging.info(f"Getting recent tweets from worker with query: {synapse}")
+    ) -> Optional[List[ProtocolTwitterTweetResponse]]:
+        bt.logging.info(f"Getting {synapse.count} recent tweets for: {synapse.query}")
         response = self.post(
             "/data/twitter/tweets/recent",
             body={"query": synapse.query, "count": synapse.count},

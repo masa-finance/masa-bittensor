@@ -37,9 +37,6 @@ class Validator(BaseValidatorNeuron):
         self.API = ValidatorAPI(self)
         bt.logging.info("Validator initialized with config: {}".format(config))
 
-    async def forward(self):
-        pass
-
 
 if __name__ == "__main__":
     with Validator() as validator:

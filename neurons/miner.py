@@ -17,22 +17,14 @@
 # DEALINGS IN THE SOFTWARE.
 
 import time
-import typing
+from typing import Any, Tuple
 import bittensor as bt
 
-# import base miner class which takes care of most of the boilerplate
 from masa.base.miner import BaseMinerNeuron
-from masa.api.request import Request, RequestType
-from masa.miner.discord.guild_channels import DiscordGuildChannelsRequest
-from masa.miner.discord.profile import DiscordProfileRequest
-from masa.miner.discord.user_guilds import DiscordUserGuildsRequest
-from masa.miner.twitter.profile import TwitterProfileRequest
-from masa.miner.twitter.followers import TwitterFollowersRequest
-from masa.miner.discord.channel_messages import DiscordChannelMessagesRequest
-from masa.miner.discord.all_guilds import DiscordAllGuildsRequest
-from masa.miner.twitter.tweets import RecentTweetsSynapse
 
-delay = 0
+from masa.miner.twitter.profile import TwitterProfileSynapse
+from masa.miner.twitter.followers import TwitterFollowersSynapse
+from masa.miner.twitter.tweets import RecentTweetsSynapse
 
 
 class Miner(BaseMinerNeuron):
@@ -40,93 +32,22 @@ class Miner(BaseMinerNeuron):
         super(Miner, self).__init__(config=config)
         bt.logging.info("Miner initialized with config: {}".format(config))
 
-    # TODO this eventually goes away, lets do it!
-    async def forward(self, synapse: Request) -> Request:
-        print(f"Getting request: {synapse.type}")
+    async def blacklist_twitter_profile(
+        self, synapse: TwitterProfileSynapse
+    ) -> Tuple[bool, str]:
+        return await self.blacklist(synapse)
 
-        try:
-            self.handle_request(synapse)
-        except Exception as e:
-            bt.logging.error(
-                f"Exception occurred while doing work for {synapse.query}: {str(e)}",
-                exc_info=True,
-            )
+    async def blacklist_twitter_followers(
+        self, synapse: TwitterFollowersSynapse
+    ) -> Tuple[bool, str]:
+        return await self.blacklist(synapse)
 
-        return synapse
+    async def blacklist_recent_tweets(
+        self, synapse: RecentTweetsSynapse
+    ) -> Tuple[bool, str]:
+        return await self.blacklist(synapse)
 
-    def handle_request(self, synapse: Request):
-        request_type = synapse.type
-
-        if request_type == RequestType.TWITTER_PROFILE.value:
-            self.handle_twitter_profile(synapse)
-        elif request_type == RequestType.TWITTER_FOLLOWERS.value:
-            self.handle_twitter_followers(synapse)
-        elif request_type == RequestType.DISCORD_PROFILE.value:
-            self.handle_discord_profile(synapse)
-        elif request_type == RequestType.DISCORD_CHANNEL_MESSAGES.value:
-            self.handle_discord_channel_messages(synapse)
-        elif request_type == RequestType.DISCORD_GUILD_CHANNELS.value:
-            self.handle_discord_guild_channels(synapse)
-        elif request_type == RequestType.DISCORD_USER_GUILDS.value:
-            self.handle_discord_user_guilds(synapse)
-        elif request_type == RequestType.DISCORD_ALL_GUILDS.value:
-            self.handle_discord_all_guilds(synapse)
-
-    def handle_twitter_profile(self, synapse: Request):
-        profile = TwitterProfileRequest().get_profile(synapse.query)
-        if profile is not None:
-            profile_dict = dict(profile)
-            synapse.response = profile_dict
-        else:
-            bt.logging.error(f"Failed to fetch Twitter profile for {synapse.query}.")
-
-    def handle_twitter_followers(self, synapse: Request):
-        followers = TwitterFollowersRequest().get_followers(synapse.query)
-        if followers is not None:
-            synapse.response = followers
-        else:
-            bt.logging.error(f"Failed to fetch Twitter followers for {synapse.query}.")
-
-    def handle_discord_profile(self, synapse: Request):
-        discord_profile = DiscordProfileRequest().get_profile(synapse.query)
-        if discord_profile is not None:
-            synapse.response = discord_profile
-        else:
-            bt.logging.error(f"Failed to fetch discord profile for {synapse.query}.")
-
-    def handle_discord_channel_messages(self, synapse: Request):
-        discord_channel_messages = (
-            DiscordChannelMessagesRequest().get_discord_channel_messages(synapse.query)
-        )
-        if discord_channel_messages is not None:
-            synapse.response = discord_channel_messages
-        else:
-            bt.logging.error(f"Failed to fetch channel messages for {synapse.query}.")
-
-    def handle_discord_guild_channels(self, synapse: Request):
-        discord_guild_channels = (
-            DiscordGuildChannelsRequest().get_discord_guild_channels(synapse.query)
-        )
-        if discord_guild_channels is not None:
-            synapse.response = discord_guild_channels
-        else:
-            bt.logging.error(f"Failed to fetch guild channels for {synapse.query}.")
-
-    def handle_discord_user_guilds(self, synapse: Request):
-        discord_user_guilds = DiscordUserGuildsRequest().get_discord_user_guilds()
-        if discord_user_guilds is not None:
-            synapse.response = discord_user_guilds
-        else:
-            bt.logging.error("Failed to fetch user guilds.")
-
-    def handle_discord_all_guilds(self, synapse: Request):
-        discord_all_guilds = DiscordAllGuildsRequest().get_discord_all_guilds()
-        if discord_all_guilds is not None:
-            synapse.response = discord_all_guilds
-        else:
-            bt.logging.error("Failed to fetch all guilds.")
-
-    async def run_blacklist_logic(self, synapse):
+    async def blacklist(self, synapse: Any) -> Tuple[bool, str]:
         if self.check_tempo(synapse):
             self.check_stake(synapse)
 
@@ -159,15 +80,18 @@ class Miner(BaseMinerNeuron):
         bt.logging.trace(f"Not Blacklisting recognized hotkey {hotkey}")
         return False, "Hotkey recognized!"
 
-    async def blacklist_forward(self, synapse: Request) -> typing.Tuple[bool, str]:
-        await self.run_blacklist_logic(synapse)
+    async def priority_twitter_profile(self, synapse: TwitterProfileSynapse) -> float:
+        return await self.priority(synapse)
 
-    async def blacklist_recent_tweets(
-        self, synapse: RecentTweetsSynapse
-    ) -> typing.Tuple[bool, str]:
-        await self.run_blacklist_logic(synapse)
+    async def priority_twitter_followers(
+        self, synapse: TwitterFollowersSynapse
+    ) -> float:
+        return await self.priority(synapse)
 
-    async def priority(self, synapse: Request) -> float:
+    async def priority_recent_tweets(self, synapse: RecentTweetsSynapse) -> float:
+        return await self.priority(synapse)
+
+    async def priority(self, synapse: Any) -> float:
         caller_uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
         priority = float(self.metagraph.S[caller_uid])
         bt.logging.trace(
@@ -175,7 +99,7 @@ class Miner(BaseMinerNeuron):
         )
         return priority
 
-    def check_stake(self, synapse: Request):
+    def check_stake(self, synapse: Any):
         current_stakes = self.metagraph.S
         hotkey = synapse.dendrite.hotkey
         uid = self.metagraph.hotkeys.index(hotkey)
@@ -191,7 +115,7 @@ class Miner(BaseMinerNeuron):
             self.neurons_permit_stake[hotkey] = current_block
             bt.logging.info(f"Added neuron {hotkey} to staked list.")
 
-    def check_tempo(self, synapse: Request) -> bool:
+    def check_tempo(self, synapse: Any) -> bool:
         hotkey = synapse.dendrite.hotkey
         last_checked_block = self.neurons_permit_stake.get(hotkey)
         if last_checked_block is None:

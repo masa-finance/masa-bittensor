@@ -122,10 +122,6 @@ class BaseNeuron(ABC):
         self.step = 0
 
     @abstractmethod
-    async def forward(self, synapse: bt.Synapse) -> bt.Synapse:
-        pass
-
-    @abstractmethod
     def run(self):
         pass
 
