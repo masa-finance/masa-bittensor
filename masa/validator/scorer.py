@@ -26,33 +26,23 @@ class Scorer:
         self.validator = validator
 
     def add_volume(self, miner_uid, volume):
-        """
-        Adds the volume returned by a miner to the block counter, grouped every 360 blocks.
-
-        Args:
-            miner_uid (str): The unique identifier of the miner.
-            volume (float): The volume to be added.
-        """
         current_block = self.validator.subtensor.block  # Get the current block number
-        block_group = current_block // 360  # Group blocks by 360
+        block_group = current_block // 360  # Group blocks by 360, or roughly 72 minutes
 
         if (
             not self.validator.volumes
             or self.validator.volumes[-1]["block_group"] != block_group
         ):
-            # If volumes list is empty or the last entry is not for the current block group, add a new entry
             self.validator.volumes.append({"block_group": block_group, "miners": {}})
 
         if miner_uid not in self.validator.volumes[-1]["miners"]:
             self.validator.volumes[-1]["miners"][miner_uid] = 0
-
         self.validator.volumes[-1]["miners"][miner_uid] += volume
 
     # TODO put this on a thread / timer
     async def score_miner_volumes(self):
         volumes = self.validator.volumes
 
-        # Extract the miner UIDs and their corresponding volumes
         miner_volumes = {}
         for volume in volumes:
             for miner_uid, vol in volume["miners"].items():
@@ -60,25 +50,23 @@ class Scorer:
                     miner_volumes[miner_uid] = 0
                 miner_volumes[miner_uid] += vol
 
-        # Get the list of valid miner UIDs
         valid_miner_uids = list(miner_volumes.keys())
 
-        # Normalize the volumes to get rewards
+        if not miner_volumes:
+            self.validator.save_state()
+            return JSONResponse(content=[])
+
+        # Normalize the volumes to get rewards and update scores
         max_volume = max(miner_volumes.values())
         rewards = [miner_volumes[uid] / max_volume for uid in valid_miner_uids]
-
-        # Update the scores based on the rewards
         scores = torch.FloatTensor(rewards).to(self.validator.device)
-        # note this also saves validator state
         self.validator.update_scores(scores, valid_miner_uids)
-
         if self.validator.should_set_weights():
             try:
                 self.validator.set_weights()
             except Exception as e:
                 bt.logging.error(f"Failed to set weights: {e}")
 
-        # return the volumes along with their scores!
         if volumes:
             serializable_volumes = [
                 {
