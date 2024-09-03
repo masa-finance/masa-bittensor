@@ -116,7 +116,7 @@ class Forwarder:
             )
             all_responses.extend(batch_responses)
         self.validator.versions = [response.version for response in all_responses]
-        bt.logging.info(f"Miner Versions: {self.versions}")
+        bt.logging.info(f"Miner Versions: {self.validator.versions}")
         self.validator.last_version_check_block = self.validator.block
         return self.validator.versions
 
