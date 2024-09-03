@@ -49,6 +49,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
         self.last_tempo_block = 0
+        self.last_volume_block = 0
         self.keywords = []
 
         self.dendrite = bt.dendrite(wallet=self.wallet)
@@ -101,18 +102,18 @@ class BaseValidatorNeuron(BaseNeuron):
     async def run_miner_version(self):
         while not self.should_exit:
             try:
-                blocks_since_last_check = self.block - self.last_tempo_block
-                if blocks_since_last_check > self.tempo:
+                if self.forwarder.check_tempo():
                     await self.forwarder.get_miners_versions()
             except Exception as e:
                 bt.logging.error(f"Error running miner version check: {e}")
             await asyncio.sleep(60)
 
-    # TODO better control the frequency of volume queries
     async def run_miner_volume(self):
         while not self.should_exit:
             try:
-                await self.forwarder.get_miners_volumes()
+                blocks_since_last_check = self.block - self.last_volume_block
+                if blocks_since_last_check >= self.tempo / 100:
+                    await self.forwarder.get_miners_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner volume check: {e}")
             await asyncio.sleep(6)

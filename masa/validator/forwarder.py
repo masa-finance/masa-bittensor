@@ -209,6 +209,7 @@ class Forwarder:
             "tweets": all_valid_tweets,
         }
         self.validator.indexed_tweets.append(payload)
+        self.validator.last_volume_block = self.validator.subtensor.block
 
     def check_tempo(self) -> bool:
         tempo = self.validator.tempo
