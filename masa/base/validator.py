@@ -103,7 +103,7 @@ class BaseValidatorNeuron(BaseNeuron):
         while not self.should_exit:
             try:
                 if self.forwarder.check_tempo():
-                    await self.forwarder.get_miners_versions()
+                    await self.forwarder.ping_axons()
             except Exception as e:
                 bt.logging.error(f"Error running miner version check: {e}")
             await asyncio.sleep(60)

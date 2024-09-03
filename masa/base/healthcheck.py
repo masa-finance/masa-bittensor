@@ -3,7 +3,7 @@ import requests
 import bittensor as bt
 
 
-class PingMinerSynapse(bt.Synapse):
+class PingAxonSynapse(bt.Synapse):
     sent_from: typing.Optional[str]
     is_active: typing.Optional[bool]
     version: typing.Optional[int]
@@ -12,7 +12,7 @@ class PingMinerSynapse(bt.Synapse):
         return self.version
 
 
-def forward_ping(synapse: PingMinerSynapse, spec_version: int) -> PingMinerSynapse:
+def forward_ping(synapse: PingAxonSynapse, spec_version: int) -> PingAxonSynapse:
     synapse.is_active = True
     synapse.version = spec_version
     bt.logging.info(

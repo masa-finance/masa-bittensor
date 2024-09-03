@@ -26,7 +26,7 @@ from masa.miner.twitter.tweets import RecentTweetsSynapse
 from masa.miner.twitter.profile import TwitterProfileSynapse
 from masa.miner.twitter.followers import TwitterFollowersSynapse
 
-from masa.base.healthcheck import PingMinerSynapse, get_external_ip
+from masa.base.healthcheck import PingAxonSynapse, get_external_ip
 from masa.utils.uids import get_random_miner_uids
 from masa.types.twitter import ProtocolTwitterTweetResponse
 
@@ -96,11 +96,11 @@ class Forwarder:
     async def get_discord_all_guilds(self):
         return ["Not yet implemented"]
 
-    async def get_miners_versions(self):
-        request = PingMinerSynapse(
+    async def ping_axons(self):
+        request = PingAxonSynapse(
             sent_from=get_external_ip(), is_active=False, version=0
         )
-        sample_size = self.validator.config.neuron.sample_size_version
+        sample_size = self.validator.config.neuron.sample_size_ping
         dendrite = bt.dendrite(wallet=self.validator.wallet)
         all_responses = []
         for i in range(0, len(self.validator.metagraph.axons), sample_size):
@@ -108,14 +108,24 @@ class Forwarder:
             batch_responses = await dendrite(
                 batch,
                 request,
-                deserialize=True,
+                deserialize=False,
                 timeout=TIMEOUT,
             )
             all_responses.extend(batch_responses)
-        self.validator.versions = all_responses
+
+        self.validator.versions = [response.version for response in all_responses]
         bt.logging.info(f"Miner Versions: {self.validator.versions}")
         self.validator.last_tempo_block = self.validator.block
-        return self.validator.versions
+
+        return [
+            {
+                "status_code": response.dendrite.status_code,
+                "status_message": response.dendrite.status_message,
+                "hotkey": response.dendrite.hotkey,
+                "version": response.version,
+            }
+            for response in all_responses
+        ]
 
     async def fetch_keywords_from_github(self):
         async with aiohttp.ClientSession() as session:
@@ -199,16 +209,24 @@ class Forwarder:
                             )
                         )
                         bt.logging.info(f"Similarity: {similarity}, {tweet}")
-                        if similarity >= 75:  # pretty strict
+                        if similarity >= 70:  # pretty strict
                             valid_tweets.append(tweet)
             self.validator.scorer.add_volume(int(uid), len(valid_tweets))
             all_valid_tweets.extend(valid_tweets)
 
-        payload = {
-            "query": query,
-            "tweets": all_valid_tweets,
-        }
-        self.validator.indexed_tweets.append(payload)
+        query_exists = False
+        for indexed_tweet in self.validator.indexed_tweets:
+            if indexed_tweet["query"] == query:
+                indexed_tweet["tweets"].extend(all_valid_tweets)
+                query_exists = True
+                break
+
+        if not query_exists:
+            payload = {
+                "query": query,
+                "tweets": all_valid_tweets,
+            }
+            self.validator.indexed_tweets.append(payload)
         self.validator.last_volume_block = self.validator.subtensor.block
 
     def check_tempo(self) -> bool:

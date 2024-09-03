@@ -207,7 +207,7 @@ def add_validator_args(cls, parser):
 
     # note, for versioning thread
     parser.add_argument(
-        "--neuron.sample_size_version",
+        "--neuron.sample_size_ping",
         type=int,
         help="The number of miners to query for version testing.",
         default=25,

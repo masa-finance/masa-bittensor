@@ -29,7 +29,7 @@ from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_miner_args
 
 from typing import Dict
-from masa.base.healthcheck import forward_ping, PingMinerSynapse
+from masa.base.healthcheck import forward_ping, PingAxonSynapse
 
 from masa.miner.twitter.profile import forward_twitter_profile
 from masa.miner.twitter.followers import forward_twitter_followers
@@ -102,7 +102,7 @@ class BaseMinerNeuron(BaseNeuron):
 
         self.load_state()
 
-    def forward_ping_synapse(self, synapse: PingMinerSynapse) -> PingMinerSynapse:
+    def forward_ping_synapse(self, synapse: PingAxonSynapse) -> PingAxonSynapse:
         return forward_ping(synapse, self.spec_version)
 
     def run(self):

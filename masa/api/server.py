@@ -111,14 +111,15 @@ class API:
             tags=["metagraph"],
         )
         self.app.add_api_route(
-            "/versions",
-            self.validator.forwarder.get_miners_versions,
+            "/ping",
+            self.validator.forwarder.ping_axons,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
-            response_description="Get miners versions",
+            response_description="Ping Axons",
             tags=["metagraph"],
         )
 
+        # TODO remove this...
         self.app.add_api_route(
             "/score",
             validator.scorer.score_miner_volumes,
@@ -155,6 +156,15 @@ class API:
             tags=["data"],
         )
 
+        self.app.add_api_route(
+            "/tweets",
+            self.delete_tweets,
+            methods=["DELETE"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Delete indexed tweets",
+            tags=["data"],
+        )
+
         self.start_server()
 
     async def show_volumes(self):
@@ -182,6 +192,15 @@ class API:
             content={
                 "message": "Volumes state deleted",
                 "volumes": self.validator.volumes,
+            }
+        )
+
+    def delete_tweets(self):
+        self.validator.indexed_tweets = []
+        return JSONResponse(
+            content={
+                "message": "Index tweets deleted",
+                "volumes": self.validator.indexed_tweets,
             }
         )
 

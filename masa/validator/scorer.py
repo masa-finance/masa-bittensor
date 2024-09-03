@@ -59,9 +59,11 @@ class Scorer:
             return JSONResponse(content=[])
 
         # Normalize the volumes to get rewards and update scores
+        # TODO make this more of a bell curve
         max_volume = max(miner_volumes.values())
         rewards = [miner_volumes[uid] / max_volume for uid in valid_miner_uids]
         scores = torch.FloatTensor(rewards).to(self.validator.device)
+
         self.validator.update_scores(scores, valid_miner_uids)
         if self.validator.should_set_weights():
             try:
