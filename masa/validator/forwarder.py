@@ -186,6 +186,6 @@ class Forwarder:
                             )
                         )
                         bt.logging.info(f"Similarity: {similarity}, {tweet}")
-                        if similarity >= 80:  # pretty strict
+                        if similarity >= 70:  # pretty strict
                             valid_tweets += 1
             self.validator.scorer.add_volume(int(uid), valid_tweets)

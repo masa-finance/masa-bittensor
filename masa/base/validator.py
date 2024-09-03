@@ -76,9 +76,6 @@ class BaseValidatorNeuron(BaseNeuron):
         else:
             bt.logging.warning("axon off, not serving ip to chain.")
 
-        # Create asyncio event loop to manage async tasks.
-        self.loop = asyncio.get_event_loop()
-
         # Instantiate runners
         self.should_exit: bool = False
         self.is_running: bool = False
