@@ -25,6 +25,7 @@ from masa.api.server import API
 from sentence_transformers import SentenceTransformer
 
 from masa.validator.scorer import Scorer
+from masa.validator.forwarder import Forwarder
 
 
 class Validator(BaseValidatorNeuron):
@@ -33,6 +34,7 @@ class Validator(BaseValidatorNeuron):
         self.model = SentenceTransformer(
             "all-MiniLM-L6-v2"
         )  # Load a pre-trained model for embeddings
+        self.forwarder = Forwarder(self)
         self.scorer = Scorer(self)
         self.API = API(self)
         bt.logging.info("Validator initialized with config: {}".format(config))

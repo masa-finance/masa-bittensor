@@ -1,20 +1,10 @@
 import os
 import asyncio
 import uvicorn
-import bittensor as bt
-from typing import Any
-from datetime import datetime
-
-from masa.miner.twitter.tweets import RecentTweetsSynapse
-from masa.miner.twitter.profile import TwitterProfileSynapse
-from masa.miner.twitter.followers import TwitterFollowersSynapse
-
-from masa.base.validator import get_random_miner_uids
 
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
 
 TIMEOUT = 8
 
@@ -54,7 +44,7 @@ class API:
 
         self.app.add_api_route(
             "/data/twitter/profile",
-            self.get_twitter_profile,
+            self.validator.forwarder.get_twitter_profile,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Twitter profile for the given username",
@@ -63,7 +53,7 @@ class API:
 
         self.app.add_api_route(
             "/data/twitter/followers",
-            self.get_twitter_followers,
+            self.validator.forwarder.get_twitter_followers,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Twitter followers for the given username",
@@ -72,7 +62,7 @@ class API:
 
         self.app.add_api_route(
             "/data/twitter/tweets/recent",
-            self.get_recent_tweets,
+            self.validator.forwarder.get_recent_tweets,
             methods=["POST"],
             dependencies=[Depends(self.get_self)],
             response_description="Get recent tweets given a query",
@@ -81,7 +71,7 @@ class API:
 
         self.app.add_api_route(
             "/data/discord/profile",
-            self.get_discord_profile,
+            self.validator.forwarder.get_discord_profile,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Discord profile for the given user ID",
@@ -90,7 +80,7 @@ class API:
 
         self.app.add_api_route(
             "/data/discord/channels/{channel_id}/messages",
-            self.get_discord_channel_messages,
+            self.validator.forwarder.get_discord_channel_messages,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Discord channel messages for the given channel ID",
@@ -99,7 +89,7 @@ class API:
 
         self.app.add_api_route(
             "/data/discord/guilds/{guild_id}/channels",
-            self.get_discord_guild_channels,
+            self.validator.forwarder.get_discord_guild_channels,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Discord channels for the given guild ID",
@@ -108,7 +98,7 @@ class API:
 
         self.app.add_api_route(
             "/data/discord/user/guilds",
-            self.get_discord_user_guilds,
+            self.validator.forwarder.get_discord_user_guilds,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get the Discord guilds for the user",
@@ -117,7 +107,7 @@ class API:
 
         self.app.add_api_route(
             "/data/discord/guilds/all",
-            self.get_discord_all_guilds,
+            self.validator.forwarder.get_discord_all_guilds,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get all guilds that all the Discord workers are apart of",
@@ -142,7 +132,7 @@ class API:
         )
         self.app.add_api_route(
             "/versions",
-            self.get_miners_versions,
+            self.validator.forwarder.get_miners_versions,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get miners versions",
@@ -154,7 +144,6 @@ class API:
     async def show_volumes(self):
         volumes = self.validator.volumes
         if volumes:
-            # Convert all elements in volumes to a JSON serializable format
             serializable_volumes = [
                 {
                     "block_group": int(volume["block_group"]),
@@ -164,61 +153,6 @@ class API:
             ]
             return JSONResponse(content=serializable_volumes)
         return JSONResponse(content=[])
-
-    async def get_miners_versions(self):
-        versions = await self.validator.get_miner_versions()
-        if versions:
-            return versions
-        return []
-
-    async def send_dendrite_request(self, request: Any):
-        miner_uids = await get_random_miner_uids(
-            self.validator, k=self.validator.config.neuron.sample_size
-        )
-        dendrite = bt.dendrite(wallet=self.validator.wallet)
-        responses = await dendrite(
-            [self.validator.metagraph.axons[uid] for uid in miner_uids],
-            request,
-            deserialize=True,
-            timeout=TIMEOUT,
-        )
-
-        formatted_responses = [
-            {"uid": int(uid), "response": response}
-            for uid, response in zip(miner_uids, responses)
-        ]
-        return formatted_responses
-
-    async def get_twitter_profile(self, username: str = "getmasafi"):
-        request = TwitterProfileSynapse(username=username)
-        return await self.send_dendrite_request(request)
-
-    async def get_twitter_followers(self, username: str = "getmasafi", count: int = 10):
-        request = TwitterFollowersSynapse(username=username, count=count)
-        return await self.send_dendrite_request(request)
-
-    async def get_recent_tweets(
-        self,
-        query: str = f"(Bitcoin) since:{datetime.now().strftime('%Y-%m-%d')}",
-        count: int = 1,
-    ):
-        request = RecentTweetsSynapse(query=query, count=count)
-        return await self.send_dendrite_request(request)
-
-    async def get_discord_profile(self, user_id: str = "449222160687300608"):
-        return ["Not yet implemented"]
-
-    async def get_discord_channel_messages(self, channel_id: str):
-        return ["Not yet implemented"]
-
-    async def get_discord_guild_channels(self, guild_id: str):
-        return ["Not yet implemented"]
-
-    async def get_discord_user_guilds(self):
-        return ["Not yet implemented"]
-
-    async def get_discord_all_guilds(self):
-        return ["Not yet implemented"]
 
     def get_axons(self):
         return self.validator.metagraph.axons
