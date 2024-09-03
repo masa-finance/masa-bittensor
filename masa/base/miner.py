@@ -72,11 +72,13 @@ class BaseMinerNeuron(BaseNeuron):
         self.axon.attach(
             forward_fn=forward_twitter_profile,
             blacklist_fn=self.blacklist_twitter_profile,
+            priority_fn=self.priority_twitter_profile,
         )
 
         self.axon.attach(
             forward_fn=forward_twitter_followers,
             blacklist_fn=self.blacklist_twitter_followers,
+            priority_fn=self.priority_twitter_followers,
         )
 
         self.axon.attach(
