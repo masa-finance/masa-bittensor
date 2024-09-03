@@ -19,6 +19,7 @@
 import bittensor as bt
 from typing import Any
 from datetime import datetime
+import aiohttp
 import random
 
 from masa.miner.twitter.tweets import RecentTweetsSynapse
@@ -30,7 +31,7 @@ from masa.utils.uids import get_random_miner_uids
 from masa.types.twitter import ProtocolTwitterTweetResponse
 
 
-TIMEOUT = 8
+TIMEOUT = 5
 
 
 class Forwarder:
@@ -116,13 +117,26 @@ class Forwarder:
         self.validator.last_version_check_block = self.validator.block
         return self.validator.versions
 
-    async def get_miners_volumes(self):
-        # TODO this should come from github I think
-        with open("scrape_twitter_keywords.txt", "r") as file:
-            keywords_data = file.read()
+    async def fetch_keywords_from_github(self):
+        async with aiohttp.ClientSession() as session:
+            url = self.validator.config.neuron.keywords_url
+            async with session.get(url) as response:
+                if response.status == 200:
+                    text_data = await response.text()
+                    bt.logging.info(f"Keywords fetched!: {text_data}")
+                    self.validator.keywords = text_data.split(",")
+                else:
+                    bt.logging.error(
+                        f"Failed to fetch keywords from GitHub: {response.status}"
+                    )
+                    self.validator.keywords = ["crypto", "bitcoin", "masa"]
 
-        keywords_list = keywords_data.split(",")
-        random_keyword = random.choice(keywords_list)
+    async def get_miners_volumes(self):
+        # TODO also add a check to see if it's been a tempo?
+        if len(self.validator.keywords) == 0:
+            await self.fetch_keywords_from_github()
+
+        random_keyword = random.choice(self.validator.keywords)
         query = (
             f"({random_keyword.strip()}) since:{datetime.now().strftime('%Y-%m-%d')}"
         )
@@ -187,6 +201,6 @@ class Forwarder:
                             )
                         )
                         bt.logging.info(f"Similarity: {similarity}, {tweet}")
-                        if similarity >= 70:  # pretty strict
+                        if similarity >= 75:  # pretty strict
                             valid_tweets += 1
             self.validator.scorer.add_volume(int(uid), valid_tweets)

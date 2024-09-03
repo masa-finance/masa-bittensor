@@ -49,6 +49,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
         self.last_version_check_block = 0
+        self.keywords = []
 
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.scores = torch.zeros(
@@ -101,7 +102,7 @@ class BaseValidatorNeuron(BaseNeuron):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_version_check_block
-                if blocks_since_last_check > self.tempo or len(self.versions) == 0:
+                if blocks_since_last_check > self.tempo:
                     await self.forwarder.get_miners_versions()
             except Exception as e:
                 bt.logging.error(f"Error running miner version check: {e}")
@@ -158,9 +159,9 @@ class BaseValidatorNeuron(BaseNeuron):
             self.miner_version_thread = threading.Thread(
                 target=self.run_miner_version_in_loop, daemon=True
             )
-            self.thread.start()
-            self.miner_version_thread.start()
-            self.miner_volume_thread.start()
+            self.thread.start()  # for setting weights, syncing metagraph,, etc
+            self.miner_version_thread.start()  # for versioning and getting keywords
+            self.miner_volume_thread.start()  # for testing miner volumes
             self.is_running = True
             bt.logging.debug("Started")
 
