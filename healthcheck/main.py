@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from cachetools import TTLCache
 from datetime import datetime
 
-from masa.base.healthcheck import PingMiner
+from masa.base.healthcheck import PingMinerSynapse
 
 nest_asyncio.apply()
 app = FastAPI()
@@ -129,7 +129,7 @@ async def ping_uids(dendrite, metagraph, uids, timeout=3):
     """
     axons = [metagraph.axons[uid] for uid in uids]
     try:
-        request = PingMiner(sent_from=external_ip, is_active=False, version=0)
+        request = PingMinerSynapse(sent_from=external_ip, is_active=False, version=0)
         responses = await dendrite(axons, request, deserialize=False, timeout=timeout)
 
         print("RESSPONSES")
@@ -314,7 +314,7 @@ async def get_connected_axons_by_ip(ip: str, subnet_id: int):
 @app.get("/subnet/{subnet_id}/axons/versions")
 async def get_miners_versions(subnet_id):
     """
-    Get the versions of miners using PingMiner and return full axons info.
+    Get the versions of miners using PingMinerSynapse and return full axons info.
 
     Returns:
         list: A list of dictionaries containing axon information along with their versions.
@@ -332,7 +332,7 @@ async def get_miners_versions(subnet_id):
     dendrite = bt.dendrite(wallet=wallet)  # Added timeout of 10 seconds
 
     try:
-        request = PingMiner(sent_from=external_ip, is_active=False, version=0)
+        request = PingMinerSynapse(sent_from=external_ip, is_active=False, version=0)
         responses = await dendrite(axons, request, deserialize=False, timeout=10)
 
         print(f"Got responses:   {len(responses)}")

@@ -16,18 +16,17 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from masa.utils.uids import get_random_miner_uids
-from typing import Any
 import bittensor as bt
+from typing import Any
+from datetime import datetime
+import random
 
 from masa.miner.twitter.tweets import RecentTweetsSynapse
 from masa.miner.twitter.profile import TwitterProfileSynapse
 from masa.miner.twitter.followers import TwitterFollowersSynapse
-from masa.base.healthcheck import PingMiner, get_external_ip
 
-
-from datetime import datetime
-import random
+from masa.base.healthcheck import PingMinerSynapse, get_external_ip
+from masa.utils.uids import get_random_miner_uids
 
 
 TIMEOUT = 8
@@ -37,7 +36,7 @@ class Forwarder:
     def __init__(self, validator):
         self.validator = validator
 
-    async def send_dendrite_request(
+    async def forward_request(
         self, request: Any, sample_size: int, timeout: int = TIMEOUT
     ):
         miner_uids = await get_random_miner_uids(self.validator, k=sample_size)
@@ -57,14 +56,14 @@ class Forwarder:
 
     async def get_twitter_profile(self, username: str = "getmasafi"):
         request = TwitterProfileSynapse(username=username)
-        formatted_responses, _ = await self.send_dendrite_request(
+        formatted_responses, _ = await self.forward_request(
             request=request, sample_size=self.validator.config.neuron.sample_size
         )
         return formatted_responses
 
     async def get_twitter_followers(self, username: str = "getmasafi", count: int = 10):
         request = TwitterFollowersSynapse(username=username, count=count)
-        formatted_responses, _ = await self.send_dendrite_request(
+        formatted_responses, _ = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size
         )
         return formatted_responses
@@ -75,16 +74,10 @@ class Forwarder:
         count: int = 1,
     ):
         request = RecentTweetsSynapse(query=query, count=count)
-        formatted_responses, _ = await self.send_dendrite_request(
+        formatted_responses, _ = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size
         )
         return formatted_responses
-
-    async def get_miners_versions(self):
-        versions = await self.validator.get_miner_versions()
-        if versions:
-            return versions
-        return []
 
     async def get_discord_profile(self, user_id: str = "449222160687300608"):
         return ["Not yet implemented"]
@@ -101,26 +94,28 @@ class Forwarder:
     async def get_discord_all_guilds(self):
         return ["Not yet implemented"]
 
-    async def get_miner_versions(self):
-        dendrite = bt.dendrite(wallet=self.validator.wallet)
-        request = PingMiner(sent_from=get_external_ip(), is_active=False, version=0)
-        all_responses = []
+    async def get_miners_versions(self):
+        request = PingMinerSynapse(
+            sent_from=get_external_ip(), is_active=False, version=0
+        )
         sample_size = self.validator.config.neuron.sample_size_version
+        dendrite = bt.dendrite(wallet=self.validator.wallet)
+        all_responses = []
         for i in range(0, len(self.validator.metagraph.axons), sample_size):
             batch = self.validator.metagraph.axons[i : i + sample_size]
             batch_responses = await dendrite(
                 batch,
                 request,
-                deserialize=False,
-                timeout=8,
+                deserialize=True,
+                timeout=TIMEOUT,
             )
             all_responses.extend(batch_responses)
-        self.validator.versions = [response.version for response in all_responses]
+        self.validator.versions = all_responses
         bt.logging.info(f"Miner Versions: {self.validator.versions}")
         self.validator.last_version_check_block = self.validator.block
         return self.validator.versions
 
-    async def get_miner_volumes(self):
+    async def get_miners_volumes(self):
         with open("scrape_twitter_keywords.txt", "r") as file:
             keywords_data = file.read()
 
@@ -129,8 +124,10 @@ class Forwarder:
         query = (
             f"({random_keyword.strip()}) since:{datetime.now().strftime('%Y-%m-%d')}"
         )
+        # TODO better define the frequency and count of volume queries
+        # TODO perhaps bring them all to a config or public file
         request = RecentTweetsSynapse(query=query, count=2)
-        responses, miner_uids = await self.send_dendrite_request(
+        responses, miner_uids = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size_volume
         )
 

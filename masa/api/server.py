@@ -6,8 +6,6 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-TIMEOUT = 8
-
 
 class API:
     def __init__(self, validator, config=None):
@@ -39,6 +37,15 @@ class API:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get scores and capacity of miners",
+            tags=["scoring"],
+        )
+
+        self.app.add_api_route(
+            "/volumes",
+            self.delete_volumes,
+            methods=["DELETE"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Delete volumes state",
             tags=["scoring"],
         )
 
@@ -153,6 +160,15 @@ class API:
             ]
             return JSONResponse(content=serializable_volumes)
         return JSONResponse(content=[])
+
+    def delete_volumes(self):
+        self.validator.volumes = []
+        return JSONResponse(
+            content={
+                "message": "Volumes state deleted",
+                "volumes": self.validator.volumes,
+            }
+        )
 
     def get_axons(self):
         return self.validator.metagraph.axons
