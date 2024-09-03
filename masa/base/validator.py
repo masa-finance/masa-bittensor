@@ -71,7 +71,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.is_running: bool = False
         self.thread: threading.Thread = None
         self.miner_volume_thread: threading.Thread = None
-        self.miner_version_thread: threading.Thread = None
+        self.miner_ping_thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
         self.run_in_background_thread()
@@ -157,11 +157,11 @@ class BaseValidatorNeuron(BaseNeuron):
             self.miner_volume_thread = threading.Thread(
                 target=self.run_miner_volume_in_loop, daemon=True
             )
-            self.miner_version_thread = threading.Thread(
+            self.miner_ping_thread = threading.Thread(
                 target=self.run_miner_version_in_loop, daemon=True
             )
             self.thread.start()  # for setting weights, syncing metagraph,, etc
-            self.miner_version_thread.start()  # for versioning and getting keywords
+            self.miner_ping_thread.start()  # for versioning and getting keywords
             self.miner_volume_thread.start()  # for testing miner volumes
             self.is_running = True
             bt.logging.debug("Started")
@@ -174,7 +174,7 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
             self.thread.join(5)
-            self.miner_version_thread.join(5)
+            self.miner_ping_thread.join(5)
             self.miner_volume_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
@@ -200,7 +200,7 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
             self.thread.join(5)
-            self.miner_version_thread.join(5)
+            self.miner_ping_thread.join(5)
             self.miner_volume_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
