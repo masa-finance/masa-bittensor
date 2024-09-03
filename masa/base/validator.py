@@ -167,7 +167,7 @@ class BaseValidatorNeuron(BaseNeuron):
             f"({random_keyword.strip()}) since:{datetime.now().strftime('%Y-%m-%d')}"
         )
 
-        request = RecentTweetsSynapse(query=query, count=1)
+        request = RecentTweetsSynapse(query=query, count=2)
         miner_uids = await get_random_miner_uids(
             self, k=self.config.neuron.sample_size_volume
         )

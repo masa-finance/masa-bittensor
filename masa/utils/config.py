@@ -215,7 +215,7 @@ def add_validator_args(cls, parser):
         "--neuron.sample_size_volume",
         type=int,
         help="The number of miners to query for volume testing.",
-        default=1,
+        default=2,
     )
 
     parser.add_argument(
