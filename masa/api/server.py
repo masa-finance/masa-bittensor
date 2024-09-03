@@ -23,6 +23,15 @@ class API:
         )
 
         self.app.add_api_route(
+            "/indexed_tweets",
+            self.show_indexed_tweets,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get indexed tweets",
+            tags=["scoring"],
+        )
+
+        self.app.add_api_route(
             "/score",
             validator.scorer.score_miner_volumes,
             methods=["GET"],
@@ -159,6 +168,12 @@ class API:
                 for volume in volumes
             ]
             return JSONResponse(content=serializable_volumes)
+        return JSONResponse(content=[])
+
+    async def show_indexed_tweets(self):
+        tweets = self.validator.indexed_tweets
+        if len(tweets) > 0:
+            return JSONResponse(content=tweets)
         return JSONResponse(content=[])
 
     def delete_volumes(self):

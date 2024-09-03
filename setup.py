@@ -67,7 +67,7 @@ setup(
     author="masa.ai",
     packages=find_packages(),
     include_package_data=True,
-    author_email="",  # TODO(developer): Change this value to your module subnet author email.
+    author_email="",
     license="MIT",
     python_requires=">=3.8",
     install_requires=requirements,

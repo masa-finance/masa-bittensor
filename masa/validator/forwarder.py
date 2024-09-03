@@ -31,7 +31,7 @@ from masa.utils.uids import get_random_miner_uids
 from masa.types.twitter import ProtocolTwitterTweetResponse
 
 
-TIMEOUT = 5
+TIMEOUT = 8
 
 
 class Forwarder:
@@ -139,9 +139,7 @@ class Forwarder:
         query = (
             f"({random_keyword.strip()}) since:{datetime.now().strftime('%Y-%m-%d')}"
         )
-        # TODO better define the frequency and count of volume queries
-        # TODO perhaps bring them all to a config or public file
-        request = RecentTweetsSynapse(query=query, count=2)
+        request = RecentTweetsSynapse(query=query, count=3)
         responses, miner_uids = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size_volume
         )
@@ -187,8 +185,9 @@ class Forwarder:
         )
         example_embedding = self.validator.model.encode(str(example_tweet))
 
+        all_valid_tweets = []
         for response, uid in zip(responses, miner_uids):
-            valid_tweets = 0
+            valid_tweets = []
             actual_response = dict(response).get("response", [])
             if actual_response is not None:
                 for tweet in actual_response:
@@ -201,8 +200,15 @@ class Forwarder:
                         )
                         bt.logging.info(f"Similarity: {similarity}, {tweet}")
                         if similarity >= 75:  # pretty strict
-                            valid_tweets += 1
-            self.validator.scorer.add_volume(int(uid), valid_tweets)
+                            valid_tweets.append(tweet)
+            self.validator.scorer.add_volume(int(uid), len(valid_tweets))
+            all_valid_tweets.extend(valid_tweets)
+
+        payload = {
+            "query": query,
+            "tweets": all_valid_tweets,
+        }
+        self.validator.indexed_tweets.append(payload)
 
     def check_tempo(self) -> bool:
         tempo = self.validator.subtensor.get_subnet_hyperparameters(
