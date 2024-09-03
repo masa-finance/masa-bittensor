@@ -149,8 +149,8 @@ class Forwarder:
             return
 
         if self.validator.versions is None or len(self.validator.versions) == 0:
-            bt.logging.info("Skipping volume test, waiting for miner versions...")
-            return
+            bt.logging.info("Pinging axons to get miner versions...")
+            return await self.ping_axons()
         if len(self.validator.keywords) == 0 or self.check_tempo() is True:
             await self.fetch_keywords_from_github()
 
