@@ -35,6 +35,6 @@ class TwitterTweetsRequest(MasaProtocolRequest):
             return data
         else:
             bt.logging.error(
-                f"Worker request failed with response: {response.status_code}"
+                f"Twitter recent tweets request failed with status code: {response.status_code}"
             )
             return None

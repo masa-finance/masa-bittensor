@@ -21,7 +21,7 @@ import time
 
 # Bittensor Validator Template:
 from masa.base.validator import BaseValidatorNeuron
-from masa.api.validator_api import ValidatorAPI
+from masa.api.server import API
 from sentence_transformers import SentenceTransformer
 
 from masa.validator.scorer import Scorer
@@ -34,7 +34,7 @@ class Validator(BaseValidatorNeuron):
             "all-MiniLM-L6-v2"
         )  # Load a pre-trained model for embeddings
         self.scorer = Scorer(self)
-        self.API = ValidatorAPI(self)
+        self.API = API(self)
         bt.logging.info("Validator initialized with config: {}".format(config))
 
 

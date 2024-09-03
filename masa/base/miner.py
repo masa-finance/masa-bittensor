@@ -34,7 +34,6 @@ from masa.base.healthcheck import forward_ping, PingMiner
 from masa.miner.twitter.profile import forward_twitter_profile
 from masa.miner.twitter.followers import forward_twitter_followers
 from masa.miner.twitter.tweets import forward_recent_tweets
-from masa.miner.discord.profile import forward_discord_profile
 
 
 class BaseMinerNeuron(BaseNeuron):

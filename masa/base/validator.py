@@ -158,19 +158,10 @@ class BaseValidatorNeuron(BaseNeuron):
 
     async def get_miner_volumes(self):
         dendrite = bt.dendrite(wallet=self.wallet)
-        # TODO fetch this every time?  Maybe only once on load
-        keywords_data = await self.fetch_keywords_from_github(
-            self.config.validator.twitter_keywords_url
-        )
-        if not keywords_data:
-            return []
+        with open("scrape_twitter_keywords.txt", "r") as file:
+            keywords_data = file.read()
 
-        keywords = keywords_data.get("keywords", "")
-        if not keywords:
-            bt.logging.error("No keywords found in the fetched data.")
-            return []
-
-        keywords_list = keywords.split(",")
+        keywords_list = keywords_data.split(",")
         random_keyword = random.choice(keywords_list)
         query = (
             f"({random_keyword.strip()}) since:{datetime.now().strftime('%Y-%m-%d')}"

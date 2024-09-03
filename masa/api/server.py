@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 TIMEOUT = 8
 
 
-class ValidatorAPI:
+class API:
     def __init__(self, validator, config=None):
         self.host = os.getenv("VALIDATOR_API_HOST", "0.0.0.0")
         self.port = int(os.getenv("VALIDATOR_API_PORT", "8000"))
