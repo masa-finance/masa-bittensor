@@ -91,13 +91,10 @@ class Scorer:
             return JSONResponse(content=serializable_volumes)
         return JSONResponse(content=[])
 
-    # TODO use this to validate that a tweet is actually a tweet
     def calculate_similarity_percentage(self, response_embedding, source_embedding):
-        # Calculate the cosine similarity between the response and the source of truth
         cosine_similarity = torch.nn.functional.cosine_similarity(
             torch.tensor(response_embedding).unsqueeze(0),
             torch.tensor(source_embedding).unsqueeze(0),
         ).item()
-        # Convert cosine similarity to percentage
         similarity_percentage = (cosine_similarity + 1) / 2 * 100
         return similarity_percentage

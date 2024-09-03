@@ -28,8 +28,6 @@ from typing import List
 from traceback import print_exception
 
 from masa.base.neuron import BaseNeuron
-
-from masa.mock import MockDendrite
 from masa.utils.config import add_validator_args
 
 
@@ -58,10 +56,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_version_check_block = 0
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
-        if self.config.mock:
-            self.dendrite = MockDendrite(wallet=self.wallet)
-        else:
-            self.dendrite = bt.dendrite(wallet=self.wallet)
+        self.dendrite = bt.dendrite(wallet=self.wallet)
         bt.logging.info(f"Dendrite: {self.dendrite}")
 
         # Set up initial scoring weights for validation
@@ -277,7 +272,6 @@ class BaseValidatorNeuron(BaseNeuron):
         )
 
         if result is True:
-            print("Weights set on chain successfully!")
             bt.logging.info("set_weights on chain successfully!")
         else:
             bt.logging.error("set_weights failed", msg)
@@ -348,7 +342,8 @@ class BaseValidatorNeuron(BaseNeuron):
         scattered_rewards: torch.FloatTensor = self.scores.scatter(
             0, uids_tensor, rewards
         ).to(self.device)
-        print(f"Scattered rewards: {rewards}")
+
+        bt.logging.info(f"Scattered rewards: {rewards}")
 
         # Update scores with rewards produced by this step.
         # shape: [ metagraph.n ]
@@ -358,7 +353,7 @@ class BaseValidatorNeuron(BaseNeuron):
             1 - alpha
         ) * self.scores.to(self.device)
 
-        print(f"Updated moving avg scores: {self.scores}")
+        bt.logging.info(f"Updated moving averages: {self.scores}")
 
         self.save_state()
 

@@ -27,6 +27,7 @@ from masa.miner.twitter.followers import TwitterFollowersSynapse
 
 from masa.base.healthcheck import PingMinerSynapse, get_external_ip
 from masa.utils.uids import get_random_miner_uids
+from masa.types.twitter import ProtocolTwitterTweetResponse
 
 
 TIMEOUT = 8
@@ -131,12 +132,59 @@ class Forwarder:
             request, sample_size=self.validator.config.neuron.sample_size_volume
         )
 
+        # Create an embedding of the ProtocolTwitterTweetResponse object
+        example_tweet = ProtocolTwitterTweetResponse(
+            Tweet={
+                "ConversationID": "",
+                "GIFs": None,
+                "Hashtags": None,
+                "HTML": "",
+                "ID": "",
+                "InReplyToStatus": None,
+                "InReplyToStatusID": None,
+                "IsQuoted": False,
+                "IsPin": False,
+                "IsReply": False,
+                "IsRetweet": False,
+                "IsSelfThread": False,
+                "Likes": 0,
+                "Mentions": None,
+                "Name": "",
+                "PermanentURL": "",
+                "Photos": None,
+                "Place": None,
+                "QuotedStatus": None,
+                "QuotedStatusID": None,
+                "Replies": 0,
+                "Retweets": 0,
+                "RetweetedStatus": None,
+                "RetweetedStatusID": None,
+                "Text": "",
+                "Thread": None,
+                "TimeParsed": "",
+                "Timestamp": 0,
+                "URLs": None,
+                "UserID": "",
+                "Username": "",
+                "Videos": None,
+                "Views": 0,
+                "SensitiveContent": False,
+            },
+            Error=None,
+        )
+        example_embedding = self.validator.model.encode(str(example_tweet))
+
         for response, uid in zip(responses, miner_uids):
-            # TODO only count tweets / responses that meet a certain sameness threshold!
-            if response:
-                volume = len(response)
-            else:
-                volume = 0
-            self.validator.scorer.add_volume(int(uid), volume)
+            valid_tweets = []
+            for tweet in response:
+                if tweet:
+                    tweet_embedding = self.validator.model.encode(str(tweet))
+                    similarity = self.validator.scorer.calculate_similarity_percentage(
+                        example_embedding, tweet_embedding
+                    )
+                    bt.logging.info(f"Similarity: {similarity}")
+                    if similarity >= 50:
+                        valid_tweets.append(response)
+            self.validator.scorer.add_volume(int(uid), len(valid_tweets))
 
         bt.logging.info(f"Responses: {responses}")
