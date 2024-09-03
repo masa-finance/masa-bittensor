@@ -80,7 +80,7 @@ class ValidatorAPI:
         )
 
         self.app.add_api_route(
-            "/data/discord/profile/{user_id}",
+            "/data/discord/profile",
             self.get_discord_profile,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
@@ -205,26 +205,19 @@ class ValidatorAPI:
         request = RecentTweetsSynapse(query=query, count=count)
         return await self.send_dendrite_request(request)
 
-    async def get_discord_profile(self, user_id: str):
-
+    async def get_discord_profile(self, user_id: str = "449222160687300608"):
         return []
 
     async def get_discord_channel_messages(self, channel_id: str):
-
         return []
 
     async def get_discord_guild_channels(self, guild_id: str):
-
         return []
 
     async def get_discord_user_guilds(self):
-
         return []
 
-    async def get_discord_all_guilds(
-        self,
-    ):
-
+    async def get_discord_all_guilds(self):
         return []
 
     def get_axons(self):

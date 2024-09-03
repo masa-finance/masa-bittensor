@@ -189,10 +189,6 @@ class BaseValidatorNeuron(BaseNeuron):
 
         formatted_responses = []
 
-        if responses is None or miner_uids is None:
-            bt.logging.error("Responses or miner_uids is None")
-            return formatted_responses
-
         for response, uid in zip(responses, miner_uids):
             formatted_response = {
                 "uid": int(uid),

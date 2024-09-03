@@ -32,21 +32,6 @@ class Miner(BaseMinerNeuron):
         super(Miner, self).__init__(config=config)
         bt.logging.info("Miner initialized with config: {}".format(config))
 
-    async def blacklist_twitter_profile(
-        self, synapse: TwitterProfileSynapse
-    ) -> Tuple[bool, str]:
-        return await self.blacklist(synapse)
-
-    async def blacklist_twitter_followers(
-        self, synapse: TwitterFollowersSynapse
-    ) -> Tuple[bool, str]:
-        return await self.blacklist(synapse)
-
-    async def blacklist_recent_tweets(
-        self, synapse: RecentTweetsSynapse
-    ) -> Tuple[bool, str]:
-        return await self.blacklist(synapse)
-
     async def blacklist(self, synapse: Any) -> Tuple[bool, str]:
         if self.check_tempo(synapse):
             self.check_stake(synapse)
@@ -79,25 +64,6 @@ class Miner(BaseMinerNeuron):
 
         bt.logging.trace(f"Not Blacklisting recognized hotkey {hotkey}")
         return False, "Hotkey recognized!"
-
-    async def priority_twitter_profile(self, synapse: TwitterProfileSynapse) -> float:
-        return await self.priority(synapse)
-
-    async def priority_twitter_followers(
-        self, synapse: TwitterFollowersSynapse
-    ) -> float:
-        return await self.priority(synapse)
-
-    async def priority_recent_tweets(self, synapse: RecentTweetsSynapse) -> float:
-        return await self.priority(synapse)
-
-    async def priority(self, synapse: Any) -> float:
-        caller_uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
-        priority = float(self.metagraph.S[caller_uid])
-        bt.logging.trace(
-            f"Prioritizing {synapse.dendrite.hotkey} with value: ", priority
-        )
-        return priority
 
     def check_stake(self, synapse: Any):
         current_stakes = self.metagraph.S
@@ -138,6 +104,42 @@ class Miner(BaseMinerNeuron):
                 f"Not yet a tempo since last check. Blocks since last check: {blocks_since_last_check}"
             )
             return False
+
+    async def priority(self, synapse: Any) -> float:
+        caller_uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
+        priority = float(self.metagraph.S[caller_uid])
+        bt.logging.trace(
+            f"Prioritizing {synapse.dendrite.hotkey} with value: ", priority
+        )
+        return priority
+
+    # blacklist wrappers
+    async def blacklist_twitter_profile(
+        self, synapse: TwitterProfileSynapse
+    ) -> Tuple[bool, str]:
+        return await self.blacklist(synapse)
+
+    async def blacklist_twitter_followers(
+        self, synapse: TwitterFollowersSynapse
+    ) -> Tuple[bool, str]:
+        return await self.blacklist(synapse)
+
+    async def blacklist_recent_tweets(
+        self, synapse: RecentTweetsSynapse
+    ) -> Tuple[bool, str]:
+        return await self.blacklist(synapse)
+
+    # priority wrappers
+    async def priority_twitter_profile(self, synapse: TwitterProfileSynapse) -> float:
+        return await self.priority(synapse)
+
+    async def priority_twitter_followers(
+        self, synapse: TwitterFollowersSynapse
+    ) -> float:
+        return await self.priority(synapse)
+
+    async def priority_recent_tweets(self, synapse: RecentTweetsSynapse) -> float:
+        return await self.priority(synapse)
 
 
 if __name__ == "__main__":
