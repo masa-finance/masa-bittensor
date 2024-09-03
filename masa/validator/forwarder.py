@@ -97,6 +97,9 @@ class Forwarder:
         return ["Not yet implemented"]
 
     async def ping_axons(self):
+        if not hasattr(self.validator, "forwarder"):
+            return
+
         request = PingAxonSynapse(
             sent_from=get_external_ip(), is_active=False, version=0
         )
@@ -115,14 +118,14 @@ class Forwarder:
 
         self.validator.versions = [response.version for response in all_responses]
         bt.logging.info(f"Miner Versions: {self.validator.versions}")
-        self.validator.last_tempo_block = self.validator.block
+        self.validator.last_tempo_block = self.validator.subtensor.block
 
         return [
             {
                 "status_code": response.dendrite.status_code,
                 "status_message": response.dendrite.status_message,
-                "hotkey": response.dendrite.hotkey,
                 "version": response.version,
+                "uid": all_responses.index(response),
             }
             for response in all_responses
         ]
@@ -142,6 +145,12 @@ class Forwarder:
                     self.validator.keywords = ["crypto", "bitcoin", "masa"]
 
     async def get_miners_volumes(self):
+        if not hasattr(self.validator, "forwarder"):
+            return
+
+        if self.validator.versions is None or len(self.validator.versions) == 0:
+            bt.logging.info("Skipping volume test, waiting for miner versions...")
+            return
         if len(self.validator.keywords) == 0 or self.check_tempo() is True:
             await self.fetch_keywords_from_github()
 

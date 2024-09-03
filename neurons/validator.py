@@ -31,12 +31,12 @@ from masa.validator.forwarder import Forwarder
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
-        self.model = SentenceTransformer(
-            "all-MiniLM-L6-v2"
-        )  # Load a pre-trained model for embeddings
         self.forwarder = Forwarder(self)
         self.scorer = Scorer(self)
         self.API = API(self)
+        self.model = SentenceTransformer(
+            "all-MiniLM-L6-v2"
+        )  # Load a pre-trained model for embeddings
         bt.logging.info("Validator initialized with config: {}".format(config))
 
 

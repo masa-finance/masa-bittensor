@@ -16,10 +16,8 @@
 # DEALINGS IN THE SOFTWARE.
 
 import copy
-
+from abc import ABC
 import bittensor as bt
-
-from abc import ABC, abstractmethod
 from dotenv import load_dotenv
 
 # Sync calls set weights and also resyncs the metagraph.
@@ -114,10 +112,6 @@ class BaseNeuron(ABC):
             f"Running neuron on subnet: {self.config.netuid} with uid {self.uid} using network: {self.subtensor.chain_endpoint}"
         )
         self.step = 0
-
-    @abstractmethod
-    def run(self):
-        pass
 
     def sync(self):
         """

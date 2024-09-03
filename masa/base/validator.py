@@ -25,7 +25,6 @@ import threading
 import bittensor as bt
 
 from typing import List
-from traceback import print_exception
 
 from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_validator_args
@@ -48,9 +47,13 @@ class BaseValidatorNeuron(BaseNeuron):
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+
+        self.last_sync_block = 0
         self.last_tempo_block = 0
         self.last_volume_block = 0
-        self.keywords = []
+        self.last_scoring_block = 0
+
+        self.keywords = []  # note, for volume queries
 
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.scores = torch.zeros(
@@ -69,9 +72,10 @@ class BaseValidatorNeuron(BaseNeuron):
         # Instantiate runners
         self.should_exit: bool = False
         self.is_running: bool = False
-        self.thread: threading.Thread = None
-        self.miner_volume_thread: threading.Thread = None
+        self.sync_thread: threading.Thread = None
         self.miner_ping_thread: threading.Thread = None
+        self.miner_volume_thread: threading.Thread = None
+        self.miner_scoring_thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
         self.run_in_background_thread()
@@ -99,24 +103,59 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
             pass
 
+    async def run_sync(self):
+        while not self.should_exit:
+            try:
+                blocks_since_last_check = self.block - self.last_sync_block
+                if blocks_since_last_check >= 1:  # note, 1 block, or 12 seconds
+                    self.sync()
+                    self.step += 1
+                    self.last_sync_block = self.block
+            except Exception as e:
+                bt.logging.error(f"Error running sync: {e}")
+            await asyncio.sleep(12)
+
     async def run_miner_version(self):
         while not self.should_exit:
             try:
-                if self.forwarder.check_tempo():
+                if self.forwarder.check_tempo():  # note, 360 blocks, or 72 minutes
                     await self.forwarder.ping_axons()
             except Exception as e:
-                bt.logging.error(f"Error running miner version check: {e}")
-            await asyncio.sleep(60)
+                bt.logging.error(f"Error running miner ping: {e}")
+            await asyncio.sleep(
+                self.tempo * 12 / 2
+            )  # note, 12 seconds per block, twice as fast
 
     async def run_miner_volume(self):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_volume_block
-                if blocks_since_last_check >= self.tempo / 100:
+                if (
+                    blocks_since_last_check >= self.tempo / 100
+                ):  # note, 3.6 blocks, or 40 seconds
                     await self.forwarder.get_miners_volumes()
             except Exception as e:
-                bt.logging.error(f"Error running miner volume check: {e}")
-            await asyncio.sleep(6)
+                bt.logging.error(f"Error running miner volume: {e}")
+            await asyncio.sleep(
+                self.tempo / 200 * 12
+            )  # note, 12 seconds per block, twice as fast
+
+    async def run_miner_scoring(self):
+        while not self.should_exit:
+            try:
+                blocks_since_last_check = self.block - self.last_scoring_block
+                if (
+                    blocks_since_last_check >= self.tempo / 100
+                ):  # note, 3.6 blocks, or 40 seconds
+                    await self.scorer.score_miner_volumes()
+            except Exception as e:
+                bt.logging.error(f"Error running miner scoring: {e}")
+                await asyncio.sleep(
+                    self.tempo / 200 * 12
+                )  # note, 12 seconds per block, twice as fast
+
+    def run_sync_in_loop(self):
+        asyncio.run(self.run_sync())
 
     def run_miner_version_in_loop(self):
         asyncio.run(self.run_miner_version())
@@ -124,26 +163,8 @@ class BaseValidatorNeuron(BaseNeuron):
     def run_miner_volume_in_loop(self):
         asyncio.run(self.run_miner_volume())
 
-    def run(self):
-        self.sync()
-        bt.logging.info(f"Validator starting at block: {self.block}")
-        try:
-            while True:
-                if self.should_exit:
-                    break
-                self.sync()
-                self.step += 1
-
-        # If someone intentionally stops the validator, it'll safely terminate operations.
-        except KeyboardInterrupt:
-            self.axon.stop()
-            bt.logging.success("Validator killed by keyboard interrupt.")
-            exit()
-
-        # In case of unforeseen errors, the validator will log the error and continue operations.
-        except Exception as err:
-            bt.logging.error("Error during validation", str(err))
-            bt.logging.debug(print_exception(type(err), err, err.__traceback__))
+    def run_miner_scoring_in_loop(self):
+        asyncio.run(self.run_miner_scoring())
 
     def run_in_background_thread(self):
         """
@@ -153,16 +174,22 @@ class BaseValidatorNeuron(BaseNeuron):
         if not self.is_running:
             bt.logging.debug("Starting validator in background thread.")
             self.should_exit = False
-            self.thread = threading.Thread(target=self.run, daemon=True)
-            self.miner_volume_thread = threading.Thread(
-                target=self.run_miner_volume_in_loop, daemon=True
+            self.sync_thread = threading.Thread(
+                target=self.run_sync_in_loop, daemon=True
             )
             self.miner_ping_thread = threading.Thread(
                 target=self.run_miner_version_in_loop, daemon=True
             )
-            self.thread.start()  # for setting weights, syncing metagraph,, etc
+            self.miner_volume_thread = threading.Thread(
+                target=self.run_miner_volume_in_loop, daemon=True
+            )
+            self.miner_scoring_thread = threading.Thread(
+                target=self.run_miner_scoring_in_loop, daemon=True
+            )
+            self.sync_thread.start()  # for setting weights, syncing metagraph,, etc
             self.miner_ping_thread.start()  # for versioning and getting keywords
             self.miner_volume_thread.start()  # for testing miner volumes
+            self.miner_scoring_thread.start()  # for scoring miner volumes
             self.is_running = True
             bt.logging.debug("Started")
 
@@ -173,9 +200,10 @@ class BaseValidatorNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
-            self.thread.join(5)
+            self.sync_thread.join(5)
             self.miner_ping_thread.join(5)
             self.miner_volume_thread.join(5)
+            self.miner_scoring_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
@@ -199,9 +227,10 @@ class BaseValidatorNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
-            self.thread.join(5)
+            self.sync_thread.join(5)
             self.miner_ping_thread.join(5)
             self.miner_volume_thread.join(5)
+            self.miner_scoring_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 

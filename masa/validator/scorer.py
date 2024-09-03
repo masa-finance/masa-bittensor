@@ -27,26 +27,24 @@ class Scorer:
 
     def add_volume(self, miner_uid, volume):
         current_block = self.validator.subtensor.block  # Get the current block number
-        block_group = (
+        tempo = (
             current_block // self.validator.tempo
         )  # Group blocks by tempo, or roughly 72 minutes
 
-        if (
-            not self.validator.volumes
-            or self.validator.volumes[-1]["block_group"] != block_group
-        ):
-            self.validator.volumes.append({"block_group": block_group, "miners": {}})
+        if not self.validator.volumes or self.validator.volumes[-1]["tempo"] != tempo:
+            self.validator.volumes.append({"tempo": tempo, "miners": {}})
 
         if miner_uid not in self.validator.volumes[-1]["miners"]:
             self.validator.volumes[-1]["miners"][miner_uid] = 0
         self.validator.volumes[-1]["miners"][miner_uid] += volume
 
-    # TODO put this on a thread / timer
     async def score_miner_volumes(self):
+        if not hasattr(self.validator, "scorer"):
+            return
         volumes = self.validator.volumes
 
         miner_volumes = {}
-        for volume in volumes:
+        for volume in volumes[-6:]:  # note, take the last 6 tempos ("block groups")
             for miner_uid, vol in volume["miners"].items():
                 if miner_uid not in miner_volumes:
                     miner_volumes[miner_uid] = 0
@@ -71,6 +69,7 @@ class Scorer:
             except Exception as e:
                 bt.logging.error(f"Failed to set weights: {e}")
 
+        self.validator.last_scoring_block = self.validator.subtensor.block
         if volumes:
             serializable_volumes = [
                 {

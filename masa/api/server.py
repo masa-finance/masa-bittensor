@@ -49,50 +49,50 @@ class API:
             tags=["twitter"],
         )
 
-        self.app.add_api_route(
-            "/data/discord/profile",
-            self.validator.forwarder.get_discord_profile,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Get the Discord profile for the given user ID",
-            tags=["discord"],
-        )
+        # self.app.add_api_route(
+        #     "/data/discord/profile",
+        #     self.validator.forwarder.get_discord_profile,
+        #     methods=["GET"],
+        #     dependencies=[Depends(self.get_self)],
+        #     response_description="Get the Discord profile for the given user ID",
+        #     tags=["discord"],
+        # )
 
-        self.app.add_api_route(
-            "/data/discord/channels/{channel_id}/messages",
-            self.validator.forwarder.get_discord_channel_messages,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Get the Discord channel messages for the given channel ID",
-            tags=["discord"],
-        )
+        # self.app.add_api_route(
+        #     "/data/discord/channels/{channel_id}/messages",
+        #     self.validator.forwarder.get_discord_channel_messages,
+        #     methods=["GET"],
+        #     dependencies=[Depends(self.get_self)],
+        #     response_description="Get the Discord channel messages for the given channel ID",
+        #     tags=["discord"],
+        # )
 
-        self.app.add_api_route(
-            "/data/discord/guilds/{guild_id}/channels",
-            self.validator.forwarder.get_discord_guild_channels,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Get the Discord channels for the given guild ID",
-            tags=["discord"],
-        )
+        # self.app.add_api_route(
+        #     "/data/discord/guilds/{guild_id}/channels",
+        #     self.validator.forwarder.get_discord_guild_channels,
+        #     methods=["GET"],
+        #     dependencies=[Depends(self.get_self)],
+        #     response_description="Get the Discord channels for the given guild ID",
+        #     tags=["discord"],
+        # )
 
-        self.app.add_api_route(
-            "/data/discord/user/guilds",
-            self.validator.forwarder.get_discord_user_guilds,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Get the Discord guilds for the user",
-            tags=["discord"],
-        )
+        # self.app.add_api_route(
+        #     "/data/discord/user/guilds",
+        #     self.validator.forwarder.get_discord_user_guilds,
+        #     methods=["GET"],
+        #     dependencies=[Depends(self.get_self)],
+        #     response_description="Get the Discord guilds for the user",
+        #     tags=["discord"],
+        # )
 
-        self.app.add_api_route(
-            "/data/discord/guilds/all",
-            self.validator.forwarder.get_discord_all_guilds,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Get all guilds that all the Discord workers are apart of",
-            tags=["discord"],
-        )
+        # self.app.add_api_route(
+        #     "/data/discord/guilds/all",
+        #     self.validator.forwarder.get_discord_all_guilds,
+        #     methods=["GET"],
+        #     dependencies=[Depends(self.get_self)],
+        #     response_description="Get all guilds that all the Discord workers are apart of",
+        #     tags=["discord"],
+        # )
 
         self.app.add_api_route(
             "/axons",
@@ -119,23 +119,13 @@ class API:
             tags=["metagraph"],
         )
 
-        # TODO remove this...
-        self.app.add_api_route(
-            "/score",
-            validator.scorer.score_miner_volumes,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Score miner volumes",
-            tags=["scoring"],
-        )
-
         self.app.add_api_route(
             "/volumes",
             self.show_volumes,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get scores and capacity of miners",
-            tags=["scoring"],
+            tags=["metagraph"],
         )
 
         self.app.add_api_route(
@@ -144,7 +134,7 @@ class API:
             methods=["DELETE"],
             dependencies=[Depends(self.get_self)],
             response_description="Delete volumes state",
-            tags=["scoring"],
+            tags=["metagraph"],
         )
 
         self.app.add_api_route(
@@ -172,7 +162,7 @@ class API:
         if volumes:
             serializable_volumes = [
                 {
-                    "block_group": int(volume["block_group"]),
+                    "tempo": int(volume["tempo"]),
                     "miners": {int(k): float(v) for k, v in volume["miners"].items()},
                 }
                 for volume in volumes
