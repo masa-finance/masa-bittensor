@@ -18,6 +18,7 @@
 
 import bittensor as bt
 import torch
+import scipy.stats as stats
 from fastapi.responses import JSONResponse
 
 
@@ -56,10 +57,16 @@ class Scorer:
             self.validator.save_state()
             return JSONResponse(content=[])
 
-        # Normalize the volumes to get rewards and update scores
-        # TODO make this more of a bell curve
-        max_volume = max(miner_volumes.values())
-        rewards = [miner_volumes[uid] / max_volume for uid in valid_miner_uids]
+        mean_volume = sum(miner_volumes.values()) / len(miner_volumes)
+        std_dev_volume = (
+            sum((x - mean_volume) ** 2 for x in miner_volumes.values())
+            / len(miner_volumes)
+        ) ** 0.5
+
+        rewards = [
+            self.kurtosis_based_score(miner_volumes[uid], mean_volume, std_dev_volume)
+            for uid in valid_miner_uids
+        ]
         scores = torch.FloatTensor(rewards).to(self.validator.device)
 
         self.validator.update_scores(scores, valid_miner_uids)
@@ -89,3 +96,7 @@ class Scorer:
         ).item()
         similarity_percentage = (cosine_similarity + 1) / 2 * 100
         return similarity_percentage
+
+    def kurtosis_based_score(self, volume, mean, std_dev, scale_factor=1.0):
+        z_score = (volume - mean) / std_dev
+        return stats.norm.cdf(z_score) * scale_factor
