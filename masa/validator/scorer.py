@@ -63,10 +63,15 @@ class Scorer:
             / len(miner_volumes)
         ) ** 0.5
 
-        rewards = [
-            self.kurtosis_based_score(miner_volumes[uid], mean_volume, std_dev_volume)
-            for uid in valid_miner_uids
-        ]
+        if len(miner_volumes) == 1:
+            rewards = [1]
+        else:
+            rewards = [
+                self.kurtosis_based_score(
+                    miner_volumes[uid], mean_volume, std_dev_volume
+                )
+                for uid in valid_miner_uids
+            ]
         scores = torch.FloatTensor(rewards).to(self.validator.device)
 
         self.validator.update_scores(scores, valid_miner_uids)
