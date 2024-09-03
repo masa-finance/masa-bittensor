@@ -48,7 +48,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
-        self.last_version_check_block = 0
+        self.last_tempo_block = 0
         self.keywords = []
 
         self.dendrite = bt.dendrite(wallet=self.wallet)
@@ -101,7 +101,7 @@ class BaseValidatorNeuron(BaseNeuron):
     async def run_miner_version(self):
         while not self.should_exit:
             try:
-                blocks_since_last_check = self.block - self.last_version_check_block
+                blocks_since_last_check = self.block - self.last_tempo_block
                 if blocks_since_last_check > self.tempo:
                     await self.forwarder.get_miners_versions()
             except Exception as e:

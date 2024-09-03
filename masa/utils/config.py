@@ -197,6 +197,7 @@ def add_validator_args(cls, parser):
         default=1,
     )
 
+    # note, for all organic validator forwards (requests through API)
     parser.add_argument(
         "--neuron.sample_size",
         type=int,
@@ -204,6 +205,7 @@ def add_validator_args(cls, parser):
         default=3,
     )
 
+    # note, for versioning thread
     parser.add_argument(
         "--neuron.sample_size_version",
         type=int,
@@ -211,11 +213,12 @@ def add_validator_args(cls, parser):
         default=25,
     )
 
+    # note, for volume testing thread
     parser.add_argument(
         "--neuron.sample_size_volume",
         type=int,
         help="The number of miners to query for volume testing.",
-        default=2,
+        default=10,
     )
 
     parser.add_argument(

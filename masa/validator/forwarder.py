@@ -114,7 +114,7 @@ class Forwarder:
             all_responses.extend(batch_responses)
         self.validator.versions = all_responses
         bt.logging.info(f"Miner Versions: {self.validator.versions}")
-        self.validator.last_version_check_block = self.validator.block
+        self.validator.last_tempo_block = self.validator.block
         return self.validator.versions
 
     async def fetch_keywords_from_github(self):
@@ -132,8 +132,7 @@ class Forwarder:
                     self.validator.keywords = ["crypto", "bitcoin", "masa"]
 
     async def get_miners_volumes(self):
-        # TODO also add a check to see if it's been a tempo?
-        if len(self.validator.keywords) == 0:
+        if len(self.validator.keywords) == 0 or self.check_tempo() is True:
             await self.fetch_keywords_from_github()
 
         random_keyword = random.choice(self.validator.keywords)
@@ -204,3 +203,16 @@ class Forwarder:
                         if similarity >= 75:  # pretty strict
                             valid_tweets += 1
             self.validator.scorer.add_volume(int(uid), valid_tweets)
+
+    def check_tempo(self) -> bool:
+        tempo = self.validator.subtensor.get_subnet_hyperparameters(
+            self.validator.config.netuid
+        ).tempo
+        blocks_since_last_check = (
+            self.validator.subtensor.block - self.validator.last_tempo_block
+        )
+        if blocks_since_last_check >= tempo:
+            self.validator.last_tempo_block = self.validator.subtensor.block
+            return True
+        else:
+            return False

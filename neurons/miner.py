@@ -69,7 +69,6 @@ class Miner(BaseMinerNeuron):
         current_stakes = self.metagraph.S
         hotkey = synapse.dendrite.hotkey
         uid = self.metagraph.hotkeys.index(hotkey)
-        current_block = self.subtensor.get_current_block()
 
         if current_stakes[uid] < self.min_stake_required:
             if hotkey in self.neurons_permit_stake.keys():
@@ -78,7 +77,7 @@ class Miner(BaseMinerNeuron):
                     f"Removed neuron {hotkey} from staked list due to insufficient stake."
                 )
         else:
-            self.neurons_permit_stake[hotkey] = current_block
+            self.neurons_permit_stake[hotkey] = self.subtensor.block
             bt.logging.info(f"Added neuron {hotkey} to staked list.")
 
     def check_tempo(self, synapse: Any) -> bool:
@@ -88,9 +87,7 @@ class Miner(BaseMinerNeuron):
             bt.logging.info("There is no last checked block, starting tempo check...")
             return True
 
-        blocks_since_last_check = (
-            self.subtensor.get_current_block() - last_checked_block
-        )
+        blocks_since_last_check = self.subtensor.block - last_checked_block
         if (
             blocks_since_last_check
             >= self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
