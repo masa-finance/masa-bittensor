@@ -98,5 +98,7 @@ class Scorer:
         return similarity_percentage
 
     def kurtosis_based_score(self, volume, mean, std_dev, scale_factor=1.0):
+        if std_dev == 0:
+            return 0
         z_score = (volume - mean) / std_dev
         return stats.norm.cdf(z_score) * scale_factor
