@@ -27,7 +27,9 @@ class Scorer:
 
     def add_volume(self, miner_uid, volume):
         current_block = self.validator.subtensor.block  # Get the current block number
-        block_group = current_block // 360  # Group blocks by 360, or roughly 72 minutes
+        block_group = (
+            current_block // self.validator.tempo
+        )  # Group blocks by tempo, or roughly 72 minutes
 
         if (
             not self.validator.volumes

@@ -23,42 +23,6 @@ class API:
         )
 
         self.app.add_api_route(
-            "/indexed_tweets",
-            self.show_indexed_tweets,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Get indexed tweets",
-            tags=["scoring"],
-        )
-
-        self.app.add_api_route(
-            "/score",
-            validator.scorer.score_miner_volumes,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Score miner volumes",
-            tags=["scoring"],
-        )
-
-        self.app.add_api_route(
-            "/volumes",
-            self.show_volumes,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Get scores and capacity of miners",
-            tags=["scoring"],
-        )
-
-        self.app.add_api_route(
-            "/volumes",
-            self.delete_volumes,
-            methods=["DELETE"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Delete volumes state",
-            tags=["scoring"],
-        )
-
-        self.app.add_api_route(
             "/data/twitter/profile",
             self.validator.forwarder.get_twitter_profile,
             methods=["GET"],
@@ -153,6 +117,42 @@ class API:
             dependencies=[Depends(self.get_self)],
             response_description="Get miners versions",
             tags=["metagraph"],
+        )
+
+        self.app.add_api_route(
+            "/score",
+            validator.scorer.score_miner_volumes,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Score miner volumes",
+            tags=["scoring"],
+        )
+
+        self.app.add_api_route(
+            "/volumes",
+            self.show_volumes,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get scores and capacity of miners",
+            tags=["scoring"],
+        )
+
+        self.app.add_api_route(
+            "/volumes",
+            self.delete_volumes,
+            methods=["DELETE"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Delete volumes state",
+            tags=["scoring"],
+        )
+
+        self.app.add_api_route(
+            "/tweets",
+            self.show_indexed_tweets,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get indexed tweets",
+            tags=["data"],
         )
 
         self.start_server()

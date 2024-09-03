@@ -211,9 +211,7 @@ class Forwarder:
         self.validator.indexed_tweets.append(payload)
 
     def check_tempo(self) -> bool:
-        tempo = self.validator.subtensor.get_subnet_hyperparameters(
-            self.validator.config.netuid
-        ).tempo
+        tempo = self.validator.tempo
         blocks_since_last_check = (
             self.validator.subtensor.block - self.validator.last_tempo_block
         )
