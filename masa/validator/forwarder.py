@@ -67,7 +67,7 @@ class Forwarder:
     async def get_twitter_followers(self, username: str = "getmasafi", count: int = 10):
         request = TwitterFollowersSynapse(username=username, count=count)
         formatted_responses, _ = await self.forward_request(
-            request, sample_size=self.validator.config.neuron.sample_size
+            request=request, sample_size=self.validator.config.neuron.sample_size
         )
         return formatted_responses
 
@@ -78,7 +78,7 @@ class Forwarder:
     ):
         request = RecentTweetsSynapse(query=query, count=count)
         formatted_responses, _ = await self.forward_request(
-            request, sample_size=self.validator.config.neuron.sample_size
+            request=request, sample_size=self.validator.config.neuron.sample_size
         )
         return formatted_responses
 
@@ -140,7 +140,7 @@ class Forwarder:
                     self.validator.count = int(config["count"])
                 else:
                     bt.logging.error(
-                        f"Failed to fetch keywords from GitHub: {response.status}"
+                        f"Failed to fetch config from GitHub: {response.status}"
                     )
                     # note, defaults
                     self.validator.keywords = ["crypto", "bitcoin", "masa"]
