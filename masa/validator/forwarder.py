@@ -21,6 +21,7 @@ from typing import Any
 from datetime import datetime
 import aiohttp
 import random
+import json
 
 from masa.miner.twitter.tweets import RecentTweetsSynapse
 from masa.miner.twitter.profile import TwitterProfileSynapse
@@ -132,9 +133,10 @@ class Forwarder:
             url = self.validator.config.neuron.twitter_config_url
             async with session.get(url) as response:
                 if response.status == 200:
-                    config = await response.json()
+                    configRaw = await response.text()
+                    config = json.loads(configRaw)
                     bt.logging.info(f"Twitter config fetched!: {config}")
-                    self.validator.keywords = config["keywords"].split(",")
+                    self.validator.keywords = config["keywords"]
                     self.validator.count = int(config["count"])
                 else:
                     bt.logging.error(
