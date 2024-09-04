@@ -147,6 +147,15 @@ class API:
         )
 
         self.app.add_api_route(
+            "/scores",
+            self.show_scores,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Show scores",
+            tags=["metagraph"],
+        )
+
+        self.app.add_api_route(
             "/tweets",
             self.show_indexed_tweets,
             methods=["GET"],
@@ -177,6 +186,12 @@ class API:
                 for volume in volumes
             ]
             return JSONResponse(content=serializable_volumes)
+        return JSONResponse(content=[])
+
+    async def show_scores(self):
+        scores = self.validator.scores
+        if len(scores) > 0:
+            return JSONResponse(content=scores.tolist())
         return JSONResponse(content=[])
 
     async def show_indexed_tweets(self):
