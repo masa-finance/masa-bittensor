@@ -73,7 +73,7 @@ class Forwarder:
     async def get_recent_tweets(
         self,
         query: str = f"(Bitcoin) since:{datetime.now().strftime('%Y-%m-%d')}",
-        count: int = 1,
+        count: int = 3,
     ):
         request = RecentTweetsSynapse(query=query, count=count)
         formatted_responses, _ = await self.forward_request(

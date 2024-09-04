@@ -94,14 +94,7 @@ class API:
         #     tags=["discord"],
         # )
 
-        self.app.add_api_route(
-            "/axons",
-            self.get_axons,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Get the axons for the given metagraph",
-            tags=["metagraph"],
-        )
+        # note, healthcheck for the validator
         self.app.add_api_route(
             "/healthcheck",
             self.healthcheck,
@@ -110,10 +103,20 @@ class API:
             response_description="Get healthcheck status",
             tags=["metagraph"],
         )
+
+        self.app.add_api_route(
+            "/axons",
+            self.get_axons,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get the axons for the given metagraph",
+            tags=["metagraph"],
+        )
+
         self.app.add_api_route(
             "/ping",
             self.validator.forwarder.ping_axons,
-            methods=["GET"],
+            methods=["POST"],
             dependencies=[Depends(self.get_self)],
             response_description="Ping Axons",
             tags=["metagraph"],
@@ -128,24 +131,27 @@ class API:
             tags=["scoring"],
         )
 
-        self.app.add_api_route(
-            "/volumes",
-            self.delete_miner_volumes,
-            methods=["DELETE"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Delete volumes state",
-            tags=["scoring"],
-        )
+        # note, only for testing / wiping state
+        # self.app.add_api_route(
+        #     "/volumes",
+        #     self.delete_miner_volumes,
+        #     methods=["DELETE"],
+        #     dependencies=[Depends(self.get_self)],
+        #     response_description="Delete volumes state",
+        #     tags=["scoring"],
+        # )
 
-        self.app.add_api_route(
-            "/score",
-            self.validator.scorer.score_miner_volumes,
-            methods=["GET"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Score miner volumes",
-            tags=["scoring"],
-        )
+        # note, only for testing, this also runs on a dedciated thread
+        # self.app.add_api_route(
+        #     "/score",
+        #     self.validator.scorer.score_miner_volumes,
+        #     methods=["GET"],
+        #     dependencies=[Depends(self.get_self)],
+        #     response_description="Score miner volumes",
+        #     tags=["scoring"],
+        # )
 
+        # note, show the scores the validator has computed
         self.app.add_api_route(
             "/scores",
             self.show_scores,
@@ -164,14 +170,15 @@ class API:
             tags=["data"],
         )
 
-        self.app.add_api_route(
-            "/tweets",
-            self.delete_indexed_tweets,
-            methods=["DELETE"],
-            dependencies=[Depends(self.get_self)],
-            response_description="Delete indexed tweets",
-            tags=["data"],
-        )
+        # note, only for testing / wiping state
+        # self.app.add_api_route(
+        #     "/tweets",
+        #     self.delete_indexed_tweets,
+        #     methods=["DELETE"],
+        #     dependencies=[Depends(self.get_self)],
+        #     response_description="Delete indexed tweets",
+        #     tags=["data"],
+        # )
 
         self.start_server()
 
