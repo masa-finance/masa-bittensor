@@ -54,6 +54,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_scoring_block = 0
 
         self.keywords = []  # note, for volume queries
+        self.count = 0  # note, for volume queries
 
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.scores = torch.zeros(
