@@ -158,7 +158,8 @@ class Forwarder:
         query = (
             f"({random_keyword.strip()}) since:{datetime.now().strftime('%Y-%m-%d')}"
         )
-        request = RecentTweetsSynapse(query=query, count=3)
+        count = 3
+        request = RecentTweetsSynapse(query=query, count=count)
         responses, miner_uids = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size_volume
         )
@@ -209,7 +210,10 @@ class Forwarder:
             valid_tweets = []
             actual_response = dict(response).get("response", [])
             if actual_response is not None:
-                for tweet in actual_response:
+                for tweet in actual_response[
+                    :count
+                ]:  # note, limits to the count requested
+                    # TODO, randomly fetch the tweetID via Twitter API to verify validity!
                     if tweet:
                         tweet_embedding = self.validator.model.encode(str(tweet))
                         similarity = (
@@ -226,7 +230,13 @@ class Forwarder:
         query_exists = False
         for indexed_tweet in self.validator.indexed_tweets:
             if indexed_tweet["query"] == query:
-                indexed_tweet["tweets"].extend(all_valid_tweets)
+                existing_tweet_ids = {tweet["ID"] for tweet in indexed_tweet["tweets"]}
+                unique_valid_tweets = [
+                    tweet
+                    for tweet in all_valid_tweets
+                    if tweet["ID"] not in existing_tweet_ids
+                ]
+                indexed_tweet["tweets"].extend(unique_valid_tweets)
                 query_exists = True
                 break
 
@@ -236,6 +246,8 @@ class Forwarder:
                 "tweets": all_valid_tweets,
             }
             self.validator.indexed_tweets.append(payload)
+
+        # note, set the last volume block to the current block
         self.validator.last_volume_block = self.validator.subtensor.block
 
     def check_tempo(self) -> bool:
