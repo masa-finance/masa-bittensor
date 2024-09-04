@@ -125,7 +125,7 @@ class API:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get scores and capacity of miners",
-            tags=["metagraph"],
+            tags=["scoring"],
         )
 
         self.app.add_api_route(
@@ -134,7 +134,7 @@ class API:
             methods=["DELETE"],
             dependencies=[Depends(self.get_self)],
             response_description="Delete volumes state",
-            tags=["metagraph"],
+            tags=["scoring"],
         )
 
         self.app.add_api_route(
@@ -143,7 +143,7 @@ class API:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Score miner volumes",
-            tags=["metagraph"],
+            tags=["scoring"],
         )
 
         self.app.add_api_route(
@@ -152,7 +152,7 @@ class API:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Show scores",
-            tags=["metagraph"],
+            tags=["scoring"],
         )
 
         self.app.add_api_route(
