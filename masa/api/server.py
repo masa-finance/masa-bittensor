@@ -43,7 +43,7 @@ class API:
         self.app.add_api_route(
             "/data/twitter/tweets/recent",
             self.validator.forwarder.get_recent_tweets,
-            methods=["POST"],
+            methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get recent tweets given a query",
             tags=["twitter"],
