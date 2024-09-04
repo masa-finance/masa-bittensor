@@ -279,12 +279,11 @@ def add_validator_args(cls, parser):
         default=False,
     )
 
-    # TODO update this location to main
     parser.add_argument(
         "--neuron.keywords_url",
         type=str,
         help="URL for fetching volume testing keywords",
-        default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/feat--improved-rewards-system/scrape_twitter_keywords.txt",
+        default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/scrape_twitter_keywords.txt",
     )
 
 

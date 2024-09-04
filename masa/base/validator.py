@@ -141,12 +141,12 @@ class BaseValidatorNeuron(BaseNeuron):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_scoring_block
-                if blocks_since_last_check >= self.tempo / 2:
+                if blocks_since_last_check >= self.tempo / 20:
                     await self.scorer.score_miner_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner scoring: {e}")
             # TODO is there a better way to go about this?
-            await asyncio.sleep(self.tempo / 4 * 12)
+            await asyncio.sleep(self.tempo / 40 * 12)
 
     def run_sync_in_loop(self):
         asyncio.run(self.run_sync())
