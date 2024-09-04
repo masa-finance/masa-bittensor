@@ -230,11 +230,13 @@ class Forwarder:
         query_exists = False
         for indexed_tweet in self.validator.indexed_tweets:
             if indexed_tweet["query"] == query:
-                existing_tweet_ids = {tweet["ID"] for tweet in indexed_tweet["tweets"]}
+                existing_tweet_ids = {
+                    tweet["Tweet"]["ID"] for tweet in indexed_tweet["tweets"]
+                }
                 unique_valid_tweets = [
                     tweet
                     for tweet in all_valid_tweets
-                    if tweet["ID"] not in existing_tweet_ids
+                    if tweet["Tweet"]["ID"] not in existing_tweet_ids
                 ]
                 indexed_tweet["tweets"].extend(unique_valid_tweets)
                 query_exists = True
