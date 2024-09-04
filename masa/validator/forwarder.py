@@ -245,7 +245,13 @@ class Forwarder:
         if not query_exists:
             payload = {
                 "query": query,
-                "tweets": all_valid_tweets,
+                "tweets": [
+                    tweet
+                    for tweet in {
+                        tweet["Tweet"]["ID"]: tweet
+                        for tweet in all_valid_tweets  # note, only unique tweets
+                    }.values()
+                ],
             }
             self.validator.indexed_tweets.append(payload)
 
