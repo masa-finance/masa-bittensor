@@ -113,6 +113,7 @@ class BaseValidatorNeuron(BaseNeuron):
                     self.last_sync_block = self.block
             except Exception as e:
                 bt.logging.error(f"Error running sync: {e}")
+            # TODO is there a better way to go about this?
             await asyncio.sleep(3 * 12)
 
     async def run_miner_version(self):
@@ -122,6 +123,7 @@ class BaseValidatorNeuron(BaseNeuron):
                     await self.forwarder.ping_axons()
             except Exception as e:
                 bt.logging.error(f"Error running miner ping: {e}")
+            # TODO is there a better way to go about this?
             await asyncio.sleep(self.tempo * 12 / 2)
 
     async def run_miner_volume(self):
@@ -132,6 +134,7 @@ class BaseValidatorNeuron(BaseNeuron):
                     await self.forwarder.get_miners_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner volume: {e}")
+            # TODO is there a better way to go about this?
             await asyncio.sleep(self.tempo / 200 * 12)
 
     async def run_miner_scoring(self):
@@ -142,7 +145,8 @@ class BaseValidatorNeuron(BaseNeuron):
                     await self.scorer.score_miner_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner scoring: {e}")
-                await asyncio.sleep(self.tempo / 4 * 12)
+            # TODO is there a better way to go about this?
+            await asyncio.sleep(self.tempo / 4 * 12)
 
     def run_sync_in_loop(self):
         asyncio.run(self.run_sync())
