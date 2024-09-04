@@ -97,9 +97,6 @@ class Forwarder:
         return ["Not yet implemented"]
 
     async def ping_axons(self):
-        if not hasattr(self.validator, "forwarder"):
-            return
-
         request = PingAxonSynapse(
             sent_from=get_external_ip(), is_active=False, version=0
         )
@@ -130,36 +127,35 @@ class Forwarder:
             for response in all_responses
         ]
 
-    async def fetch_keywords_from_github(self):
+    async def fetch_twitter_config(self):
         async with aiohttp.ClientSession() as session:
-            url = self.validator.config.neuron.keywords_url
+            url = self.validator.config.neuron.twitter_config_url
             async with session.get(url) as response:
                 if response.status == 200:
-                    text_data = await response.text()
-                    bt.logging.info(f"Keywords fetched!: {text_data}")
-                    self.validator.keywords = text_data.split(",")
+                    config = await response.json()
+                    bt.logging.info(f"Twitter config fetched!: {config}")
+                    self.validator.keywords = config["keywords"].split(",")
+                    self.validator.count = int(config["count"])
                 else:
                     bt.logging.error(
                         f"Failed to fetch keywords from GitHub: {response.status}"
                     )
+                    # note, defaults
                     self.validator.keywords = ["crypto", "bitcoin", "masa"]
+                    self.validator.count = 3
 
     async def get_miners_volumes(self):
-        if not hasattr(self.validator, "forwarder"):
-            return
-
-        if self.validator.versions is None or len(self.validator.versions) == 0:
+        if len(self.validator.versions) == 0:
             bt.logging.info("Pinging axons to get miner versions...")
             return await self.ping_axons()
-        if len(self.validator.keywords) == 0 or self.check_tempo() is True:
-            await self.fetch_keywords_from_github()
+        if len(self.validator.keywords) == 0 or self.check_tempo():
+            await self.fetch_twitter_config()
 
         random_keyword = random.choice(self.validator.keywords)
         query = (
             f"({random_keyword.strip()}) since:{datetime.now().strftime('%Y-%m-%d')}"
         )
-        count = 3
-        request = RecentTweetsSynapse(query=query, count=count)
+        request = RecentTweetsSynapse(query=query, count=self.validator.count)
         responses, miner_uids = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size_volume
         )
@@ -211,7 +207,7 @@ class Forwarder:
             actual_response = dict(response).get("response", [])
             if actual_response is not None:
                 for tweet in actual_response[
-                    :count
+                    : self.validator.count
                 ]:  # note, limits to the count requested
                     # TODO, randomly fetch the tweetID via Twitter API to verify validity!
                     if tweet:
@@ -259,6 +255,9 @@ class Forwarder:
         self.validator.last_volume_block = self.validator.subtensor.block
 
     def check_tempo(self) -> bool:
+        if self.validator.last_tempo_block == 0:
+            return True
+
         tempo = self.validator.tempo
         blocks_since_last_check = (
             self.validator.subtensor.block - self.validator.last_tempo_block

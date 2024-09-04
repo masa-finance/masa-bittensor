@@ -45,7 +45,7 @@ class Scorer:
         volumes = self.validator.volumes
 
         miner_volumes = {}
-        for volume in volumes[-6:]:  # note, take the last 6 tempos ("block groups")
+        for volume in volumes[-6:]:  # note, take the last 6 tempos
             for miner_uid, vol in volume["miners"].items():
                 if miner_uid not in miner_volumes:
                     miner_volumes[miner_uid] = 0
