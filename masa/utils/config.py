@@ -283,7 +283,7 @@ def add_validator_args(cls, parser):
         "--neuron.twitter_config_url",
         type=str,
         help="URL for fetching volume testing keywords",
-        default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/feat--improved-rewards-system/config/twitter.json",
+        default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config/twitter.json",
     )
 
 
