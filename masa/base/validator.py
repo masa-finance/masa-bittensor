@@ -117,7 +117,7 @@ class BaseValidatorNeuron(BaseNeuron):
             # TODO is there a better way to go about this?
             await asyncio.sleep(3 * 12)
 
-    async def run_miner_version(self):
+    async def run_miner_ping(self):
         while not self.should_exit:
             try:
                 if self.forwarder.check_tempo():
@@ -152,8 +152,8 @@ class BaseValidatorNeuron(BaseNeuron):
     def run_sync_in_loop(self):
         asyncio.run(self.run_sync())
 
-    def run_miner_version_in_loop(self):
-        asyncio.run(self.run_miner_version())
+    def run_miner_ping_in_loop(self):
+        asyncio.run(self.run_miner_ping())
 
     def run_miner_volume_in_loop(self):
         asyncio.run(self.run_miner_volume())
@@ -173,7 +173,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 target=self.run_sync_in_loop, daemon=True
             )
             self.miner_ping_thread = threading.Thread(
-                target=self.run_miner_version_in_loop, daemon=True
+                target=self.run_miner_ping_in_loop, daemon=True
             )
             self.miner_volume_thread = threading.Thread(
                 target=self.run_miner_volume_in_loop, daemon=True

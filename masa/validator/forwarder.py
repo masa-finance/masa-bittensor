@@ -219,10 +219,11 @@ class Forwarder:
                                 example_embedding, tweet_embedding
                             )
                         )
-                        bt.logging.info(f"Similarity: {similarity}, {tweet}")
+                        # bt.logging.info(f"Similarity: {similarity}, {tweet}")
                         if similarity >= 70:  # pretty strict
                             valid_tweets.append(tweet)
             self.validator.scorer.add_volume(int(uid), len(valid_tweets))
+            bt.logging.info(f"Miner {uid} produced {len(valid_tweets)} valid tweets")
             all_valid_tweets.extend(valid_tweets)
 
         query_exists = False
