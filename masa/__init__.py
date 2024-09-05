@@ -17,17 +17,10 @@
 # DEALINGS IN THE SOFTWARE.
 
 # Define the code version for miners / validators.  This must match weights_version on the subnet!  If not, validators won't be able to set weights, and miners will get a warning.
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 version_split = __version__.split(".")
 __spec_version__ = (
     (1000 * int(version_split[0]))
     + (10 * int(version_split[1]))
     + (1 * int(version_split[2]))
 )
-
-# Import all submodules.
-from . import protocol
-from . import base
-from . import validator
-from . import api
-from .subnet_links import SUBNET_LINKS

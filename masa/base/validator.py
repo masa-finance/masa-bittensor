@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2023 Masa
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -26,12 +25,8 @@ import threading
 import bittensor as bt
 
 from typing import List
-from traceback import print_exception
 
 from masa.base.neuron import BaseNeuron
-from masa.base.healthcheck import PingMiner, get_external_ip
-
-from masa.mock import MockDendrite
 from masa.utils.config import add_validator_args
 
 
@@ -50,32 +45,23 @@ class BaseValidatorNeuron(BaseNeuron):
     def __init__(self, config=None):
         super().__init__(config=config)
 
-        # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
-
-        # Get tempo from subnets hyperparameters
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
 
-        # Record versions of each axon, index == uid
-        self.versions = []
-        self.last_version_check_block = 0
+        self.last_sync_block = 0
+        self.last_tempo_block = 0
+        self.last_volume_block = 0
+        self.last_scoring_block = 0
 
-        # Dendrite lets us send messages to other nodes (axons) in the network.
-        if self.config.mock:
-            self.dendrite = MockDendrite(wallet=self.wallet)
-        else:
-            self.dendrite = bt.dendrite(wallet=self.wallet)
-        bt.logging.info(f"Dendrite: {self.dendrite}")
+        self.keywords = []  # note, for volume queries
+        self.count = 0  # note, for volume queries
 
-        # Set up initial scoring weights for validation
-        bt.logging.info("Building validation weights.")
+        self.dendrite = bt.dendrite(wallet=self.wallet)
         self.scores = torch.zeros(
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
-
         # Init sync with the network. Updates the metagraph.
         self.sync()
-
         self.load_state()
 
         # Serve axon to enable external connections.
@@ -84,14 +70,13 @@ class BaseValidatorNeuron(BaseNeuron):
         else:
             bt.logging.warning("axon off, not serving ip to chain.")
 
-        # Create asyncio event loop to manage async tasks.
-        self.loop = asyncio.get_event_loop()
-
         # Instantiate runners
         self.should_exit: bool = False
         self.is_running: bool = False
-        self.thread: threading.Thread = None
-        self.miner_check_thread: threading.Thread = None
+        self.sync_thread: threading.Thread = None
+        self.miner_ping_thread: threading.Thread = None
+        self.miner_volume_thread: threading.Thread = None
+        self.miner_scoring_thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
         self.run_in_background_thread()
@@ -119,88 +104,62 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
             pass
 
-    async def concurrent_forward(self):
-        coroutines = [
-            self.forward() for _ in range(self.config.neuron.num_concurrent_forwards)
-        ]
-        await asyncio.gather(*coroutines)
-
-    async def get_miner_versions(self):
-        dendrite = bt.dendrite(wallet=self.wallet)
-        request = PingMiner(sent_from=get_external_ip(), is_active=False, version=0)
-        responses = await dendrite(self.metagraph.axons, request, deserialize=False)
-        self.versions = [response.version for response in responses]
-        bt.logging.info(f"Axon Versions: {self.versions}")
-        self.last_version_check_block = self.block
-
-    async def run_miner_check(self):
+    async def run_sync(self):
         while not self.should_exit:
             try:
-                blocks_since_last_check = self.block - self.last_version_check_block
-                if blocks_since_last_check > self.tempo or len(self.versions) == 0:
-                    await self.get_miner_versions()
+                blocks_since_last_check = self.block - self.last_sync_block
+                if blocks_since_last_check >= 6:
+                    self.sync()
+                    self.step += 1
+                    self.last_sync_block = self.block
             except Exception as e:
-                bt.logging.error(f"Error in run_miner_check: {e}")
-            await asyncio.sleep(60)
+                bt.logging.error(f"Error running sync: {e}")
+            # TODO is there a better way to go about this?
+            await asyncio.sleep(3 * 12)
 
-    def run_miner_check_in_loop(self):
-        asyncio.run(self.run_miner_check())
+    async def run_miner_ping(self):
+        while not self.should_exit:
+            try:
+                if self.forwarder.check_tempo():
+                    await self.forwarder.ping_axons()
+            except Exception as e:
+                bt.logging.error(f"Error running miner ping: {e}")
+            # TODO is there a better way to go about this?
+            await asyncio.sleep(self.tempo / 2 * 12)
 
-    def run(self):
-        """
-        Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
+    async def run_miner_volume(self):
+        while not self.should_exit:
+            try:
+                blocks_since_last_check = self.block - self.last_volume_block
+                if blocks_since_last_check >= self.tempo / 100:
+                    await self.forwarder.get_miners_volumes()
+            except Exception as e:
+                bt.logging.error(f"Error running miner volume: {e}")
+            # TODO is there a better way to go about this?
+            await asyncio.sleep(self.tempo / 200 * 12)
 
-        This function performs the following primary tasks:
-        1. Check for registration on the Bittensor network.
-        2. Continuously forwards queries to the miners on the network, rewarding their responses and updating the scores accordingly.
-        3. Periodically resynchronizes with the chain; updating the metagraph with the latest network state and setting weights.
+    async def run_miner_scoring(self):
+        while not self.should_exit:
+            try:
+                blocks_since_last_check = self.block - self.last_scoring_block
+                if blocks_since_last_check >= self.tempo / 50:
+                    await self.scorer.score_miner_volumes()
+            except Exception as e:
+                bt.logging.error(f"Error running miner scoring: {e}")
+            # TODO is there a better way to go about this?
+            await asyncio.sleep(self.tempo / 100 * 12)
 
-        The essence of the validator's operations is in the forward function, which is called every step. The forward function is responsible for querying the network and scoring the responses.
+    def run_sync_in_loop(self):
+        asyncio.run(self.run_sync())
 
-        Note:
-            - The function leverages the global configurations set during the initialization of the miner.
-            - The miner's axon serves as its interface to the Bittensor network, handling incoming and outgoing requests.
+    def run_miner_ping_in_loop(self):
+        asyncio.run(self.run_miner_ping())
 
-        Raises:
-            KeyboardInterrupt: If the miner is stopped by a manual interruption.
-            Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
-        """
+    def run_miner_volume_in_loop(self):
+        asyncio.run(self.run_miner_volume())
 
-        # Check that validator is registered on the network.
-        self.sync()
-
-        bt.logging.info(f"Validator starting at block: {self.block}")
-
-        # This loop maintains the validator's operations until intentionally stopped.
-        try:
-            tmpBlock = self.block
-            while True:
-                if self.block != tmpBlock:
-                    bt.logging.info(f"Block: {self.block}")
-                    tmpBlock = self.block
-
-                # Run multiple forwards concurrently.
-                self.loop.run_until_complete(self.concurrent_forward())
-
-                # Check if we should exit.
-                if self.should_exit:
-                    break
-
-                # Sync metagraph and potentially set weights.
-                self.sync()
-
-                self.step += 1
-
-        # If someone intentionally stops the validator, it'll safely terminate operations.
-        except KeyboardInterrupt:
-            self.axon.stop()
-            bt.logging.success("Validator killed by keyboard interrupt.")
-            exit()
-
-        # In case of unforeseen errors, the validator will log the error and continue operations.
-        except Exception as err:
-            bt.logging.error("Error during validation", str(err))
-            bt.logging.debug(print_exception(type(err), err, err.__traceback__))
+    def run_miner_scoring_in_loop(self):
+        asyncio.run(self.run_miner_scoring())
 
     def run_in_background_thread(self):
         """
@@ -210,12 +169,22 @@ class BaseValidatorNeuron(BaseNeuron):
         if not self.is_running:
             bt.logging.debug("Starting validator in background thread.")
             self.should_exit = False
-            self.thread = threading.Thread(target=self.run, daemon=True)
-            self.miner_check_thread = threading.Thread(
-                target=self.run_miner_check_in_loop, daemon=True
+            self.sync_thread = threading.Thread(
+                target=self.run_sync_in_loop, daemon=True
             )
-            self.thread.start()
-            self.miner_check_thread.start()
+            self.miner_ping_thread = threading.Thread(
+                target=self.run_miner_ping_in_loop, daemon=True
+            )
+            self.miner_volume_thread = threading.Thread(
+                target=self.run_miner_volume_in_loop, daemon=True
+            )
+            self.miner_scoring_thread = threading.Thread(
+                target=self.run_miner_scoring_in_loop, daemon=True
+            )
+            self.sync_thread.start()  # for setting weights, syncing metagraph,, etc
+            self.miner_ping_thread.start()  # for versioning and getting keywords
+            self.miner_volume_thread.start()  # for testing miner volumes
+            self.miner_scoring_thread.start()  # for scoring miner volumes
             self.is_running = True
             bt.logging.debug("Started")
 
@@ -226,8 +195,10 @@ class BaseValidatorNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
-            self.thread.join(5)
-            self.miner_check_thread.join(5)
+            self.sync_thread.join(5)
+            self.miner_ping_thread.join(5)
+            self.miner_volume_thread.join(5)
+            self.miner_scoring_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
@@ -251,7 +222,10 @@ class BaseValidatorNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
-            self.thread.join(5)
+            self.sync_thread.join(5)
+            self.miner_ping_thread.join(5)
+            self.miner_volume_thread.join(5)
+            self.miner_scoring_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
@@ -269,8 +243,8 @@ class BaseValidatorNeuron(BaseNeuron):
         # Replace any NaN values with 0.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
 
-        bt.logging.debug("raw_weights", raw_weights)
-        bt.logging.debug("NET UID", self.config.netuid)
+        bt.logging.trace("raw_weights", raw_weights)
+        bt.logging.trace("NET UID", self.config.netuid)
         # bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
         # Process the raw weights to final_weights via subtensor limitations.
         (
@@ -309,7 +283,6 @@ class BaseValidatorNeuron(BaseNeuron):
         )
 
         if result is True:
-            print("Weights set on chain successfully!")
             bt.logging.info("set_weights on chain successfully!")
         else:
             bt.logging.error("set_weights failed", msg)
@@ -380,7 +353,8 @@ class BaseValidatorNeuron(BaseNeuron):
         scattered_rewards: torch.FloatTensor = self.scores.scatter(
             0, uids_tensor, rewards
         ).to(self.device)
-        print(f"Scattered rewards: {rewards}")
+
+        bt.logging.info(f"Scattered rewards: {rewards}")
 
         # Update scores with rewards produced by this step.
         # shape: [ metagraph.n ]
@@ -390,7 +364,7 @@ class BaseValidatorNeuron(BaseNeuron):
             1 - alpha
         ) * self.scores.to(self.device)
 
-        print(f"Updated moving avg scores: {self.scores}")
+        bt.logging.info(f"Updated moving averages: {self.scores}")
 
         self.save_state()
 
@@ -404,6 +378,9 @@ class BaseValidatorNeuron(BaseNeuron):
                 "step": self.step,
                 "scores": self.scores,
                 "hotkeys": self.hotkeys,
+                "volumes": self.volumes,
+                "versions": self.versions,
+                "indexed_tweets": self.indexed_tweets,
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -416,10 +393,19 @@ class BaseValidatorNeuron(BaseNeuron):
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
             state = torch.load(state_path)
-            self.step = state["step"]
-            self.scores = state["scores"]
-            self.hotkeys = state["hotkeys"]
+            self.step = dict(state).get("step", 0)
+            self.scores = dict(state).get("scores", [])
+            self.hotkeys = dict(state).get("hotkeys", [])
+            self.volumes = dict(state).get("volumes", [])
+            self.versions = dict(state).get("versions", [])
+            self.indexed_tweets = dict(state).get("indexed_tweets", [])
         else:
+            self.step = 0
+            self.scores = torch.zeros(self.metagraph.n)
+            self.hotkeys = []
+            self.volumes = []
+            self.versions = []
+            self.indexed_tweets = []
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )
