@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2023 Masa
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -22,8 +21,11 @@ import time
 
 # Bittensor Validator Template:
 from masa.base.validator import BaseValidatorNeuron
-from masa.api.validator_api import ValidatorAPI
+from masa.api.server import API
 from sentence_transformers import SentenceTransformer
+
+from masa.validator.scorer import Scorer
+from masa.validator.forwarder import Forwarder
 
 
 class Validator(BaseValidatorNeuron):
@@ -32,11 +34,10 @@ class Validator(BaseValidatorNeuron):
         self.model = SentenceTransformer(
             "all-MiniLM-L6-v2"
         )  # Load a pre-trained model for embeddings
-        self.API = ValidatorAPI(self)
+        self.forwarder = Forwarder(self)
+        self.scorer = Scorer(self)
+        self.API = API(self)
         bt.logging.info("Validator initialized with config: {}".format(config))
-
-    async def forward(self):
-        pass
 
 
 if __name__ == "__main__":

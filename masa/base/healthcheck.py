@@ -3,20 +3,21 @@ import requests
 import bittensor as bt
 
 
-class PingMiner(bt.Synapse):
+class PingAxonSynapse(bt.Synapse):
     sent_from: typing.Optional[str]
     is_active: typing.Optional[bool]
     version: typing.Optional[int]
 
     def deserialize(self) -> str:
-        return self.sent_from
+        return self.version
 
 
-def forward_ping(synapse: PingMiner, spec_version: int) -> PingMiner:
+def forward_ping(synapse: PingAxonSynapse, spec_version: int) -> PingAxonSynapse:
     synapse.is_active = True
     synapse.version = spec_version
-    bt.logging.info(f"Got ping from {synapse.sent_from}")
-    bt.logging.info(f"Passing back version {synapse.version}")
+    bt.logging.info(
+        f"Validator requesting version: {synapse.sent_from}, Passing back: {synapse.version}"
+    )
 
     return synapse
 

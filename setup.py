@@ -63,11 +63,11 @@ setup(
     description="bittensor subnet for masa protocol",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/masa-finance/bittensor-1",
+    url="https://github.com/masa-finance/masa-bittensor",
     author="masa.ai",
     packages=find_packages(),
     include_package_data=True,
-    author_email="",  # TODO(developer): Change this value to your module subnet author email.
+    author_email="",
     license="MIT",
     python_requires=">=3.8",
     install_requires=requirements,
