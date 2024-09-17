@@ -23,36 +23,35 @@ import bittensor as bt
 
 from neurons.miner import Miner
 
-# from masa.utils.uids import get_random_miner_uids
+from masa.utils.uids import get_random_miner_uids
 from masa.base.miner import BaseMinerNeuron
+from masa.base.validator import BaseValidatorNeuron
+from masa.mock import MockSubtensor, MockMetagraph, MockDendrite
 
 
-class TemplateValidatorNeuronTestCase(unittest.TestCase):
+class TemplateValidatorNeuronTestCase(unittest.IsolatedAsyncioTestCase):
     """
-    This class contains unit tests for the RewardEvent classes.
-
-    The tests cover different scenarios where completions may or may not be successful and the reward events are checked that they don't contain missing values.
-    The `reward` attribute of all RewardEvents is expected to be a float, and the `is_filter_model` attribute is expected to be a boolean.
+    This class contains unit tests for the MinerNeuron classes.
     """
 
-    async def setUp(self):
-        sys.argv = sys.argv[0] + ["--config", "tests/configs/miner.json"]
+    async def asyncSetUp(self):
+        # sys.argv = sys.argv[0] + ["--config", "tests/configs/miner.json"]
 
-        config = BaseMinerNeuron.config()
-        config.wallet._mock = True
-        config.metagraph._mock = True
-        config.subtensor._mock = True
-        self.neuron = Miner(config)
-        # self.miner_uids = await get_random_miner_uids(self, k=10)
+        config = BaseValidatorNeuron.config()
+        config.mock = True
 
-    def test_run_single_step(self):
-        pass
+        # config.wallet._mock = True
+        # config.metagraph._mock = True
+        # config.subtensor._mock = True
 
-    def test_sync_error_if_not_registered(self):
-        pass
+        self.neuron = BaseValidatorNeuron(config)
+        self.miner_uids = await get_random_miner_uids(self.neuron, k=10)
+        # bt.logging.info(f"Miner UIDs: {self.miner_uids}")
 
-    def test_forward(self):
-        pass
+        # self.miner1 = Miner(config)
+        # self.miner2 = Miner(config)
+        # self.miner3 = Miner(config)
+        # self.subtensor = MockSubtensor(netuid=1, n=4, wallet=wallet)
 
-    def test_dummy_responses(self):
-        pass
+    async def test_ping_synpase(self):
+        assert True
