@@ -170,5 +170,5 @@ docker-up:
 docker-down:
 	$(DOCKER_COMPOSE) down
 
-test-mock:
+test-mocks:
 	pytest -s -p no:warnings tests/test_mock.py
