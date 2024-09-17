@@ -28,6 +28,7 @@ from typing import List
 
 from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_validator_args
+from masa.mock import MockDendrite
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -56,7 +57,11 @@ class BaseValidatorNeuron(BaseNeuron):
         self.keywords = []  # note, for volume queries
         self.count = 0  # note, for volume queries
 
-        self.dendrite = bt.dendrite(wallet=self.wallet)
+        if self.config.mock:
+            self.dendrite = MockDendrite(wallet=self.wallet)
+        else:
+            self.dendrite = bt.dendrite(wallet=self.wallet)
+
         self.scores = torch.zeros(
             self.metagraph.n, dtype=torch.float32, device=self.device
         )

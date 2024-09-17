@@ -171,4 +171,10 @@ docker-down:
 	$(DOCKER_COMPOSE) down
 
 test-mocks:
-	pytest -s -p no:warnings tests/test_mock.py
+	pytest -s -p no:warnings tests/test_mocks.py
+
+test-miner:
+	pytest -s -p no:warnings tests/test_miner.py
+
+test-all:
+	pytest -s -p no:warnings tests

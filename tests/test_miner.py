@@ -21,10 +21,10 @@ import torch
 import unittest
 import bittensor as bt
 
-from neurons.miner import Neuron as Miner
+from neurons.miner import Miner
 
-from masa.utils.uids import get_random_miner_uids
-from masa.base.miner import BaseValidatorNeuron
+# from masa.utils.uids import get_random_miner_uids
+from masa.base.miner import BaseMinerNeuron
 
 
 class TemplateValidatorNeuronTestCase(unittest.TestCase):
@@ -38,12 +38,12 @@ class TemplateValidatorNeuronTestCase(unittest.TestCase):
     async def setUp(self):
         sys.argv = sys.argv[0] + ["--config", "tests/configs/miner.json"]
 
-        config = BaseValidatorNeuron.config()
+        config = BaseMinerNeuron.config()
         config.wallet._mock = True
         config.metagraph._mock = True
         config.subtensor._mock = True
         self.neuron = Miner(config)
-        self.miner_uids = await get_random_miner_uids(self, k=10)
+        # self.miner_uids = await get_random_miner_uids(self, k=10)
 
     def test_run_single_step(self):
         pass
