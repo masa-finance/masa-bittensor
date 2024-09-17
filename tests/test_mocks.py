@@ -4,10 +4,13 @@ import bittensor as bt
 from masa.mock import MockDendrite, MockMetagraph, MockSubtensor
 from masa.base.healthcheck import PingAxonSynapse
 
+wallet = bt.MockWallet()
+wallet.create(coldkey_use_password=False)
+
 
 @pytest.mark.parametrize("netuid", [42])
 @pytest.mark.parametrize("n", [256])
-@pytest.mark.parametrize("wallet", [bt.MockWallet(), None])
+@pytest.mark.parametrize("wallet", [wallet, None])
 def test_mock_subtensor(netuid, n, wallet):
     subtensor = MockSubtensor(netuid=netuid, n=n, wallet=wallet)
     neurons = subtensor.neurons(netuid=netuid)
@@ -30,7 +33,7 @@ def test_mock_subtensor(netuid, n, wallet):
 
 @pytest.mark.parametrize("netuid", [42])
 @pytest.mark.parametrize("n", [256])
-@pytest.mark.parametrize("wallet", [bt.MockWallet(), None])
+@pytest.mark.parametrize("wallet", [wallet, None])
 def test_mock_metagraph(netuid, n, wallet):
     mock_subtensor = MockSubtensor(netuid=netuid, n=n, wallet=wallet)
     mock_metagraph = MockMetagraph(netuid=netuid, subtensor=mock_subtensor)
@@ -45,8 +48,7 @@ def test_mock_metagraph(netuid, n, wallet):
 @pytest.mark.parametrize("netuid", [42])
 @pytest.mark.parametrize("n", [256])
 def test_mock_dendrite(netuid, n):
-    mock_wallet = bt.MockWallet()
-    mock_dendrite = MockDendrite(mock_wallet)
+    mock_dendrite = MockDendrite(wallet=wallet)
     mock_dendrite.min_time = 0
     mock_dendrite.max_time = 5
     mock_subtensor = MockSubtensor(netuid=netuid, n=n)

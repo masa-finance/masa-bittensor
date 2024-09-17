@@ -57,7 +57,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.keywords = []  # note, for volume queries
         self.count = 0  # note, for volume queries
 
-        if self.config.mock:
+        if self.config.subtensor._mock:
             self.dendrite = MockDendrite(wallet=self.wallet)
         else:
             self.dendrite = bt.dendrite(wallet=self.wallet)

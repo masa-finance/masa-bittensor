@@ -28,6 +28,9 @@ from masa.base.miner import BaseMinerNeuron
 from masa.base.validator import BaseValidatorNeuron
 from masa.mock import MockSubtensor, MockMetagraph, MockDendrite
 
+wallet_validator = bt.MockWallet()
+wallet_validator.create(coldkey_use_password=False)
+
 
 class TemplateValidatorNeuronTestCase(unittest.IsolatedAsyncioTestCase):
     """
@@ -36,22 +39,15 @@ class TemplateValidatorNeuronTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         # sys.argv = sys.argv[0] + ["--config", "tests/configs/miner.json"]
+        subtensor = MockSubtensor(netuid=1, n=4, wallet=wallet_validator)
+        neurons = subtensor.neurons(netuid=1)
 
+        # bt.logging.info(f"Wallet: {wallet_validator}")
         config = BaseValidatorNeuron.config()
-        config.mock = True
+        # config.wallet = wallet_validator
+        config.subtensor._mock = True
+        bt.logging.info(f"Config: {config}")
+        self.neuron = BaseValidatorNeuron(config=config)
 
-        # config.wallet._mock = True
-        # config.metagraph._mock = True
-        # config.subtensor._mock = True
-
-        self.neuron = BaseValidatorNeuron(config)
-        self.miner_uids = await get_random_miner_uids(self.neuron, k=10)
-        # bt.logging.info(f"Miner UIDs: {self.miner_uids}")
-
-        # self.miner1 = Miner(config)
-        # self.miner2 = Miner(config)
-        # self.miner3 = Miner(config)
-        # self.subtensor = MockSubtensor(netuid=1, n=4, wallet=wallet)
-
-    async def test_ping_synpase(self):
-        assert True
+    def test_ping_synpase(self):
+        return
