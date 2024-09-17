@@ -44,10 +44,13 @@ class TemplateValidatorNeuronTestCase(unittest.IsolatedAsyncioTestCase):
 
         # bt.logging.info(f"Wallet: {wallet_validator}")
         config = BaseValidatorNeuron.config()
-        # config.wallet = wallet_validator
+        config.wallet.name = wallet_validator.name
+        config.wallet.hotkey = wallet_validator.hotkey
+        config.wallet.coldkey = wallet_validator.coldkey
         config.subtensor._mock = True
+        config.mock = True
         bt.logging.info(f"Config: {config}")
-        self.neuron = BaseValidatorNeuron(config=config)
+        self.validator = BaseValidatorNeuron(config=config)
 
     def test_ping_synpase(self):
         return
