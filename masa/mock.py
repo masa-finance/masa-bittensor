@@ -10,6 +10,9 @@ from typing import List
 class MockSubtensor(bt.MockSubtensor):
     def __init__(self, netuid, n=256, wallet=None, network="mock"):
         super().__init__(network=network)
+
+        # self.chain_endpoint = "http://127.0.0.1:8080"
+
         if not self.subnet_exists(netuid):
             self.create_subnet(netuid)
 
