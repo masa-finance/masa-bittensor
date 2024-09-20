@@ -185,6 +185,7 @@ class BaseNeuron(ABC):
                     f"Updated local repo to latest version: {latest_commit}"
                 )
                 bt.logging.info("Restarting pm2 processes...")
+                # TODO, potentially improve this if the user isn't running PM2
                 restart_cmd = "pm2 restart all"
                 process = subprocess.Popen(restart_cmd.split(), stdout=subprocess.PIPE)
                 output, error = process.communicate()
