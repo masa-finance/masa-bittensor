@@ -169,6 +169,7 @@ class BaseNeuron(ABC):
         url = "https://api.github.com/repos/masa-finance/masa-bittensor/releases/latest"
         response = requests.get(url)
         data = response.json()
+        # TODO, need to somehow derive the latest commit from the release data
         latest_commit = data["target_commitish"]
         local_commit = subprocess.getoutput("git rev-parse HEAD")
 
