@@ -173,6 +173,9 @@ docker-down:
 test-mocks:
 	pytest -s -p no:warnings tests/test_mocks.py
 
+test-utils:
+	pytest -s -p no:warnings tests/test_utils.py
+
 test-miner:
 	pytest -s -p no:warnings tests/test_miner.py
 
