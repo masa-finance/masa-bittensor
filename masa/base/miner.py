@@ -61,6 +61,8 @@ class BaseMinerNeuron(BaseNeuron):
                 "You are allowing non-registered entities to send requests to your miner. This is a security risk."
             )
 
+        self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+
         # The axon handles request processing, allowing validators to send this miner requests.
         self.axon = bt.axon(wallet=self.wallet, config=self.config)
 
