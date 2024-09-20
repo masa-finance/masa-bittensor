@@ -11,6 +11,7 @@ class MockSubtensor(bt.MockSubtensor):
     def __init__(self, netuid, n=256, wallet=None, network="mock"):
         super().__init__(network=network)
 
+        # note, this allows us to connect to a subtensor for testing, having issues w/ mock
         # self.chain_endpoint = "http://127.0.0.1:8080"
 
         if not self.subnet_exists(netuid):
