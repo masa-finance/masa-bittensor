@@ -286,6 +286,13 @@ def add_validator_args(cls, parser):
         default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config/twitter.json",
     )
 
+    parser.add_argument(
+        "--enable_validator_api",
+        action="store_true",
+        help="Set this flag to enable Validator's API",
+        default=False,
+    )
+
 
 def config(cls):
     """
