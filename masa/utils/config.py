@@ -99,6 +99,13 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
+        "--neuron.auto_update",
+        action="store_true",
+        help="If set, auto update the neuron on a new release.",
+        default=False,
+    )
+
+    parser.add_argument(
         "--wandb.off",
         action="store_true",
         help="Turn off wandb.",
