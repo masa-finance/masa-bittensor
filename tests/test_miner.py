@@ -16,43 +16,35 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import sys
-import torch
 import unittest
 import bittensor as bt
 
-from neurons.validator import Neuron as Validator
+from neurons.validator import Validator
 
-from masa.utils.uids import get_random_miner_uids
 from masa.base.validator import BaseValidatorNeuron
+from masa.mock import MockSubtensor
+
+wallet_validator = bt.MockWallet()
+wallet_validator.create(coldkey_use_password=False)
 
 
-class TemplateValidatorNeuronTestCase(unittest.TestCase):
+class TemplateValidatorNeuronTestCase(unittest.IsolatedAsyncioTestCase):
     """
-    This class contains unit tests for the RewardEvent classes.
-
-    The tests cover different scenarios where completions may or may not be successful and the reward events are checked that they don't contain missing values.
-    The `reward` attribute of all RewardEvents is expected to be a float, and the `is_filter_model` attribute is expected to be a boolean.
+    This class contains unit tests for the MinerNeuron classes.
     """
 
-    async def setUp(self):
-        sys.argv = sys.argv[0] + ["--config", "tests/configs/validator.json"]
+    async def asyncSetUp(self):
+        subtensor = MockSubtensor(netuid=1, n=4, wallet=wallet_validator)
+        neurons = subtensor.neurons(netuid=1)
 
         config = BaseValidatorNeuron.config()
-        config.wallet._mock = True
-        config.metagraph._mock = True
         config.subtensor._mock = True
-        self.neuron = Validator(config)
-        self.miner_uids = await get_random_miner_uids(self, k=10)
+        config.mock = True
+        # bt.logging.info(f"Config: {config}")
 
-    def test_run_single_step(self):
-        pass
+        # TODO: this breaks, complaining about mock_endpoint not being a real URL...
+        # note, we may need a real subtensor to test the validator <> miner communication...
+        self.validator = Validator(config=config)
 
-    def test_sync_error_if_not_registered(self):
-        pass
-
-    def test_forward(self):
-        pass
-
-    def test_dummy_responses(self):
-        pass
+    def test_ping_synpase(self):
+        return
