@@ -82,6 +82,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.miner_ping_thread: threading.Thread = None
         self.miner_volume_thread: threading.Thread = None
         self.miner_scoring_thread: threading.Thread = None
+        self.auto_update_thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
         self.run_in_background_thread()
@@ -154,6 +155,16 @@ class BaseValidatorNeuron(BaseNeuron):
             # TODO is there a better way to go about this?
             await asyncio.sleep(self.tempo / 100 * 12)
 
+    # note, runs every tempo
+    async def run_auto_update(self):
+        while not self.should_exit:
+            try:
+                if self.config.neuron.auto_update:
+                    await self.auto_update()
+            except Exception as e:
+                bt.logging.error(f"Error running auto update: {e}")
+            await asyncio.sleep(self.tempo * 12)  # note, 12 seconds per block
+
     def run_sync_in_loop(self):
         asyncio.run(self.run_sync())
 
@@ -165,6 +176,9 @@ class BaseValidatorNeuron(BaseNeuron):
 
     def run_miner_scoring_in_loop(self):
         asyncio.run(self.run_miner_scoring())
+
+    def run_auto_update_in_loop(self):
+        asyncio.run(self.run_auto_update())
 
     def run_in_background_thread(self):
         """
@@ -186,10 +200,14 @@ class BaseValidatorNeuron(BaseNeuron):
             self.miner_scoring_thread = threading.Thread(
                 target=self.run_miner_scoring_in_loop, daemon=True
             )
+            self.auto_update_thread = threading.Thread(
+                target=self.run_auto_update_in_loop, daemon=True
+            )
             self.sync_thread.start()  # for setting weights, syncing metagraph,, etc
             self.miner_ping_thread.start()  # for versioning and getting keywords
             self.miner_volume_thread.start()  # for testing miner volumes
             self.miner_scoring_thread.start()  # for scoring miner volumes
+            self.auto_update_thread.start()  # for auto updating the neuron
             self.is_running = True
             bt.logging.debug("Started")
 
@@ -204,6 +222,7 @@ class BaseValidatorNeuron(BaseNeuron):
             self.miner_ping_thread.join(5)
             self.miner_volume_thread.join(5)
             self.miner_scoring_thread.join(5)
+            self.auto_update_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
@@ -231,6 +250,7 @@ class BaseValidatorNeuron(BaseNeuron):
             self.miner_ping_thread.join(5)
             self.miner_volume_thread.join(5)
             self.miner_scoring_thread.join(5)
+            self.auto_update_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
