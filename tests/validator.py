@@ -1,5 +1,6 @@
 import unittest
 import requests
+import os
 
 
 class ValidatorServerTestCase(unittest.TestCase):
@@ -8,7 +9,7 @@ class ValidatorServerTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        self.base_url = "http://localhost:8000"
+        self.base_url = os.getenv("VALIDATOR_BASE_URL", "http://localhost:8000")
 
     def test_server_running(self):
         """
