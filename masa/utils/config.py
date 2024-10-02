@@ -99,6 +99,13 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
+        "--neuron.auto_update",
+        action="store_true",
+        help="If set, auto update the neuron on a new release.",
+        default=False,
+    )
+
+    parser.add_argument(
         "--wandb.off",
         action="store_true",
         help="Turn off wandb.",
@@ -284,6 +291,13 @@ def add_validator_args(cls, parser):
         type=str,
         help="URL for fetching volume testing keywords",
         default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config/twitter.json",
+    )
+
+    parser.add_argument(
+        "--enable_validator_api",
+        action="store_true",
+        help="Set this flag to enable Validator's API",
+        default=False,
     )
 
 
