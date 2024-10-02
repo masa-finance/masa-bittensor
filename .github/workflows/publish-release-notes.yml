@@ -1,50 +1,29 @@
-name: Publish Release Notes
+name: Publish Release Notes to Docs
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
 
 jobs:
-  publish-release-notes:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    container: pandoc/latex
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Copy Docs
+        run: |
+          mkdir pub-docs
+          cp -r docs/* pub-docs/
+      - name: Pushes to another repository
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
-          fetch-depth: 0
-
-      - name: Fetch latest code
-        run: |
-          git fetch origin main
-          git checkout main
-          git pull origin main
-
-      - name: Get release notes
-        run: |
-          RELEASE_NOTES=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .body)
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
-          echo "$RELEASE_NOTES" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      - name: Update RELEASE_NOTES.md
-        run: |
-          echo -e "## Masa Bittensor Release Notes\n\n${{ env.RELEASE_NOTES }}\n\n[All Releases](https://github.com/${{ github.repository }}/releases)" > docs/RELEASE_NOTES.md
-
-      - name: Commit changes
-        run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
-          git add docs/RELEASE_NOTES.md
-          git commit -m "chore: update release notes"
-
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.API_TOKEN_GITHUB }}
-          commit-message: "chore: update release notes"
-          title: "chore: update release notes"
-          body: "**Description:**\n\nThis PR is automated and orchestrated by the release workflow.  It updates the release notes in docs/RELEASE_NOTES.md every time a new release is published.  This automation ensures that our documentation is always up to date with the latest release notes, and links out to all previous release notes as well.  This bot makes the description of this PR just a little bit longer as to pass our CI checks!  I will write one more sentence to make the PR description longer\n\nI will write one more sentence to make the PR description longer. I need to say just a bit more about this PR to pass the checks, but I'm fairly sure including this last sentence will do it! Kidding, this bot needs to write just a bit more to do it! Oh, how you've just gotta love CI and automation in general! Let me say that sentence one more time: this bot needs to write more characters so that the we pass all of our checks!"
-          base: "main"
+          source-directory: "pub-docs"
+          target-directory: "docs/masa-subnet"
+          destination-github-username: "masa-finance"
+          destination-repository-name: "docs"
+          user-email: 13647606+H34D@users.noreply.github.com
+          target-branch: main

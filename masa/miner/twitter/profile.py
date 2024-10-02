@@ -1,27 +1,34 @@
-import requests
 import bittensor as bt
+from typing import List, Optional, Any
 from masa.miner.masa_protocol_request import MasaProtocolRequest
 from masa.types.twitter import TwitterProfileObject
+
+
+class TwitterProfileSynapse(bt.Synapse):
+    username: str
+    response: Optional[Any] = None
+
+    def deserialize(self) -> Any:
+        return self.response
+
+
+def forward_twitter_profile(synapse: TwitterProfileSynapse) -> TwitterProfileSynapse:
+    synapse.response = TwitterProfileRequest().get_profile(synapse)
+    return synapse
 
 
 class TwitterProfileRequest(MasaProtocolRequest):
     def __init__(self):
         super().__init__()
 
-    def get_profile(self, profile) -> TwitterProfileObject:
-        bt.logging.info(f"Getting profile from worker {profile}")
-        response = self.get(f"/data/twitter/profile/{profile}")
-
-        if response.status_code == 504:
-            bt.logging.error("Worker request failed")
+    def get_profile(self, synapse: TwitterProfileSynapse) -> List[TwitterProfileObject]:
+        bt.logging.info(f"Getting profile for: {synapse}")
+        response = self.get(f"/data/twitter/profile/{synapse.username}")
+        if response.ok:
+            data = self.format(response)
+            return data
+        else:
+            bt.logging.error(
+                f"Twitter profile request failed with status code: {response.status_code}"
+            )
             return None
-        twitter_profile = self.format_profile(response)
-
-        return twitter_profile
-
-    def format_profile(self, data: requests.Response) -> TwitterProfileObject:
-        bt.logging.info(f"Formatting twitter profile data: {data}")
-        profile_data = data.json()["data"]
-        twitter_profile = TwitterProfileObject(**profile_data)
-
-        return twitter_profile

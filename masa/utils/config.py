@@ -29,7 +29,7 @@ def check_config(cls, config: "bt.Config"):
 
     full_path = os.path.expanduser(
         "{}/{}/{}/netuid{}/{}".format(
-            config.logging.logging_dir,  # TODO: change from ~/.bittensor/miners to ~/.bittensor/neurons
+            config.logging.logging_dir,
             config.wallet.name,
             config.wallet.hotkey,
             config.netuid,
@@ -95,6 +95,13 @@ def add_args(cls, parser):
         "--neuron.dont_save_events",
         action="store_true",
         help="If set, we dont save events to a log file.",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--neuron.auto_update",
+        action="store_true",
+        help="If set, auto update the neuron on a new release.",
         default=False,
     )
 
@@ -197,11 +204,28 @@ def add_validator_args(cls, parser):
         default=1,
     )
 
+    # note, for all organic validator forwards (requests through API)
     parser.add_argument(
         "--neuron.sample_size",
         type=int,
         help="The number of miners to query in a single step.",
-        default=50,
+        default=3,
+    )
+
+    # note, for versioning thread
+    parser.add_argument(
+        "--neuron.sample_size_ping",
+        type=int,
+        help="The number of miners to query for version testing.",
+        default=25,
+    )
+
+    # note, for volume testing thread
+    parser.add_argument(
+        "--neuron.sample_size_volume",
+        type=int,
+        help="The number of miners to query for volume testing.",
+        default=10,
     )
 
     parser.add_argument(
@@ -259,6 +283,20 @@ def add_validator_args(cls, parser):
         "--neuron.debug",
         action="store_true",
         help="Sets debug to true",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--neuron.twitter_config_url",
+        type=str,
+        help="URL for fetching volume testing keywords",
+        default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config/twitter.json",
+    )
+
+    parser.add_argument(
+        "--enable_validator_api",
+        action="store_true",
+        help="Set this flag to enable Validator's API",
         default=False,
     )
 

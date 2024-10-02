@@ -62,13 +62,13 @@ class TwitterFollowerObject(TypedDict, total=False):
 class TwitterTweetObject(TypedDict, total=False):
     ConversationID: str
     GIFs: Optional[List[str]]
-    HTML: str
     Hashtags: Optional[List[str]]
+    HTML: str
     ID: str
     InReplyToStatus: Optional[Dict]
     InReplyToStatusID: Optional[str]
-    IsPin: bool
     IsQuoted: bool
+    IsPin: bool
     IsReply: bool
     IsRetweet: bool
     IsSelfThread: bool
@@ -81,10 +81,9 @@ class TwitterTweetObject(TypedDict, total=False):
     QuotedStatus: Optional[Dict]
     QuotedStatusID: Optional[str]
     Replies: int
+    Retweets: int
     RetweetedStatus: Optional[Dict]
     RetweetedStatusID: Optional[str]
-    Retweets: int
-    SensitiveContent: bool
     Text: str
     Thread: Optional[List[str]]
     TimeParsed: str
@@ -94,3 +93,15 @@ class TwitterTweetObject(TypedDict, total=False):
     Username: str
     Videos: Optional[List[str]]
     Views: int
+    SensitiveContent: bool
+
+
+class ErrorObject(TypedDict, total=False):
+    details: str
+    error: str
+    workerPeerId: str
+
+
+class ProtocolTwitterTweetResponse(TypedDict, total=False):
+    Tweet: TwitterTweetObject
+    Error: ErrorObject
