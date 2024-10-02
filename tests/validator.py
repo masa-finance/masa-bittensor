@@ -94,7 +94,7 @@ class ValidatorServerTestCase(unittest.TestCase):
         tweets_length = len(tweets)
         print("Tweets length:", tweets_length)
 
-        # Wait for 2 seconds before checking volumes again
+        # Wait for few seconds before checking volumes again
         time.sleep(15)
 
         # Volume check after fetching tweets
