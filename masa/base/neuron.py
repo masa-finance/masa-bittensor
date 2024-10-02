@@ -18,13 +18,15 @@
 import copy
 from abc import ABC
 import bittensor as bt
+import subprocess
+import requests
 from dotenv import load_dotenv
 
 # Sync calls set weights and also resyncs the metagraph.
 from masa.utils.config import check_config, add_args, config
 from masa.utils.misc import ttl_get_block
 from masa import __spec_version__ as spec_version
-
+from masa.mock import MockSubtensor, MockMetagraph
 
 # Load the .env file for each neuron that tries to run the code
 load_dotenv()
@@ -84,9 +86,14 @@ class BaseNeuron(ABC):
         bt.logging.info("Setting up bittensor objects.")
 
         # The wallet holds the cryptographic key pairs for the miner.
-        self.wallet = bt.wallet(config=self.config)
-        self.subtensor = bt.subtensor(config=self.config)
-        self.metagraph = self.subtensor.metagraph(self.config.netuid)
+        if self.config.subtensor._mock:
+            self.wallet = bt.MockWallet(config=self.config)
+            self.subtensor = MockSubtensor(self.config.netuid, wallet=self.wallet)
+            self.metagraph = MockMetagraph(self.config.netuid, subtensor=self.subtensor)
+        else:
+            self.wallet = bt.wallet(config=self.config)
+            self.subtensor = bt.subtensor(config=self.config)
+            self.metagraph = self.subtensor.metagraph(self.config.netuid)
 
         bt.logging.info(f"Wallet: {self.wallet}")
         bt.logging.info(f"Subtensor: {self.subtensor}")
@@ -162,3 +169,36 @@ class BaseNeuron(ABC):
         return (
             self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"  # don't set weights if you're a miner
+
+    def auto_update(self):
+        url = "https://api.github.com/repos/masa-finance/masa-bittensor/releases/latest"
+        response = requests.get(url)
+        data = response.json()
+        # TODO, need to somehow derive the latest commit from the release data
+        latest_commit = data["target_commitish"]
+        local_commit = subprocess.getoutput("git rev-parse HEAD")
+
+        if local_commit != latest_commit:
+            bt.logging.info("Local code is not up to date, updating...")
+            reset_cmd = "git reset --hard " + latest_commit
+            process = subprocess.Popen(reset_cmd.split(), stdout=subprocess.PIPE)
+            output, error = process.communicate()
+
+            if error:
+                bt.logging.error("Error in updating:", error)
+            else:
+                bt.logging.success(
+                    f"Updated local repo to latest version: {latest_commit}"
+                )
+                bt.logging.info("Restarting pm2 processes...")
+                # TODO, potentially improve this if the user isn't running PM2
+                restart_cmd = "pm2 restart all"
+                process = subprocess.Popen(restart_cmd.split(), stdout=subprocess.PIPE)
+                output, error = process.communicate()
+
+                if error:
+                    bt.logging.error("Error in restarting pm2 processes:", error)
+                else:
+                    bt.logging.success("Successfully restarted pm2 processes!")
+        else:
+            bt.logging.info("Repo is up-to-date.")

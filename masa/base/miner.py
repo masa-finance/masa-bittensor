@@ -61,6 +61,8 @@ class BaseMinerNeuron(BaseNeuron):
                 "You are allowing non-registered entities to send requests to your miner. This is a security risk."
             )
 
+        self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+
         # The axon handles request processing, allowing validators to send this miner requests.
         self.axon = bt.axon(wallet=self.wallet, config=self.config)
 
@@ -93,6 +95,7 @@ class BaseMinerNeuron(BaseNeuron):
         self.should_exit: bool = False
         self.is_running: bool = False
         self.thread: threading.Thread = None
+        self.auto_update_thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
         self.neurons_permit_stake: Dict[str, int] = (
@@ -173,6 +176,19 @@ class BaseMinerNeuron(BaseNeuron):
         except Exception:
             bt.logging.error(traceback.format_exc())
 
+    # note, runs every tempo
+    async def run_auto_update(self):
+        while not self.should_exit:
+            try:
+                if self.config.neuron.auto_update:
+                    await self.auto_update()
+            except Exception as e:
+                bt.logging.error(f"Error running auto update: {e}")
+            await asyncio.sleep(self.tempo * 12)  # note, 12 seconds per block
+
+    def run_auto_update_in_loop(self):
+        asyncio.run(self.run_auto_update())
+
     def run_in_background_thread(self):
         """
         Starts the miner's operations in a separate background thread.
@@ -182,7 +198,11 @@ class BaseMinerNeuron(BaseNeuron):
             bt.logging.debug("Starting miner in background thread.")
             self.should_exit = False
             self.thread = threading.Thread(target=self.run, daemon=True)
+            self.auto_update_thread = threading.Thread(
+                target=self.run_auto_update_in_loop, daemon=True
+            )
             self.thread.start()
+            self.auto_update_thread.start()
             self.is_running = True
             bt.logging.debug("Started")
 
@@ -194,6 +214,7 @@ class BaseMinerNeuron(BaseNeuron):
             bt.logging.debug("Stopping miner in background thread.")
             self.should_exit = True
             self.thread.join(5)
+            self.auto_update_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
