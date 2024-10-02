@@ -8,14 +8,19 @@ from typing import List
 
 
 class MockSubtensor(bt.MockSubtensor):
-    def __init__(self, netuid, n=16, wallet=None, network="mock"):
+    def __init__(self, netuid, n=256, wallet=None, network="mock"):
         super().__init__(network=network)
+
+        # note, this allows us to connect to a subtensor for testing, having issues w/ mock
+        # self.chain_endpoint = "http://127.0.0.1:8080"
 
         if not self.subnet_exists(netuid):
             self.create_subnet(netuid)
 
         # Register ourself (the validator) as a neuron at uid=0
-        if wallet is not None:
+        if wallet is not None and not self.is_hotkey_registered(
+            netuid=netuid, hotkey_ss58=wallet.hotkey.ss58_address
+        ):
             self.force_register_neuron(
                 netuid=netuid,
                 hotkey=wallet.hotkey.ss58_address,
@@ -25,14 +30,16 @@ class MockSubtensor(bt.MockSubtensor):
             )
 
         # Register n mock neurons who will be miners
-        for i in range(1, n + 1):
-            self.force_register_neuron(
-                netuid=netuid,
-                hotkey=f"miner-hotkey-{i}",
-                coldkey="mock-coldkey",
-                balance=100000,
-                stake=100000,
-            )
+        for i in range(1, n):
+            hotkey = f"miner-hotkey-{i}"
+            if not self.is_hotkey_registered(netuid=netuid, hotkey_ss58=hotkey):
+                self.force_register_neuron(
+                    netuid=netuid,
+                    hotkey=hotkey,
+                    coldkey="mock-coldkey",
+                    balance=100000,
+                    stake=100000,
+                )
 
 
 class MockMetagraph(bt.metagraph):
@@ -46,9 +53,6 @@ class MockMetagraph(bt.metagraph):
         for axon in self.axons:
             axon.ip = "127.0.0.0"
             axon.port = 8091
-
-        bt.logging.info(f"Metagraph: {self}")
-        bt.logging.info(f"Axons: {self.axons}")
 
 
 class MockDendrite(bt.dendrite):
@@ -87,7 +91,7 @@ class MockDendrite(bt.dendrite):
                     s.dendrite.process_time = str(time.time() - start_time)
                     # Update the status code and status message of the dendrite to match the axon
                     # TODO (developer): replace with your own expected synapse data
-                    s.dummy_output = s.dummy_input * 2
+                    # s.dummy_output = s.dummy_input * 2
                     s.dendrite.status_code = 200
                     s.dendrite.status_message = "OK"
                     synapse.dendrite.process_time = str(process_time)

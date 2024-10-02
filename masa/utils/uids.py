@@ -4,9 +4,7 @@ import bittensor as bt
 from typing import List
 
 
-def check_uid_availability(
-    metagraph: "bt.metagraph.Metagraph", uid: int, vpermit_tao_limit: int
-) -> bool:
+def check_uid_availability(metagraph: "bt.metagraph.Metagraph", uid: int) -> bool:
     """
     Check if uid is available. The UID should be available if it is serving and has less
     than vpermit_tao_limit stake
@@ -20,6 +18,7 @@ def check_uid_availability(
     """
     # Filter non serving axons.
     if not metagraph.axons[uid].is_serving:
+        bt.logging.info(f"UID: {uid} is not serving")
         return False
 
     # Filter out non validator permit.
@@ -33,13 +32,11 @@ def check_uid_availability(
     return True
 
 
-def get_available_uids(
-    metagraph: "bt.metagraph.Metagraph", vpermit_tao_limit: int
-) -> List[int]:
+def get_available_uids(metagraph: "bt.metagraph.Metagraph") -> List[int]:
     return [
         uid
         for uid in range(metagraph.n.item())
-        if check_uid_availability(metagraph, uid, vpermit_tao_limit)
+        if check_uid_availability(metagraph, uid)
     ]
 
 
@@ -49,59 +46,9 @@ def remove_excluded_uids(uids: List[int], exclude: List[int] = None) -> List[int
     return [uid for uid in uids if uid not in exclude]
 
 
-async def ping_uids(dendrite, metagraph, uids, timeout=3):
-    """
-    Pings a list of UIDs to check their availability on the Bittensor network.
-
-    Args:
-        dendrite (bittensor.dendrite): The dendrite instance to use for pinging nodes.
-        metagraph (bittensor.metagraph): The metagraph instance containing network information.
-        uids (list): A list of UIDs (unique identifiers) to ping.
-        timeout (int, optional): The timeout in seconds for each ping. Defaults to 3.
-
-    Returns:
-        tuple: A tuple containing two lists:
-            - The first list contains UIDs that were successfully pinged.
-            - The second list contains UIDs that failed to respond.
-    """
-    axons = [metagraph.axons[uid] for uid in uids]
-    try:
-        responses = await dendrite(
-            axons,
-            bt.Synapse(),  # TODO: potentially get the synapses available back?
-            deserialize=False,
-            timeout=timeout,
-        )
-        successful_uids = [
-            uid
-            for uid, response in zip(uids, responses)
-            if response.dendrite.status_code == 200
-        ]
-        failed_uids = [
-            uid
-            for uid, response in zip(uids, responses)
-            if response.dendrite.status_code != 200
-        ]
-    except Exception as e:
-        bt.logging.error(f"Dendrite ping failed: {e}")
-        successful_uids = []
-        failed_uids = uids
-    bt.logging.debug(f"ping() successful uids: {successful_uids}")
-    bt.logging.debug(f"ping() failed uids    : {failed_uids}")
-    return successful_uids, failed_uids
-
-
-def filter_duplicated_axon_ips_for_uids(uids, metagraph):
-    ips = []
-    miner_ip_filtered_uids = []
-    for uid in uids:
-        if metagraph.axons[uid].ip not in ips:
-            ips.append(metagraph.axons[uid].ip)
-            miner_ip_filtered_uids.append(uid)
-    return miner_ip_filtered_uids
-
-
-async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.LongTensor:
+async def get_random_miner_uids(
+    self, k: int, exclude: List[int] = None
+) -> torch.LongTensor:
     """
     Returns at most k available random uids from the metagraph.
 
@@ -116,25 +63,21 @@ async def get_random_uids(self, k: int, exclude: List[int] = None) -> torch.Long
     """
     dendrite = bt.dendrite(wallet=self.wallet)
 
-    print("get random uids")
-
     try:
         # Generic sanitation
-        avail_uids = get_available_uids(
-            self.metagraph, self.config.neuron.vpermit_tao_limit
-        )
-        candidate_uids = remove_excluded_uids(avail_uids, exclude)
+        avail_uids = get_available_uids(self.metagraph)
+        healthy_uids = remove_excluded_uids(avail_uids, exclude)
+        weights_version = self.subtensor.get_subnet_hyperparameters(
+            self.config.netuid
+        ).weights_version
 
-        healthy_uids, _ = await ping_uids(dendrite, self.metagraph, candidate_uids)
-        # filtered_uids = filter_duplicated_axon_ips_for_uids(
-        #     healthy_uids, self.metagraph
-        # )
+        version_checked_uids = [
+            uid for uid in healthy_uids if self.versions[uid] >= weights_version
+        ]
 
-        k = min(k, len(healthy_uids))
+        k = min(k, len(version_checked_uids))
         # Random sampling
-        random_sample = random.sample(healthy_uids, k)
-        print(f"Random sample: {random_sample}")
-
+        random_sample = random.sample(version_checked_uids, k)
         uids = torch.tensor(random_sample)
         return uids
     except Exception as e:

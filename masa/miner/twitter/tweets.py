@@ -1,37 +1,40 @@
-from dataclasses import dataclass
-import requests
 import bittensor as bt
-from typing import List
+from typing import List, Optional, Any
 from masa.miner.masa_protocol_request import MasaProtocolRequest
-from masa.types.twitter import TwitterTweetObject
+from masa.types.twitter import ProtocolTwitterTweetResponse
 
 
-@dataclass
-class RecentTweetsQuery:
+class RecentTweetsSynapse(bt.Synapse):
     query: str
     count: int
+    response: Optional[Any] = None
+
+    def deserialize(self) -> Optional[Any]:
+        return self.response
+
+
+def forward_recent_tweets(synapse: RecentTweetsSynapse) -> RecentTweetsSynapse:
+    synapse.response = TwitterTweetsRequest().get_recent_tweets(synapse)
+    return synapse
 
 
 class TwitterTweetsRequest(MasaProtocolRequest):
     def __init__(self):
         super().__init__()
 
-    def get_recent_tweets(self, query: RecentTweetsQuery) -> List[TwitterTweetObject]:
-        bt.logging.info(f"Getting recent tweets from worker with query: {query}")
+    def get_recent_tweets(
+        self, synapse: RecentTweetsSynapse
+    ) -> Optional[List[ProtocolTwitterTweetResponse]]:
+        bt.logging.info(f"Getting {synapse.count} recent tweets for: {synapse.query}")
         response = self.post(
             "/data/twitter/tweets/recent",
-            body={"query": query.query, "count": query.count},
+            body={"query": synapse.query, "count": synapse.count},
         )
-
-        if response.status_code == 504:
-            bt.logging.error("Worker request failed")
+        if response.ok:
+            data = self.format(response)
+            return data
+        else:
+            bt.logging.error(
+                f"Twitter recent tweets request failed with status code: {response.status_code}"
+            )
             return None
-        tweets = self.format_tweets(response)
-        return tweets
-
-    def format_tweets(self, data: requests.Response) -> List[TwitterTweetObject]:
-        bt.logging.info(f"Formatting twitter tweets data: {data}")
-        tweets_data = data.json()["data"]
-        twitter_tweets = [TwitterTweetObject(**tweet) for tweet in tweets_data]
-
-        return twitter_tweets

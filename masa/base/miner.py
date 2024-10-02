@@ -29,6 +29,11 @@ from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_miner_args
 
 from typing import Dict
+from masa.base.healthcheck import forward_ping, PingAxonSynapse
+
+from masa.miner.twitter.profile import forward_twitter_profile
+from masa.miner.twitter.followers import forward_twitter_followers
+from masa.miner.twitter.tweets import forward_recent_tweets
 
 
 class BaseMinerNeuron(BaseNeuron):
@@ -56,22 +61,41 @@ class BaseMinerNeuron(BaseNeuron):
                 "You are allowing non-registered entities to send requests to your miner. This is a security risk."
             )
 
+        self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+
         # The axon handles request processing, allowing validators to send this miner requests.
         self.axon = bt.axon(wallet=self.wallet, config=self.config)
 
         # Attach determiners which functions are called when servicing a request.
-        bt.logging.info("Attaching forward function to miner axon.")
+        bt.logging.info("Attaching forward functions to miner axon.")
+
+        self.axon.attach(forward_fn=self.forward_ping_synapse)
+
         self.axon.attach(
-            forward_fn=self.forward,
-            blacklist_fn=self.blacklist,
-            priority_fn=self.priority,
+            forward_fn=forward_twitter_profile,
+            blacklist_fn=self.blacklist_twitter_profile,
+            priority_fn=self.priority_twitter_profile,
         )
+
+        self.axon.attach(
+            forward_fn=forward_twitter_followers,
+            blacklist_fn=self.blacklist_twitter_followers,
+            priority_fn=self.priority_twitter_followers,
+        )
+
+        self.axon.attach(
+            forward_fn=forward_recent_tweets,
+            blacklist_fn=self.blacklist_recent_tweets,
+            priority_fn=self.priority_recent_tweets,
+        )
+
         bt.logging.info(f"Axon created: {self.axon}")
 
         # Instantiate runners
         self.should_exit: bool = False
         self.is_running: bool = False
         self.thread: threading.Thread = None
+        self.auto_update_thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
         self.neurons_permit_stake: Dict[str, int] = (
@@ -82,6 +106,9 @@ class BaseMinerNeuron(BaseNeuron):
         )  # note, this will be variable per environment
 
         self.load_state()
+
+    def forward_ping_synapse(self, synapse: PingAxonSynapse) -> PingAxonSynapse:
+        return forward_ping(synapse, self.spec_version)
 
     def run(self):
         """
@@ -149,6 +176,19 @@ class BaseMinerNeuron(BaseNeuron):
         except Exception:
             bt.logging.error(traceback.format_exc())
 
+    # note, runs every tempo
+    async def run_auto_update(self):
+        while not self.should_exit:
+            try:
+                if self.config.neuron.auto_update:
+                    await self.auto_update()
+            except Exception as e:
+                bt.logging.error(f"Error running auto update: {e}")
+            await asyncio.sleep(self.tempo * 12)  # note, 12 seconds per block
+
+    def run_auto_update_in_loop(self):
+        asyncio.run(self.run_auto_update())
+
     def run_in_background_thread(self):
         """
         Starts the miner's operations in a separate background thread.
@@ -158,7 +198,11 @@ class BaseMinerNeuron(BaseNeuron):
             bt.logging.debug("Starting miner in background thread.")
             self.should_exit = False
             self.thread = threading.Thread(target=self.run, daemon=True)
+            self.auto_update_thread = threading.Thread(
+                target=self.run_auto_update_in_loop, daemon=True
+            )
             self.thread.start()
+            self.auto_update_thread.start()
             self.is_running = True
             bt.logging.debug("Started")
 
@@ -170,6 +214,7 @@ class BaseMinerNeuron(BaseNeuron):
             bt.logging.debug("Stopping miner in background thread.")
             self.should_exit = True
             self.thread.join(5)
+            self.auto_update_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
@@ -224,8 +269,9 @@ class BaseMinerNeuron(BaseNeuron):
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
             state = torch.load(state_path)
-            self.neurons_permit_stake = state.get("neurons_permit_stake", {})
+            self.neurons_permit_stake = dict(state).get("neurons_permit_stake", {})
         else:
+            self.neurons_permit_stake = {}
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )
