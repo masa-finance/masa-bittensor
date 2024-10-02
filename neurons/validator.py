@@ -36,7 +36,6 @@ class Validator(BaseValidatorNeuron):
         )  # Load a pre-trained model for embeddings
         self.forwarder = Forwarder(self)
         self.scorer = Scorer(self)
-        print("CONFIG", self.config)
         if (
             hasattr(self.config, "enable_validator_api")
             and self.config.enable_validator_api
