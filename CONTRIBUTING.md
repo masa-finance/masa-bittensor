@@ -17,11 +17,15 @@ The following is a set of guidelines for contributing to the Bittensor ecosystem
 
 ## How Can I Contribute?
 
-TODO(developer): Define your desired contribution procedure.
+We welcome contributions from the community! Here are some ways you can get involved:
+
+- **Report Bugs**: If you find a bug, please report it by opening an issue in our GitHub repository. Include as much detail as possible to help us reproduce the issue.
+- **Suggest Features**: We are always looking to improve our project. If you have a feature suggestion, please open an issue and describe your idea in detail.
+- **Submit Pull Requests**: If you want to contribute code, please fork the repository and submit a pull request. Make sure to follow our coding standards and include tests for any new functionality.
 
 ## Communication Channels
 
-TODO(developer): Place your communication channels here
+Join our community on [Discord](https://discord.com/channels/799672011265015819/1275149537547391058) or follow us on [X](https://x.com/getmasafi) for updates and discussions.
 
 > Please follow the Bittensor Subnet [style guide](./STYLE.md) regardless of your contribution type.
 
@@ -47,26 +51,9 @@ Here is a high-level summary:
 
 #### Pull Request Philosophy
 
-Patchsets and enhancements should always be focused. A pull request could add a feature, fix a bug, or refactor code, but it should not contain a mixture of these. Please also avoid 'super' pull requests which attempt to do too much, are overly large, or overly complex as this makes review difficult.
-
-Specifically, pull requests must adhere to the following criteria:
-
-- Contain fewer than 50 files. PRs with more than 50 files will be closed.
-- If a PR introduces a new feature, it _must_ include corresponding tests.
-- Other PRs (bug fixes, refactoring, etc.) should ideally also have tests, as they provide proof of concept and prevent regression.
-- Categorize your PR properly by using GitHub labels. This aids in the review process by informing reviewers about the type of change at a glance.
-- Make sure your code includes adequate comments. These should explain why certain decisions were made and how your changes work.
-- If your changes are extensive, consider breaking your PR into smaller, related PRs. This makes your contributions easier to understand and review.
-- Be active in the discussion about your PR. Respond promptly to comments and questions to help reviewers understand your changes and speed up the acceptance process.
-
-Generally, all pull requests must:
-
-- Have a clear use case, fix a demonstrable bug or serve the greater good of the project (e.g. refactoring for modularisation).
-- Be well peer-reviewed.
-- Follow code style guidelines.
-- Not break the existing test suite.
-- Where bugs are fixed, where possible, there should be unit tests demonstrating the bug and also proving the fix.
-- Change relevant comments and documentation when behaviour of code changes.
+- Keep pull requests focused and avoid mixing different types of changes.
+- Ensure your pull request includes tests for new features or bug fixes.
+- Use GitHub labels to categorize your pull request.
 
 #### Pull Request Process
 
