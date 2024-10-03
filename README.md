@@ -4,7 +4,7 @@ Welcome to the Masa Bittensor Subnet! Follow our [documentation](https://develop
 
 ## Contributing
 
-For development workflows and contribution guidelines, please see `contrib/CONTRIBUTING.md`.
+For development workflows and contribution guidelines, please see `CONTRIBUTING.md`.
 
 ## License
 
