@@ -5,7 +5,7 @@ title: ''
 labels: enhancement, triage
 ---
 
-<!-- Thanks for helping us to improve masa Bittorrent! We welcome all feature requests. Please fill out each area of the template so we can better help you. 
+<!-- Thanks for helping us to improve masa Bittensor! We welcome all feature requests. Please fill out each area of the template so we can better help you. 
 Comments like this will be hidden when you post but you can delete them if you wish. -->
 
 **Is your feature request related to a problem? Please describe.**
