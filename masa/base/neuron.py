@@ -170,7 +170,7 @@ class BaseNeuron(ABC):
             self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"  # don't set weights if you're a miner
 
-    def auto_update(self):
+    async def auto_update(self):
         url = "https://api.github.com/repos/masa-finance/masa-bittensor/releases/latest"
         response = requests.get(url)
         data = response.json()
@@ -179,8 +179,7 @@ class BaseNeuron(ABC):
         # Get the current local tag
         local_tag = subprocess.getoutput("git describe --tags --abbrev=0").strip()
 
-        bt.logging.success(f"Local tag: {local_tag}")
-        bt.logging.success(f"Latest tag: {latest_tag}")
+        bt.logging.info(f"Local tag: {local_tag}, Latest tag: {latest_tag}")
 
         if local_tag != latest_tag:
             bt.logging.info(
