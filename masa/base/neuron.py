@@ -174,31 +174,32 @@ class BaseNeuron(ABC):
         url = "https://api.github.com/repos/masa-finance/masa-bittensor/releases/latest"
         response = requests.get(url)
         data = response.json()
-        # TODO, need to somehow derive the latest commit from the release data
-        latest_commit = data["target_commitish"]
-        local_commit = subprocess.getoutput("git rev-parse HEAD")
+        latest_tag = data["tag_name"]
 
-        if local_commit != latest_commit:
-            bt.logging.info("Local code is not up to date, updating...")
-            reset_cmd = "git reset --hard " + latest_commit
-            process = subprocess.Popen(reset_cmd.split(), stdout=subprocess.PIPE)
+        # Get the current local tag
+        local_tag = subprocess.getoutput("git describe --tags --abbrev=0").strip()
+
+        bt.logging.success(f"Local tag: {local_tag}")
+        bt.logging.success(f"Latest tag: {latest_tag}")
+
+        if local_tag != latest_tag:
+            bt.logging.info(
+                f"Local code is not up to date (local tag: {local_tag}, latest tag: {latest_tag}), updating..."
+            )
+            # Fetch all tags from the remote repository
+            subprocess.run(["git", "fetch", "--tags"], check=True)
+            # Checkout the latest tag
+            subprocess.run(["git", "checkout", latest_tag], check=True)
+            bt.logging.success(f"Updated local repo to latest version: {latest_tag}")
+            bt.logging.info("Restarting pm2 processes...")
+            # Restart PM2 processes (if applicable)
+            restart_cmd = "pm2 restart all"
+            process = subprocess.Popen(restart_cmd.split(), stdout=subprocess.PIPE)
             output, error = process.communicate()
 
             if error:
-                bt.logging.error("Error in updating:", error)
+                bt.logging.error(f"Error in restarting pm2 processes: {error}")
             else:
-                bt.logging.success(
-                    f"Updated local repo to latest version: {latest_commit}"
-                )
-                bt.logging.info("Restarting pm2 processes...")
-                # TODO, potentially improve this if the user isn't running PM2
-                restart_cmd = "pm2 restart all"
-                process = subprocess.Popen(restart_cmd.split(), stdout=subprocess.PIPE)
-                output, error = process.communicate()
-
-                if error:
-                    bt.logging.error("Error in restarting pm2 processes:", error)
-                else:
-                    bt.logging.success("Successfully restarted pm2 processes!")
+                bt.logging.success("Successfully restarted pm2 processes!")
         else:
             bt.logging.info("Repo is up-to-date.")
