@@ -189,16 +189,7 @@ class BaseNeuron(ABC):
             subprocess.run(["git", "fetch", "--tags"], check=True)
             # Checkout the latest tag
             subprocess.run(["git", "checkout", latest_tag], check=True)
+            # Watchfiles should now trigger...
             bt.logging.success(f"Updated local repo to latest version: {latest_tag}")
-            bt.logging.info("Restarting pm2 processes...")
-            # Restart PM2 processes (if applicable)
-            restart_cmd = "pm2 restart all"
-            process = subprocess.Popen(restart_cmd.split(), stdout=subprocess.PIPE)
-            output, error = process.communicate()
-
-            if error:
-                bt.logging.error(f"Error in restarting pm2 processes: {error}")
-            else:
-                bt.logging.success("Successfully restarted pm2 processes!")
         else:
             bt.logging.info("Repo is up-to-date.")
