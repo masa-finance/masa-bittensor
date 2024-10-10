@@ -170,26 +170,44 @@ class BaseNeuron(ABC):
             self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"  # don't set weights if you're a miner
 
+    # TODO ask about async / await in python
     async def auto_update(self):
         url = "https://api.github.com/repos/masa-finance/masa-bittensor/releases/latest"
         response = requests.get(url)
         data = response.json()
         latest_tag = data["tag_name"]
 
-        # Get the current local tag
-        local_tag = subprocess.getoutput("git describe --tags --abbrev=0").strip()
-
-        bt.logging.info(f"Local tag: {local_tag}, Latest tag: {latest_tag}")
-
-        if local_tag != latest_tag:
-            bt.logging.info(
-                f"Local code is not up to date (local tag: {local_tag}, latest tag: {latest_tag}), updating..."
+        try:
+            # Get the commit hash of the latest tag
+            latest_tag_commit = (
+                subprocess.check_output(
+                    "git rev-list -n 1 $(git describe --tags --abbrev=0)", shell=True
+                )
+                .strip()
+                .decode("utf-8")
             )
-            # Fetch all tags from the remote repository
-            subprocess.run(["git", "fetch", "--tags"], check=True)
-            # Checkout the latest tag
-            subprocess.run(["git", "checkout", latest_tag], check=True)
-            # Watchfiles should now trigger...
-            bt.logging.success(f"Updated local repo to latest version: {latest_tag}")
-        else:
-            bt.logging.info("Repo is up-to-date.")
+            # Get the current commit hash of the branch
+            current_commit = (
+                subprocess.check_output("git rev-parse HEAD", shell=True)
+                .strip()
+                .decode("utf-8")
+            )
+
+            if current_commit != latest_tag_commit:
+                bt.logging.warning(
+                    f"Local code is not up to date (local commit: {current_commit}, latest tag commit: {latest_tag_commit}), updating..."
+                )
+                # Fetch all tags from the remote repository
+                subprocess.run(["git", "fetch", "--tags"], check=True)
+                # Checkout the latest tag
+                subprocess.run(["git", "checkout", latest_tag], check=True)
+                # Watchfiles should now trigger...
+                bt.logging.success(
+                    f"Updated local repo to latest version: {latest_tag}"
+                )
+            else:
+                bt.logging.success("Repo is up-to-date.")
+        except subprocess.CalledProcessError as e:
+            bt.logging.error(f"Subprocess error: {e}")
+        except Exception as e:
+            bt.logging.error(f"An unexpected error occurred: {e}")
