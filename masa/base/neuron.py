@@ -27,6 +27,7 @@ from masa.utils.config import check_config, add_args, config
 from masa.utils.misc import ttl_get_block
 from masa import __spec_version__ as spec_version
 from masa.mock import MockSubtensor, MockMetagraph
+from bittensor_wallet import Config
 
 # Load the .env file for each neuron that tries to run the code
 load_dotenv()
@@ -91,7 +92,12 @@ class BaseNeuron(ABC):
             self.subtensor = MockSubtensor(self.config.netuid, wallet=self.wallet)
             self.metagraph = MockMetagraph(self.config.netuid, subtensor=self.subtensor)
         else:
-            self.wallet = bt.wallet(config=self.config)
+            wallet_specific_config = Config(
+                hotkey=self.config.wallet.hotkey,
+                name=self.config.wallet.name,
+                path=self.config.wallet.path,
+            )
+            self.wallet = bt.wallet(config=wallet_specific_config)
             self.subtensor = bt.subtensor(config=self.config)
             self.metagraph = self.subtensor.metagraph(self.config.netuid)
 
