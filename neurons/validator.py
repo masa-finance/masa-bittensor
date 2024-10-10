@@ -24,9 +24,6 @@ from masa.base.validator import BaseValidatorNeuron
 from masa.api.server import API
 from sentence_transformers import SentenceTransformer
 
-from masa.validator.scorer import Scorer
-from masa.validator.forwarder import Forwarder
-
 
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
@@ -34,8 +31,6 @@ class Validator(BaseValidatorNeuron):
         self.model = SentenceTransformer(
             "all-MiniLM-L6-v2"
         )  # Load a pre-trained model for embeddings
-        self.forwarder = Forwarder(self)
-        self.scorer = Scorer(self)
         if (
             hasattr(self.config, "enable_validator_api")
             and self.config.enable_validator_api

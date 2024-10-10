@@ -27,6 +27,7 @@ from masa.utils.config import check_config, add_args, config
 from masa.utils.misc import ttl_get_block
 from masa import __spec_version__ as spec_version
 from masa.mock import MockSubtensor, MockMetagraph
+from bittensor_wallet import Config
 
 # Load the .env file for each neuron that tries to run the code
 load_dotenv()
@@ -91,7 +92,12 @@ class BaseNeuron(ABC):
             self.subtensor = MockSubtensor(self.config.netuid, wallet=self.wallet)
             self.metagraph = MockMetagraph(self.config.netuid, subtensor=self.subtensor)
         else:
-            self.wallet = bt.wallet(config=self.config)
+            wallet_specific_config = Config(
+                hotkey=self.config.wallet.hotkey,
+                name=self.config.wallet.name,
+                path=self.config.wallet.path,
+            )
+            self.wallet = bt.wallet(config=wallet_specific_config)
             self.subtensor = bt.subtensor(config=self.config)
             self.metagraph = self.subtensor.metagraph(self.config.netuid)
 
@@ -108,10 +114,12 @@ class BaseNeuron(ABC):
         ).weights_version
         if self.spec_version < weights_version:
             bt.logging.warning(
-                f"🟡 Code Is Outdated! Latest: {weights_version}, Local: {self.spec_version}"
+                f"🟡 Code is outdated based on subnet requirements!  Required: {weights_version}, Current: {self.spec_version}.  Please update your code to the latest release!"
             )
         else:
-            bt.logging.success(f"🟢 Code Is Up To Date! Version: {self.spec_version}")
+            bt.logging.success(
+                f"🟢 Code is up to date based on subnet requirements: {self.spec_version}"
+            )
 
         # Each miner gets a unique identity (UID) in the network for differentiation.
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
@@ -174,31 +182,39 @@ class BaseNeuron(ABC):
         url = "https://api.github.com/repos/masa-finance/masa-bittensor/releases/latest"
         response = requests.get(url)
         data = response.json()
-        # TODO, need to somehow derive the latest commit from the release data
-        latest_commit = data["target_commitish"]
-        local_commit = subprocess.getoutput("git rev-parse HEAD")
+        latest_tag = data["tag_name"]
 
-        if local_commit != latest_commit:
-            bt.logging.info("Local code is not up to date, updating...")
-            reset_cmd = "git reset --hard " + latest_commit
-            process = subprocess.Popen(reset_cmd.split(), stdout=subprocess.PIPE)
-            output, error = process.communicate()
-
-            if error:
-                bt.logging.error("Error in updating:", error)
-            else:
-                bt.logging.success(
-                    f"Updated local repo to latest version: {latest_commit}"
+        try:
+            # Get the commit hash of the latest tag
+            latest_tag_commit = (
+                subprocess.check_output(
+                    "git rev-list -n 1 $(git describe --tags --abbrev=0)", shell=True
                 )
-                bt.logging.info("Restarting pm2 processes...")
-                # TODO, potentially improve this if the user isn't running PM2
-                restart_cmd = "pm2 restart all"
-                process = subprocess.Popen(restart_cmd.split(), stdout=subprocess.PIPE)
-                output, error = process.communicate()
+                .strip()
+                .decode("utf-8")
+            )
+            # Get the current commit hash of the branch
+            current_commit = (
+                subprocess.check_output("git rev-parse HEAD", shell=True)
+                .strip()
+                .decode("utf-8")
+            )
 
-                if error:
-                    bt.logging.error("Error in restarting pm2 processes:", error)
-                else:
-                    bt.logging.success("Successfully restarted pm2 processes!")
-        else:
-            bt.logging.info("Repo is up-to-date.")
+            if current_commit != latest_tag_commit:
+                bt.logging.warning(
+                    f"🟡 Local code is not up to date with latest tag, updating to {latest_tag}..."
+                )
+                # Fetch all tags from the remote repository
+                subprocess.run(["git", "fetch", "--tags"], check=True)
+                # Checkout the latest tag
+                subprocess.run(["git", "checkout", latest_tag], check=True)
+                # Watchfiles should now trigger...
+                bt.logging.success(
+                    f"Updated local repo to latest version: {latest_tag}"
+                )
+            else:
+                bt.logging.success(f"🟢 Code matches latest release: {latest_tag}")
+        except subprocess.CalledProcessError as e:
+            bt.logging.error(f"Subprocess error: {e}")
+        except Exception as e:
+            bt.logging.error(f"An unexpected error occurred: {e}")

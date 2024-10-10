@@ -30,6 +30,9 @@ from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_validator_args
 from masa.mock import MockDendrite
 
+from masa.validator.scorer import Scorer
+from masa.validator.forwarder import Forwarder
+
 
 class BaseValidatorNeuron(BaseNeuron):
     """
@@ -45,6 +48,9 @@ class BaseValidatorNeuron(BaseNeuron):
 
     def __init__(self, config=None):
         super().__init__(config=config)
+
+        self.forwarder = Forwarder(self)
+        self.scorer = Scorer(self)
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
@@ -160,7 +166,7 @@ class BaseValidatorNeuron(BaseNeuron):
         while not self.should_exit:
             try:
                 if self.config.neuron.auto_update:
-                    await self.auto_update()
+                    self.auto_update()
             except Exception as e:
                 bt.logging.error(f"Error running auto update: {e}")
             await asyncio.sleep(self.tempo * 12)  # note, 12 seconds per block
@@ -265,37 +271,13 @@ class BaseValidatorNeuron(BaseNeuron):
             )
 
         # Calculate the average reward for each uid across non-zero values.
-        # Replace any NaN values with 0.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
-
-        bt.logging.trace("raw_weights", raw_weights)
-        bt.logging.trace("NET UID", self.config.netuid)
-        # bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
-        # Process the raw weights to final_weights via subtensor limitations.
-        (
-            processed_weight_uids,
-            processed_weights,
-        ) = bt.utils.weight_utils.process_weights_for_netuid(
-            uids=self.metagraph.uids,
-            weights=raw_weights.to("cpu").numpy(),
-            netuid=self.config.netuid,
-            subtensor=self.subtensor,
-            metagraph=self.metagraph,
-        )
-
-        bt.logging.debug("processed_weights", processed_weights)
-        bt.logging.debug("processed_weight_uids", processed_weight_uids)
-
-        # Convert to uint16 weights and uids.
         (
             uint_uids,
             uint_weights,
         ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
-            uids=processed_weight_uids, weights=processed_weights
+            uids=self.metagraph.uids, weights=raw_weights.to("cpu").numpy()
         )
-        bt.logging.debug("uint_weights", uint_weights)
-        bt.logging.debug("uint_uids", uint_uids)
-
         # Set the weights on chain via our subtensor connection.
         result, msg = self.subtensor.set_weights(
             wallet=self.wallet,
