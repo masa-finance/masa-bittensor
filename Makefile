@@ -90,7 +90,7 @@ run-miner-3:
 
 
 run-validator:
-	python neurons/validator.py --enable_validator_api --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug
+	python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug
 
 ## Docker commands
 docker-build:
