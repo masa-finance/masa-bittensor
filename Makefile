@@ -12,12 +12,12 @@ MAINNET = network finney
 ########################################################################
 
 # SUBTENSOR_ENVIRONMENT = $(DEV_NET)
-SUBTENSOR_ENVIRONMENT = $(TESTNET)
-# SUBTENSOR_ENVIRONMENT = $(MAINNET)
+# SUBTENSOR_ENVIRONMENT = $(TESTNET)
+SUBTENSOR_ENVIRONMENT = $(MAINNET)
 
 # NETUID = 1 # devnet
-NETUID = 165 # testnet
-# NETUID = 42 # mainnet
+# NETUID = 165 # testnet
+NETUID = 42 # mainnet
 
 ########################################################################
 #####                       USEFUL COMMANDS                        #####
@@ -80,10 +80,10 @@ set-weights:
 
 ## Run miner and validator
 run-miner:
-	watchfiles "python neurons/miner.py --neuron.auto_update --blacklist.force_validator_permit --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug" .
+	watchfiles "python neurons/miner.py --blacklist.force_validator_permit --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug" .
 
 run-validator:
-	watchfiles "python neurons/validator.py --neuron.auto_update --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug" .
+	watchfiles "python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug" .
 
 ## Docker commands
 docker-build:
