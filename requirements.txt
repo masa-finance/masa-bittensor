@@ -1,4 +1,4 @@
-bittensor[sdk,cli]==8.1.1
+bittensor[btcli]==8.1.1
 loguru==0.7.2
 python-dotenv==0.21.0
 torch==2.3.0
