@@ -20,6 +20,7 @@ import bittensor as bt
 import torch
 import scipy.stats as stats
 from fastapi.responses import JSONResponse
+from masa_ai.tools.validator.main import main as validate
 
 
 class Scorer:
