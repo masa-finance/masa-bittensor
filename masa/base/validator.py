@@ -30,6 +30,9 @@ from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_validator_args
 from masa.mock import MockDendrite
 
+from masa.validator.scorer import Scorer
+from masa.validator.forwarder import Forwarder
+
 
 class BaseValidatorNeuron(BaseNeuron):
     """
@@ -45,6 +48,9 @@ class BaseValidatorNeuron(BaseNeuron):
 
     def __init__(self, config=None):
         super().__init__(config=config)
+
+        self.forwarder = Forwarder(self)
+        self.scorer = Scorer(self)
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
@@ -160,7 +166,7 @@ class BaseValidatorNeuron(BaseNeuron):
         while not self.should_exit:
             try:
                 if self.config.neuron.auto_update:
-                    await self.auto_update()
+                    self.auto_update()
             except Exception as e:
                 bt.logging.error(f"Error running auto update: {e}")
             await asyncio.sleep(self.tempo * 12)  # note, 12 seconds per block
