@@ -108,7 +108,7 @@ class BaseNeuron(ABC):
         ).weights_version
         if self.spec_version < weights_version:
             bt.logging.warning(
-                f"🟡 Code version required by hyperparameter is not met!  Required: {weights_version}, Current: {self.spec_version}"
+                f"🟡 Code version required by hyperparameter is not met!  Required: {weights_version}, Current: {self.spec_version}.  Please update your code to the latest release!"
             )
         else:
             bt.logging.success(
@@ -172,8 +172,7 @@ class BaseNeuron(ABC):
             self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"  # don't set weights if you're a miner
 
-    # TODO ask about async / await in python
-    async def auto_update(self):
+    def auto_update(self):
         url = "https://api.github.com/repos/masa-finance/masa-bittensor/releases/latest"
         response = requests.get(url)
         data = response.json()
@@ -197,7 +196,7 @@ class BaseNeuron(ABC):
 
             if current_commit != latest_tag_commit:
                 bt.logging.warning(
-                    f"Local code is not up to date (local commit: {current_commit}, latest tag commit: {latest_tag_commit}), updating..."
+                    f"🟡 Local code is not up to date with latest tag, updating to {latest_tag}..."
                 )
                 # Fetch all tags from the remote repository
                 subprocess.run(["git", "fetch", "--tags"], check=True)
@@ -208,7 +207,7 @@ class BaseNeuron(ABC):
                     f"Updated local repo to latest version: {latest_tag}"
                 )
             else:
-                bt.logging.success("Repo is up-to-date.")
+                bt.logging.success(f"🟢 Code matches latest release: {latest_tag}")
         except subprocess.CalledProcessError as e:
             bt.logging.error(f"Subprocess error: {e}")
         except Exception as e:
