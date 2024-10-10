@@ -266,37 +266,17 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Calculate the average reward for each uid across non-zero values.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
-
-        # Process the raw weights to final_weights via subtensor limitations.
-        # return
-        # (
-        #     processed_weight_uids,
-        #     processed_weights,
-        # ) = bt.utils.weight_utils.process_weights_for_netuid(
-        #     uids=self.metagraph.uids,
-        #     weights=raw_weights.to("cpu").numpy(),
-        #     netuid=self.config.netuid,
-        #     subtensor=self.subtensor,
-        #     metagraph=self.metagraph,
-        # )
-
-        # # Convert to uint16 weights and uids.
         (
             uint_uids,
             uint_weights,
         ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
             uids=self.metagraph.uids, weights=raw_weights.to("cpu").numpy()
         )
-        # bt.logging.debug("uint_weights", uint_weights)
-        # bt.logging.debug("uint_uids", uint_uids)
-
         # Set the weights on chain via our subtensor connection.
         result, msg = self.subtensor.set_weights(
             wallet=self.wallet,
             netuid=self.config.netuid,
             uids=uint_uids,
-            # uids=self.metagraph.uids,
-            # weights=raw_weights,
             weights=uint_weights,
             wait_for_finalization=False,
             wait_for_inclusion=False,
