@@ -190,6 +190,6 @@ def process_weights_for_netuid(
     normalized_weights = normalize_max_weight(
         x=non_zero_weights, limit=max_weight_limit
     )
-    bt.logging.success("final_weights", normalized_weights)
+    bt.logging.info("final_weights", normalized_weights)
 
     return non_zero_weight_uids, normalized_weights
