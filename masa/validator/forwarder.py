@@ -259,6 +259,7 @@ class Forwarder:
 
     def check_tempo(self) -> bool:
         if self.validator.last_tempo_block == 0:
+            self.validator.last_tempo_block = self.validator.subtensor.block
             return True
 
         tempo = self.validator.tempo
