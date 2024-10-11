@@ -99,7 +99,7 @@ class BaseValidatorNeuron(BaseNeuron):
             },
             Error={"details": "", "error": "", "workerPeerId": ""},
         )
-        self.example_tweet_embedding = self.validator.model.encode(str(example_tweet))
+        self.example_tweet_embedding = self.model.encode(str(example_tweet))
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
