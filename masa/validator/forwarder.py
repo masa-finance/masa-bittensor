@@ -167,6 +167,9 @@ class Forwarder:
         for response, uid in zip(responses, miner_uids):
             valid_tweets = []
             all_responses = dict(response).get("response", [])
+            if not all_responses:
+                continue
+
             unique_tweets_response = []
             existing_ids = set()
             for resp in all_responses:
