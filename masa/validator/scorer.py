@@ -20,7 +20,6 @@ import bittensor as bt
 import torch
 import scipy.stats as stats
 from fastapi.responses import JSONResponse
-from masa_ai.tools.validator.main import main as validate
 
 
 class Scorer:
@@ -41,8 +40,6 @@ class Scorer:
         self.validator.volumes[-1]["miners"][miner_uid] += volume
 
     async def score_miner_volumes(self):
-        if not hasattr(self.validator, "scorer"):
-            return
         volumes = self.validator.volumes
 
         miner_volumes = {}

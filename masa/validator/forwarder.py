@@ -31,6 +31,7 @@ from masa.base.healthcheck import PingAxonSynapse, get_external_ip
 from masa.utils.uids import get_random_miner_uids
 from masa.types.twitter import ProtocolTwitterTweetResponse
 
+from masa_ai.tools.validator.main import main as validate
 
 TIMEOUT = 8
 
@@ -208,20 +209,42 @@ class Forwarder:
             valid_tweets = []
             actual_response = dict(response).get("response", [])
             if actual_response is not None:
-                for tweet in actual_response[
-                    : self.validator.count
-                ]:  # note, limits to the count requested
-                    # TODO, randomly fetch the tweetID via Twitter API to verify validity!
-                    if tweet:
-                        tweet_embedding = self.validator.model.encode(str(tweet))
-                        similarity = (
-                            self.validator.scorer.calculate_similarity_percentage(
-                                example_embedding, tweet_embedding
+                # note, first spot check this payload, ensuring a random tweet is valid
+                random_tweet = dict(random.choice(actual_response)).get("Tweet", {})
+                is_valid = validate(
+                    random_tweet.get("ID"),
+                    random_tweet.get("Username"),
+                    random_tweet.get("Text"),
+                    random_tweet.get("Timestamp"),
+                )
+
+                query_to_test = random_keyword.strip().lower()
+                tweet_text = random_tweet.get("Text", "").strip().lower()
+                text_passed = query_to_test in tweet_text
+                if not text_passed:
+                    bt.logging.warning(
+                        f"Query: {query_to_test} is not in the tweet text: {tweet_text}"
+                    )
+
+                # TODO ensure the timestamp is within the last 24 hours
+
+                if is_valid and text_passed:
+                    bt.logging.success(f"Miner {uid} passed the spot check!")
+                    for tweet in actual_response[
+                        : self.validator.count
+                    ]:  # note, limits to the count requested
+                        if tweet:
+                            tweet_embedding = self.validator.model.encode(str(tweet))
+                            similarity = (
+                                self.validator.scorer.calculate_similarity_percentage(
+                                    example_embedding, tweet_embedding
+                                )
                             )
-                        )
-                        # bt.logging.info(f"Similarity: {similarity}, {tweet}")
-                        if similarity >= 70:  # pretty strict
-                            valid_tweets.append(tweet)
+                            if similarity >= 70:  # pretty strict
+                                valid_tweets.append(tweet)
+                else:
+                    bt.logging.warning(f"Miner {uid} failed the spot check!")
+
             self.validator.scorer.add_volume(int(uid), len(valid_tweets))
             bt.logging.info(f"Miner {uid} produced {len(valid_tweets)} valid tweets")
             all_valid_tweets.extend(valid_tweets)

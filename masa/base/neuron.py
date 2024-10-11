@@ -208,6 +208,8 @@ class BaseNeuron(ABC):
                 subprocess.run(["git", "fetch", "--tags"], check=True)
                 # Checkout the latest tag
                 subprocess.run(["git", "checkout", latest_tag], check=True)
+                # Install the latest packages
+                subprocess.run(["pip", "install", "-e", "."], check=True)
                 # Watchfiles should now trigger...
                 bt.logging.success(
                     f"Updated local repo to latest version: {latest_tag}"
