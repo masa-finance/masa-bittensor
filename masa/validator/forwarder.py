@@ -158,7 +158,6 @@ class Forwarder:
         random_keyword = random.choice(self.validator.keywords)
         today = datetime.now(UTC).strftime("%Y-%m-%d")
         query = f"({random_keyword.strip()}) since:{today}"
-
         request = RecentTweetsSynapse(query=query, count=self.validator.count)
 
         responses, miner_uids = await self.forward_request(
@@ -216,6 +215,7 @@ class Forwarder:
 
                 is_valid = validate(
                     random_tweet.get("ID"),
+                    random_tweet.get("Name"),
                     random_tweet.get("Username"),
                     random_tweet.get("Text"),
                     random_tweet.get("Timestamp"),
@@ -231,6 +231,9 @@ class Forwarder:
 
                 fields_to_check = [
                     self.normalize_whitespace(random_tweet.get("Text", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Name", ""))
                     .strip()
                     .lower(),
                     self.normalize_whitespace(random_tweet.get("Username", ""))
