@@ -40,6 +40,46 @@ TIMEOUT = 8
 class Forwarder:
     def __init__(self, validator):
         self.validator = validator
+        example_tweet = ProtocolTwitterTweetResponse(
+            Tweet={
+                "ConversationID": "",
+                "GIFs": None,
+                "Hashtags": None,
+                "HTML": "",
+                "ID": "",
+                "InReplyToStatus": None,
+                "InReplyToStatusID": None,
+                "IsQuoted": False,
+                "IsPin": False,
+                "IsReply": False,
+                "IsRetweet": False,
+                "IsSelfThread": False,
+                "Likes": 0,
+                "Mentions": None,
+                "Name": "",
+                "PermanentURL": "",
+                "Photos": None,
+                "Place": None,
+                "QuotedStatus": None,
+                "QuotedStatusID": None,
+                "Replies": 0,
+                "Retweets": 0,
+                "RetweetedStatus": None,
+                "RetweetedStatusID": None,
+                "Text": "",
+                "Thread": None,
+                "TimeParsed": "",
+                "Timestamp": 0,
+                "URLs": None,
+                "UserID": "",
+                "Username": "",
+                "Videos": None,
+                "Views": 0,
+                "SensitiveContent": False,
+            },
+            Error={"details": "", "error": "", "workerPeerId": ""},
+        )
+        self.example_embedding = self.validator.model.encode(str(example_tweet))
 
     async def forward_request(
         self, request: Any, sample_size: int, timeout: int = TIMEOUT
@@ -164,47 +204,6 @@ class Forwarder:
             request, sample_size=self.validator.config.neuron.sample_size_volume
         )
 
-        example_tweet = ProtocolTwitterTweetResponse(
-            Tweet={
-                "ConversationID": "",
-                "GIFs": None,
-                "Hashtags": None,
-                "HTML": "",
-                "ID": "",
-                "InReplyToStatus": None,
-                "InReplyToStatusID": None,
-                "IsQuoted": False,
-                "IsPin": False,
-                "IsReply": False,
-                "IsRetweet": False,
-                "IsSelfThread": False,
-                "Likes": 0,
-                "Mentions": None,
-                "Name": "",
-                "PermanentURL": "",
-                "Photos": None,
-                "Place": None,
-                "QuotedStatus": None,
-                "QuotedStatusID": None,
-                "Replies": 0,
-                "Retweets": 0,
-                "RetweetedStatus": None,
-                "RetweetedStatusID": None,
-                "Text": "",
-                "Thread": None,
-                "TimeParsed": "",
-                "Timestamp": 0,
-                "URLs": None,
-                "UserID": "",
-                "Username": "",
-                "Videos": None,
-                "Views": 0,
-                "SensitiveContent": False,
-            },
-            Error={"details": "", "error": "", "workerPeerId": ""},
-        )
-        example_embedding = self.validator.model.encode(str(example_tweet))
-
         all_valid_tweets = []
         for response, uid in zip(responses, miner_uids):
             valid_tweets = []
@@ -292,7 +291,7 @@ class Forwarder:
                             tweet_embedding = self.validator.model.encode(str(tweet))
                             similarity = (
                                 self.validator.scorer.calculate_similarity_percentage(
-                                    example_embedding, tweet_embedding
+                                    self.example_embedding, tweet_embedding
                                 )
                             )
                             if similarity >= 70:  # pretty strict
