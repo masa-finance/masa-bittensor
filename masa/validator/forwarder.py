@@ -208,7 +208,15 @@ class Forwarder:
         all_valid_tweets = []
         for response, uid in zip(responses, miner_uids):
             valid_tweets = []
-            actual_response = dict(response).get("response", [])
+            all_responses = dict(response).get("response", [])
+            actual_response = []
+            existing_ids = set()
+            for resp in all_responses:
+                tweet_id = resp.get("Tweet", {}).get("ID")
+                if tweet_id and tweet_id not in existing_ids:
+                    actual_response.append(resp)
+                    existing_ids.add(tweet_id)
+
             if actual_response is not None:
                 # note, first spot check this payload, ensuring a random tweet is valid
                 random_tweet = dict(random.choice(actual_response)).get("Tweet", {})
