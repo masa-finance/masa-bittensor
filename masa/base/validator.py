@@ -34,8 +34,9 @@ from masa.validator.scorer import Scorer
 from masa.validator.forwarder import Forwarder
 from sentence_transformers import SentenceTransformer
 
-# from masa.validator.utils import process_weights_for_netuid
-from bittensor.utils.weight_utils import process_weights_for_netuid
+from masa.validator.utils import process_weights_for_netuid
+
+# from bittensor.utils.weight_utils import process_weights_for_netuid
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -280,6 +281,8 @@ class BaseValidatorNeuron(BaseNeuron):
         # Calculate the average reward for each uid across non-zero values.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
 
+        # note, we use a ported version of the bittensor function here, located in utils.py
+        # note, otherwise, getting: Boolean value of Tensor with more than one value is ambiguous
         (
             processed_weight_uids,
             processed_weights,

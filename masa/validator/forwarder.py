@@ -18,10 +18,11 @@
 
 import bittensor as bt
 from typing import Any
-from datetime import datetime
+from datetime import datetime, UTC
 import aiohttp
 import random
 import json
+import re
 
 from masa.miner.twitter.tweets import RecentTweetsSynapse
 from masa.miner.twitter.profile import TwitterProfileSynapse
@@ -155,10 +156,13 @@ class Forwarder:
             await self.fetch_twitter_config()
 
         random_keyword = random.choice(self.validator.keywords)
-        query = (
-            f"({random_keyword.strip()}) since:{datetime.now().strftime('%Y-%m-%d')}"
-        )
-        request = RecentTweetsSynapse(query=query, count=self.validator.count)
+        today = datetime.now().strftime("%Y-%m-%d")
+        query = f"({random_keyword.strip()}) since:{today}"
+
+        # TODO reset count
+        request = RecentTweetsSynapse(query=query, count=10)
+        # request = RecentTweetsSynapse(query=query, count=self.validator.count)
+
         responses, miner_uids = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size_volume
         )
@@ -211,6 +215,8 @@ class Forwarder:
             if actual_response is not None:
                 # note, first spot check this payload, ensuring a random tweet is valid
                 random_tweet = dict(random.choice(actual_response)).get("Tweet", {})
+
+                # TODO, add Name, Hashtags, and Mentions to the validation
                 is_valid = validate(
                     random_tweet.get("ID"),
                     random_tweet.get("Username"),
@@ -218,18 +224,45 @@ class Forwarder:
                     random_tweet.get("Timestamp"),
                 )
 
-                query_to_test = random_keyword.strip().lower().replace('"', "")
-                tweet_text = random_tweet.get("Text", "").strip().lower()
-                text_passed = query_to_test in tweet_text
-                if not text_passed:
+                query_to_test = re.sub(r"[^\w\s]", "", random_keyword).strip().lower()
+
+                fields_to_check = [
+                    random_tweet.get("Text", "").strip().lower(),
+                    random_tweet.get("Name", "").strip().lower(),
+                    random_tweet.get("Username", "").strip().lower(),
+                    str(random_tweet.get("Hashtags", [])).strip().lower(),
+                    str(random_tweet.get("Mentions", [])).strip().lower(),
+                ]
+
+                query_in_tweet = any(
+                    query_to_test in field for field in fields_to_check
+                )
+
+                if not query_in_tweet:
                     bt.logging.warning(
-                        f"Query: {query_to_test} is not in the tweet text: {tweet_text}"
+                        f"Query: {query_to_test} is not in the tweet: {fields_to_check}"
                     )
 
-                # TODO ensure the timestamp is within the last 24 hours
+                tweet_timestamp = datetime.fromtimestamp(
+                    random_tweet.get("Timestamp", 0)
+                )
 
-                if is_valid and text_passed:
-                    bt.logging.success(f"Miner {uid} passed the spot check!")
+                today = datetime.now(UTC)
+                is_same_day = (
+                    tweet_timestamp.year == today.year
+                    and tweet_timestamp.month == today.month
+                    and tweet_timestamp.day == today.day
+                )
+
+                if not is_same_day:
+                    bt.logging.warning(
+                        f"Tweet timestamp {tweet_timestamp} is not from today {today}"
+                    )
+
+                if is_valid and query_in_tweet and is_same_day:
+                    bt.logging.success(
+                        f"Miner {uid} passed the spot check with query: {query_to_test}"
+                    )
                     for tweet in actual_response[
                         : self.validator.count
                     ]:  # note, limits to the count requested
