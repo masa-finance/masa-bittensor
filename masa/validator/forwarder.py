@@ -209,17 +209,19 @@ class Forwarder:
         for response, uid in zip(responses, miner_uids):
             valid_tweets = []
             all_responses = dict(response).get("response", [])
-            actual_response = []
+            unique_tweets_response = []
             existing_ids = set()
             for resp in all_responses:
                 tweet_id = resp.get("Tweet", {}).get("ID")
                 if tweet_id and tweet_id not in existing_ids:
-                    actual_response.append(resp)
+                    unique_tweets_response.append(resp)
                     existing_ids.add(tweet_id)
 
-            if actual_response is not None:
+            if unique_tweets_response is not None:
                 # note, first spot check this payload, ensuring a random tweet is valid
-                random_tweet = dict(random.choice(actual_response)).get("Tweet", {})
+                random_tweet = dict(random.choice(unique_tweets_response)).get(
+                    "Tweet", {}
+                )
 
                 is_valid = validate(
                     random_tweet.get("ID"),
@@ -283,7 +285,7 @@ class Forwarder:
                     bt.logging.success(
                         f"Miner {uid} passed the spot check with query: {random_keyword}"
                     )
-                    for tweet in actual_response[
+                    for tweet in unique_tweets_response[
                         : self.validator.count
                     ]:  # note, limits to the count requested
                         if tweet:
