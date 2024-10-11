@@ -250,7 +250,8 @@ class Forwarder:
                             tweet_embedding = self.validator.model.encode(str(tweet))
                             similarity = (
                                 self.validator.scorer.calculate_similarity_percentage(
-                                    self.example_tweet_embedding, tweet_embedding
+                                    self.validator.example_tweet_embedding,
+                                    tweet_embedding,
                                 )
                             )
                             if similarity >= 70:  # pretty strict
