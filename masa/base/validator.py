@@ -32,6 +32,10 @@ from masa.mock import MockDendrite
 
 from masa.validator.scorer import Scorer
 from masa.validator.forwarder import Forwarder
+from sentence_transformers import SentenceTransformer
+
+# from masa.validator.utils import process_weights_for_netuid
+from bittensor.utils.weight_utils import process_weights_for_netuid
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -51,6 +55,9 @@ class BaseValidatorNeuron(BaseNeuron):
 
         self.forwarder = Forwarder(self)
         self.scorer = Scorer(self)
+        self.model = SentenceTransformer(
+            "all-MiniLM-L6-v2"
+        )  # Load a pre-trained model for embeddings
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
@@ -272,11 +279,23 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Calculate the average reward for each uid across non-zero values.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
+
+        (
+            processed_weight_uids,
+            processed_weights,
+        ) = process_weights_for_netuid(
+            uids=self.metagraph.uids,
+            weights=raw_weights.to("cpu").numpy(),
+            netuid=self.config.netuid,
+            subtensor=self.subtensor,
+            metagraph=self.metagraph,
+        )
+
         (
             uint_uids,
             uint_weights,
         ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
-            uids=self.metagraph.uids, weights=raw_weights.to("cpu").numpy()
+            uids=processed_weight_uids, weights=processed_weights
         )
         # Set the weights on chain via our subtensor connection.
         result, msg = self.subtensor.set_weights(

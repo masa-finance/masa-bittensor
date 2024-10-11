@@ -218,7 +218,7 @@ class Forwarder:
                     random_tweet.get("Timestamp"),
                 )
 
-                query_to_test = random_keyword.strip().lower()
+                query_to_test = random_keyword.strip().lower().replace('"', "")
                 tweet_text = random_tweet.get("Text", "").strip().lower()
                 text_passed = query_to_test in tweet_text
                 if not text_passed:
