@@ -34,6 +34,7 @@ from masa.validator.scorer import Scorer
 from masa.validator.forwarder import Forwarder
 from sentence_transformers import SentenceTransformer
 
+from masa.types.twitter import ProtocolTwitterTweetResponse
 from masa.validator.utils import process_weights_for_netuid
 
 # from bittensor.utils.weight_utils import process_weights_for_netuid
@@ -59,6 +60,46 @@ class BaseValidatorNeuron(BaseNeuron):
         self.model = SentenceTransformer(
             "all-MiniLM-L6-v2"
         )  # Load a pre-trained model for embeddings
+        example_tweet = ProtocolTwitterTweetResponse(
+            Tweet={
+                "ConversationID": "",
+                "GIFs": None,
+                "Hashtags": None,
+                "HTML": "",
+                "ID": "",
+                "InReplyToStatus": None,
+                "InReplyToStatusID": None,
+                "IsQuoted": False,
+                "IsPin": False,
+                "IsReply": False,
+                "IsRetweet": False,
+                "IsSelfThread": False,
+                "Likes": 0,
+                "Mentions": None,
+                "Name": "",
+                "PermanentURL": "",
+                "Photos": None,
+                "Place": None,
+                "QuotedStatus": None,
+                "QuotedStatusID": None,
+                "Replies": 0,
+                "Retweets": 0,
+                "RetweetedStatus": None,
+                "RetweetedStatusID": None,
+                "Text": "",
+                "Thread": None,
+                "TimeParsed": "",
+                "Timestamp": 0,
+                "URLs": None,
+                "UserID": "",
+                "Username": "",
+                "Videos": None,
+                "Views": 0,
+                "SensitiveContent": False,
+            },
+            Error={"details": "", "error": "", "workerPeerId": ""},
+        )
+        self.example_tweet_embedding = self.validator.model.encode(str(example_tweet))
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
