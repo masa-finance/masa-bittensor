@@ -159,9 +159,7 @@ class Forwarder:
         today = datetime.now(UTC).strftime("%Y-%m-%d")
         query = f"({random_keyword.strip()}) since:{today}"
 
-        # TODO reset count
-        request = RecentTweetsSynapse(query=query, count=10)
-        # request = RecentTweetsSynapse(query=query, count=self.validator.count)
+        request = RecentTweetsSynapse(query=query, count=self.validator.count)
 
         responses, miner_uids = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size_volume
@@ -216,31 +214,41 @@ class Forwarder:
                 # note, first spot check this payload, ensuring a random tweet is valid
                 random_tweet = dict(random.choice(actual_response)).get("Tweet", {})
 
-                # TODO, add Name, Hashtags, and Mentions to the validation
                 is_valid = validate(
                     random_tweet.get("ID"),
                     random_tweet.get("Username"),
                     random_tweet.get("Text"),
                     random_tweet.get("Timestamp"),
+                    random_tweet.get("Hashtags"),
                 )
 
-                query_to_test = re.sub(r"[^\w\s]", "", random_keyword).strip().lower()
+                query_words = (
+                    self.normalize_whitespace(random_keyword.replace('"', ""))
+                    .strip()
+                    .lower()
+                    .split()
+                )
 
                 fields_to_check = [
-                    random_tweet.get("Text", "").strip().lower(),
-                    random_tweet.get("Name", "").strip().lower(),
-                    random_tweet.get("Username", "").strip().lower(),
-                    str(random_tweet.get("Hashtags", [])).strip().lower(),
-                    str(random_tweet.get("Mentions", [])).strip().lower(),
+                    self.normalize_whitespace(random_tweet.get("Text", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Username", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
+                    .strip()
+                    .lower(),
                 ]
 
-                query_in_tweet = any(
-                    query_to_test in field for field in fields_to_check
+                query_in_tweet = all(
+                    any(word in field for field in fields_to_check)
+                    for word in query_words
                 )
 
                 if not query_in_tweet:
                     bt.logging.warning(
-                        f"Query: {query_to_test} is not in the tweet: {fields_to_check}"
+                        f"Query: {random_keyword} is not in the tweet: {fields_to_check}"
                     )
 
                 tweet_timestamp = datetime.fromtimestamp(
@@ -259,9 +267,10 @@ class Forwarder:
                         f"Tweet timestamp {tweet_timestamp} is not from today {today}"
                     )
 
+                # note, they passed the spot check!
                 if is_valid and query_in_tweet and is_same_day:
                     bt.logging.success(
-                        f"Miner {uid} passed the spot check with query: {query_to_test}"
+                        f"Miner {uid} passed the spot check with query: {random_keyword}"
                     )
                     for tweet in actual_response[
                         : self.validator.count
@@ -327,3 +336,6 @@ class Forwarder:
             return True
         else:
             return False
+
+    def normalize_whitespace(self, s: str) -> str:
+        return " ".join(s.split())

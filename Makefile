@@ -12,12 +12,12 @@ MAINNET = network finney
 ########################################################################
 
 # SUBTENSOR_ENVIRONMENT = $(DEV_NET)
-# SUBTENSOR_ENVIRONMENT = $(TESTNET)
-SUBTENSOR_ENVIRONMENT = $(MAINNET)
+SUBTENSOR_ENVIRONMENT = $(TESTNET)
+# SUBTENSOR_ENVIRONMENT = $(MAINNET)
 
 # NETUID = 1 # devnet
-# NETUID = 165 # testnet
-NETUID = 42 # mainnet
+NETUID = 165 # testnet
+# NETUID = 42 # mainnet
 
 ########################################################################
 #####                       USEFUL COMMANDS                        #####
