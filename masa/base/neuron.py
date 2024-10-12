@@ -117,9 +117,7 @@ class BaseNeuron(ABC):
                 f"🟡 Code is outdated based on subnet requirements!  Required: {weights_version}, Current: {self.spec_version}.  Please update your code to the latest release!"
             )
         else:
-            bt.logging.success(
-                f"🟢 Code is up to date based on subnet requirements: {self.spec_version}"
-            )
+            bt.logging.success(f"🟢 Code is up to date based on subnet requirements!")
 
         # Each miner gets a unique identity (UID) in the network for differentiation.
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
@@ -208,6 +206,8 @@ class BaseNeuron(ABC):
                 subprocess.run(["git", "fetch", "--tags"], check=True)
                 # Checkout the latest tag
                 subprocess.run(["git", "checkout", latest_tag], check=True)
+                # Install the latest packages
+                subprocess.run(["pip", "install", "-e", "."], check=True)
                 # Watchfiles should now trigger...
                 bt.logging.success(
                     f"Updated local repo to latest version: {latest_tag}"
