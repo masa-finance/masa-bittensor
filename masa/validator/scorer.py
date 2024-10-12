@@ -40,8 +40,6 @@ class Scorer:
         self.validator.volumes[-1]["miners"][miner_uid] += volume
 
     async def score_miner_volumes(self):
-        if not hasattr(self.validator, "scorer"):
-            return
         volumes = self.validator.volumes
 
         miner_volumes = {}

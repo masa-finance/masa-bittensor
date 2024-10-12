@@ -18,10 +18,11 @@
 
 import bittensor as bt
 from typing import Any
-from datetime import datetime
+from datetime import datetime, UTC
 import aiohttp
 import random
 import json
+import re
 
 from masa.miner.twitter.tweets import RecentTweetsSynapse
 from masa.miner.twitter.profile import TwitterProfileSynapse
@@ -29,8 +30,8 @@ from masa.miner.twitter.followers import TwitterFollowersSynapse
 
 from masa.base.healthcheck import PingAxonSynapse, get_external_ip
 from masa.utils.uids import get_random_miner_uids
-from masa.types.twitter import ProtocolTwitterTweetResponse
 
+from masa_ai.tools.validator.main import main as validate
 
 TIMEOUT = 8
 
@@ -154,74 +155,113 @@ class Forwarder:
             await self.fetch_twitter_config()
 
         random_keyword = random.choice(self.validator.keywords)
-        query = (
-            f"({random_keyword.strip()}) since:{datetime.now().strftime('%Y-%m-%d')}"
-        )
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        query = f"({random_keyword.strip()}) since:{today}"
         request = RecentTweetsSynapse(query=query, count=self.validator.count)
+
         responses, miner_uids = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size_volume
         )
 
-        example_tweet = ProtocolTwitterTweetResponse(
-            Tweet={
-                "ConversationID": "",
-                "GIFs": None,
-                "Hashtags": None,
-                "HTML": "",
-                "ID": "",
-                "InReplyToStatus": None,
-                "InReplyToStatusID": None,
-                "IsQuoted": False,
-                "IsPin": False,
-                "IsReply": False,
-                "IsRetweet": False,
-                "IsSelfThread": False,
-                "Likes": 0,
-                "Mentions": None,
-                "Name": "",
-                "PermanentURL": "",
-                "Photos": None,
-                "Place": None,
-                "QuotedStatus": None,
-                "QuotedStatusID": None,
-                "Replies": 0,
-                "Retweets": 0,
-                "RetweetedStatus": None,
-                "RetweetedStatusID": None,
-                "Text": "",
-                "Thread": None,
-                "TimeParsed": "",
-                "Timestamp": 0,
-                "URLs": None,
-                "UserID": "",
-                "Username": "",
-                "Videos": None,
-                "Views": 0,
-                "SensitiveContent": False,
-            },
-            Error={"details": "", "error": "", "workerPeerId": ""},
-        )
-        example_embedding = self.validator.model.encode(str(example_tweet))
-
         all_valid_tweets = []
         for response, uid in zip(responses, miner_uids):
             valid_tweets = []
-            actual_response = dict(response).get("response", [])
-            if actual_response is not None:
-                for tweet in actual_response[
-                    : self.validator.count
-                ]:  # note, limits to the count requested
-                    # TODO, randomly fetch the tweetID via Twitter API to verify validity!
-                    if tweet:
-                        tweet_embedding = self.validator.model.encode(str(tweet))
-                        similarity = (
-                            self.validator.scorer.calculate_similarity_percentage(
-                                example_embedding, tweet_embedding
+            all_responses = dict(response).get("response", [])
+            if not all_responses:
+                continue
+
+            unique_tweets_response = []
+            existing_ids = set()
+            for resp in all_responses:
+                tweet_id = resp.get("Tweet", {}).get("ID")
+                if tweet_id and tweet_id not in existing_ids:
+                    unique_tweets_response.append(resp)
+                    existing_ids.add(tweet_id)
+
+            if unique_tweets_response is not None:
+                # note, first spot check this payload, ensuring a random tweet is valid
+                random_tweet = dict(random.choice(unique_tweets_response)).get(
+                    "Tweet", {}
+                )
+
+                is_valid = validate(
+                    random_tweet.get("ID"),
+                    random_tweet.get("Name"),
+                    random_tweet.get("Username"),
+                    random_tweet.get("Text"),
+                    random_tweet.get("Timestamp"),
+                    random_tweet.get("Hashtags"),
+                )
+
+                query_words = (
+                    self.normalize_whitespace(random_keyword.replace('"', ""))
+                    .strip()
+                    .lower()
+                    .split()
+                )
+
+                fields_to_check = [
+                    self.normalize_whitespace(random_tweet.get("Text", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Name", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Username", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
+                    .strip()
+                    .lower(),
+                ]
+
+                query_in_tweet = all(
+                    any(word in field for field in fields_to_check)
+                    for word in query_words
+                )
+
+                if not query_in_tweet:
+                    bt.logging.warning(
+                        f"Query: {random_keyword} is not in the tweet: {fields_to_check}"
+                    )
+
+                tweet_timestamp = datetime.fromtimestamp(
+                    random_tweet.get("Timestamp", 0), UTC
+                )
+
+                today = datetime.now(UTC)
+                is_same_day = (
+                    tweet_timestamp.year == today.year
+                    and tweet_timestamp.month == today.month
+                    and tweet_timestamp.day == today.day
+                )
+
+                if not is_same_day:
+                    bt.logging.warning(
+                        f"Tweet timestamp {tweet_timestamp} is not from today {today}"
+                    )
+
+                # note, they passed the spot check!
+                if is_valid and query_in_tweet and is_same_day:
+                    bt.logging.success(
+                        f"Miner {uid} passed the spot check with query: {random_keyword}"
+                    )
+                    for tweet in unique_tweets_response[
+                        : self.validator.count
+                    ]:  # note, limits to the count requested
+                        if tweet:
+                            tweet_embedding = self.validator.model.encode(str(tweet))
+                            similarity = (
+                                self.validator.scorer.calculate_similarity_percentage(
+                                    self.validator.example_tweet_embedding,
+                                    tweet_embedding,
+                                )
                             )
-                        )
-                        # bt.logging.info(f"Similarity: {similarity}, {tweet}")
-                        if similarity >= 70:  # pretty strict
-                            valid_tweets.append(tweet)
+                            if similarity >= 70:  # pretty strict
+                                valid_tweets.append(tweet)
+                else:
+                    bt.logging.warning(f"Miner {uid} failed the spot check!")
+
             self.validator.scorer.add_volume(int(uid), len(valid_tweets))
             bt.logging.info(f"Miner {uid} produced {len(valid_tweets)} valid tweets")
             all_valid_tweets.extend(valid_tweets)
@@ -271,3 +311,6 @@ class Forwarder:
             return True
         else:
             return False
+
+    def normalize_whitespace(self, s: str) -> str:
+        return " ".join(s.split())
