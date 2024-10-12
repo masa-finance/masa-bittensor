@@ -155,7 +155,7 @@ class Forwarder:
             await self.fetch_twitter_config()
 
         random_keyword = random.choice(self.validator.keywords)
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
         query = f"({random_keyword.strip()}) since:{today}"
         request = RecentTweetsSynapse(query=query, count=self.validator.count)
 
@@ -226,7 +226,7 @@ class Forwarder:
                     )
 
                 tweet_timestamp = datetime.fromtimestamp(
-                    random_tweet.get("Timestamp", 0)
+                    random_tweet.get("Timestamp", 0), UTC
                 )
 
                 today = datetime.now(UTC)
