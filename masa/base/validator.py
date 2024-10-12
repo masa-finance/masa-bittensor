@@ -327,7 +327,7 @@ class BaseValidatorNeuron(BaseNeuron):
             processed_weight_uids,
             processed_weights,
         ) = process_weights_for_netuid(
-            uids=torch.tensor(self.metagraph.uids).to("cpu"),
+            uids=self.metagraph.uids,
             weights=raw_weights.to("cpu").numpy(),
             netuid=self.config.netuid,
             subtensor=self.subtensor,
