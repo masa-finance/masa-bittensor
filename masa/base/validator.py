@@ -35,9 +35,8 @@ from masa.validator.forwarder import Forwarder
 from sentence_transformers import SentenceTransformer
 
 from masa.types.twitter import ProtocolTwitterTweetResponse
-from masa.validator.utils import process_weights_for_netuid
 
-# from bittensor.utils.weight_utils import process_weights_for_netuid
+from masa.validator.utils import process_weights_for_netuid
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -328,7 +327,7 @@ class BaseValidatorNeuron(BaseNeuron):
             processed_weight_uids,
             processed_weights,
         ) = process_weights_for_netuid(
-            uids=self.metagraph.uids,
+            uids=torch.tensor(self.metagraph.uids).to("cpu"),
             weights=raw_weights.to("cpu").numpy(),
             netuid=self.config.netuid,
             subtensor=self.subtensor,

@@ -23,65 +23,16 @@ import numpy as np
 from numpy.typing import NDArray
 
 import bittensor as bt
-from bittensor.utils.registration import legacy_torch_api_compat, torch, use_torch
+from bittensor.utils.registration import torch, use_torch
 
 
 U16_MAX = 65535
 
 
-# Uses in `bittensor.utils.weight_utils.process_weights_for_netuid`
-@legacy_torch_api_compat
-def normalize_max_weight(
-    x: Union[NDArray[np.float32], "torch.FloatTensor"], limit: float = 0.1
-) -> Union[NDArray[np.float32], "torch.FloatTensor"]:
-    """Normalizes the tensor x so that sum(x) = 1 and the max value is not greater than the limit.
-    Args:
-        x (:obj:`np.float32`): Tensor to be max_value normalized.
-        limit: float: Max value after normalization.
-
-    Returns:
-        y (:obj:`np.float32`): Normalized x tensor.
-    """
-    epsilon = 1e-7  # For numerical stability after normalization
-
-    weights = x.copy()
-    values = np.sort(weights)
-
-    if x.sum() == 0 or x.shape[0] * limit <= 1:
-        return np.ones_like(x) / x.shape[0]
-    else:
-        estimation = values / values.sum()
-
-        if estimation.max() <= limit:
-            return weights / weights.sum()
-
-        # Find the cumulative sum and sorted tensor
-        cumsum = np.cumsum(estimation, 0)
-
-        # Determine the index of cutoff
-        estimation_sum = np.array(
-            [(len(values) - i - 1) * estimation[i] for i in range(len(values))]
-        )
-        n_values = (estimation / (estimation_sum + cumsum + epsilon) < limit).sum()
-
-        # Determine the cutoff based on the index
-        cutoff_scale = (limit * cumsum[n_values - 1] - epsilon) / (
-            1 - (limit * (len(estimation) - n_values))
-        )
-        cutoff = cutoff_scale * values.sum()
-
-        # Applying the cutoff
-        weights[weights > cutoff] = cutoff
-
-        y = weights / weights.sum()
-
-        return y
-
-
 # The community uses / bittensor does not
 def process_weights_for_netuid(
     uids: Union[NDArray[np.int64], "torch.Tensor"],
-    weights: Union[NDArray[np.float32], "torch.Tensor"],
+    weights: Union[NDArray[np.float32], "torch.FloatTensor"],
     netuid: int,
     subtensor,
     metagraph=None,
@@ -121,7 +72,6 @@ def process_weights_for_netuid(
     # These parameters determine the range of acceptable weights for each neuron.
     quantile = exclude_quantile / U16_MAX
     min_allowed_weights = subtensor.min_allowed_weights(netuid=netuid)
-    max_weight_limit = subtensor.max_weight_limit(netuid=netuid)
 
     # Find all non zero weights.
     non_zero_weight_idx = (
@@ -162,13 +112,12 @@ def process_weights_for_netuid(
             else np.ones((metagraph.n), dtype=np.int64) * 1e-5
         )  # creating minimum even non-zero weights
         weights[non_zero_weight_idx] += non_zero_weights
-        normalized_weights = normalize_max_weight(x=weights, limit=max_weight_limit)
         nw_arange = (
-            torch.tensor(list(range(len(normalized_weights))))
+            torch.tensor(list(range(len(weights))))
             if use_torch()
-            else np.arange(len(normalized_weights))
+            else np.arange(len(weights))
         )
-        return nw_arange, normalized_weights
+        return nw_arange, non_zero_weights
 
     # Compute the exclude quantile and find the weights in the lowest quantile
     max_exclude = max(0, len(non_zero_weights) - min_allowed_weights) / len(
@@ -186,10 +135,4 @@ def process_weights_for_netuid(
     non_zero_weight_uids = non_zero_weight_uids[lowest_quantile <= non_zero_weights]
     non_zero_weights = non_zero_weights[lowest_quantile <= non_zero_weights]
 
-    # Normalize weights and return.
-    normalized_weights = normalize_max_weight(
-        x=non_zero_weights, limit=max_weight_limit
-    )
-    bt.logging.info("final_weights", normalized_weights)
-
-    return non_zero_weight_uids, normalized_weights
+    return non_zero_weight_uids, non_zero_weights
