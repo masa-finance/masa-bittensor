@@ -35,9 +35,8 @@ from masa.validator.forwarder import Forwarder
 from sentence_transformers import SentenceTransformer
 
 from masa.types.twitter import ProtocolTwitterTweetResponse
-from masa.validator.utils import process_weights_for_netuid
 
-# from bittensor.utils.weight_utils import process_weights_for_netuid
+from masa.validator.utils import process_weights_for_netuid
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -341,6 +340,9 @@ class BaseValidatorNeuron(BaseNeuron):
         ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
             uids=processed_weight_uids, weights=processed_weights
         )
+
+        bt.logging.info(f"Setting weights: {uint_weights} for uids: {uint_uids}")
+
         # Set the weights on chain via our subtensor connection.
         result, msg = self.subtensor.set_weights(
             wallet=self.wallet,
@@ -353,7 +355,7 @@ class BaseValidatorNeuron(BaseNeuron):
         )
 
         if result is True:
-            bt.logging.info("set_weights on chain successfully!")
+            bt.logging.success("set_weights on chain successfully!")
         else:
             bt.logging.error("set_weights failed", msg)
 
