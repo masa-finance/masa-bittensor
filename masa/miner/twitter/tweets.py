@@ -32,6 +32,7 @@ class TwitterTweetsRequest(MasaProtocolRequest):
         )
         if response.ok:
             data = self.format(response)
+            bt.logging.success(f"Sending {len(data)} tweets to validator...")
             return data
         else:
             bt.logging.error(

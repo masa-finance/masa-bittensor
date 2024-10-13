@@ -8,7 +8,7 @@ class PingAxonSynapse(bt.Synapse):
     is_active: typing.Optional[bool]
     version: typing.Optional[int]
 
-    def deserialize(self) -> str:
+    def deserialize(self) -> int:
         return self.version
 
 
