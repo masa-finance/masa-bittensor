@@ -41,7 +41,7 @@ dependencies:
       - base58==2.1.1
       - beautifulsoup4==4.12.3
       - bittensor==8.1.1
-      - bittensor-cli==8.1.1
+      - bittensor-cli==8.2.0
       - bittensor-wallet==2.0.1
       - bleach==6.1.0
       - bt-decode==0.2.0a0
@@ -108,6 +108,7 @@ dependencies:
       - loguru==0.7.2
       - markdown-it-py==3.0.0
       - markupsafe==3.0.1
+      - masa==1.0.0
       - masa-ai==0.2.3
       - matplotlib-inline==0.1.7
       - mdit-py-plugins==0.4.2
