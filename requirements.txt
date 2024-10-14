@@ -1,8 +1,0 @@
-bittensor==8.1.1
-loguru==0.7.2
-python-dotenv==0.21.0
-torch==2.3.0
-scikit-learn==1.5.1
-sentence-transformers==3.0.1
-masa-ai==0.2.3
-pytest==7.2.2
