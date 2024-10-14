@@ -208,9 +208,10 @@ class BaseNeuron(ABC):
                 subprocess.run(["git", "checkout", latest_tag], check=True)
                 # Install the latest packages
                 subprocess.run(["pip", "install", "-e", "."], check=True)
-                # Watchfiles should now trigger...
+                # Restart processes with PM2 should now trigger...
+                subprocess.run(["pm2", "restart", "all"], check=True)
                 bt.logging.success(
-                    f"Updated local repo to latest version: {latest_tag}"
+                    f"🟢 Code updated to the latest release: {latest_tag}"
                 )
             else:
                 bt.logging.success(f"🟢 Code matches latest release: {latest_tag}")

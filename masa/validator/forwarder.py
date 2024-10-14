@@ -22,7 +22,6 @@ from datetime import datetime, UTC
 import aiohttp
 import random
 import json
-import re
 
 from masa.miner.twitter.tweets import RecentTweetsSynapse
 from masa.miner.twitter.profile import TwitterProfileSynapse
@@ -257,7 +256,7 @@ class Forwarder:
                                     tweet_embedding,
                                 )
                             )
-                            if similarity >= 70:  # pretty strict
+                            if similarity >= 60:  # pretty strict
                                 valid_tweets.append(tweet)
                 else:
                     bt.logging.warning(f"Miner {uid} failed the spot check!")

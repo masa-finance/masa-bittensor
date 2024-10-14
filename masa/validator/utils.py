@@ -26,9 +26,6 @@ import bittensor as bt
 from bittensor.utils.registration import torch, use_torch
 
 
-U16_MAX = 65535
-
-
 def process_weights_for_netuid(
     uids: Union[NDArray[np.int64], "torch.Tensor"],
     weights: Union[NDArray[np.float32], "torch.FloatTensor"],
