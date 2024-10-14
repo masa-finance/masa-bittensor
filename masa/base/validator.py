@@ -144,7 +144,9 @@ class BaseValidatorNeuron(BaseNeuron):
 
         bt.logging.info("serving ip to chain...")
         try:
-            self.axon = bt.axon(wallet=self.wallet, config=self.config)
+            self.axon = bt.axon(
+                wallet=self.wallet, config=self.config, port=self.config.axon.port
+            )
 
             try:
                 self.subtensor.serve_axon(
