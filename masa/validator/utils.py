@@ -19,10 +19,7 @@
 
 from typing import Union
 import numpy as np
-
 from numpy.typing import NDArray
-
-import bittensor as bt
 from bittensor.utils.registration import torch, use_torch
 
 
