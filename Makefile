@@ -80,10 +80,10 @@ set-weights:
 
 ## Run miner and validator
 run-miner:
-	python neurons/miner.py --blacklist.force_validator_permit --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug
+	python neurons/miner.py --blacklist.force_validator_permit --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.info --logging.info
 
 run-validator:
-	python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug
+	python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.info --logging.info
 
 ## Docker commands
 docker-build:
