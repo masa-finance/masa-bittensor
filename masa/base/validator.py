@@ -36,8 +36,6 @@ from sentence_transformers import SentenceTransformer
 
 from masa.types.twitter import ProtocolTwitterTweetResponse
 
-from masa.validator.utils import process_weights_for_netuid
-
 
 class BaseValidatorNeuron(BaseNeuron):
     """
@@ -321,12 +319,10 @@ class BaseValidatorNeuron(BaseNeuron):
         # Calculate the average reward for each uid across non-zero values.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
 
-        # note, we use a ported version of the bittensor function here, located in utils.py
-        # note, otherwise, getting: Boolean value of Tensor with more than one value is ambiguous
         (
             processed_weight_uids,
             processed_weights,
-        ) = process_weights_for_netuid(
+        ) = bt.utils.weight_utils.process_weights_for_netuid(
             uids=self.metagraph.uids,
             weights=raw_weights.to("cpu").numpy(),
             netuid=self.config.netuid,
