@@ -64,7 +64,9 @@ class BaseMinerNeuron(BaseNeuron):
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
 
         # The axon handles request processing, allowing validators to send this miner requests.
-        self.axon = bt.axon(wallet=self.wallet, config=self.config)
+        self.axon = bt.axon(
+            wallet=self.wallet, port=self.config.axon.port, config=self.config
+        )
 
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info("Attaching forward functions to miner axon.")
