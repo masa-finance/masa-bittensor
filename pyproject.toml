@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["masa"]
+
+[project]
+name = "masa"
+version = "1.0.0"
+description = "bittensor subnet for masa protocol"
+authors = [
+    { name = "masa.ai", email = "hello@masa.ai" }
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "bittensor==8.1.1",
+    "loguru==0.7.2",
+    "python-dotenv==0.21.0",
+    "torch==2.3.0",
+    "scikit-learn==1.5.1",
+    "sentence-transformers==3.0.1",
+    "masa-ai==0.2.3",
+    "pytest==7.2.2"
+]
