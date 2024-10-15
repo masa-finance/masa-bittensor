@@ -17,22 +17,20 @@
 
 """Conversion for weight between chain representation and np.array or torch.Tensor"""
 
-import hashlib
 import logging
 import typing
-import bittensor as bt
 from typing import Union, Optional
 
 import numpy as np
 
 from numpy.typing import NDArray
 
-from bt.utils.btlogging import logging
-from bt.utils.registration import torch, use_torch
+from bittensor.utils.btlogging import logging
+from bittensor.utils.registration import torch, use_torch
 
 if typing.TYPE_CHECKING:
-    from bt.core.metagraph import Metagraph
-    from bt.core.subtensor import Subtensor
+    from bittensor.core.metagraph import Metagraph
+    from bittensor.core.subtensor import Subtensor
 
 
 U16_MAX = 65535
