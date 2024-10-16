@@ -33,7 +33,6 @@ if typing.TYPE_CHECKING:
     from bittensor.core.subtensor import Subtensor
 
 
-U32_MAX = 4294967295
 U16_MAX = 65535
 
 
