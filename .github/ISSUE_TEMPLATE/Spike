@@ -1,0 +1,67 @@
+name: Spike
+description: Create a spike for investigation or research
+title: "Spike: "
+labels: ["spike"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this spike template!
+  - type: input
+    id: objective
+    attributes:
+      label: Objective
+      description: Clearly state the purpose of this spike. What do we need to learn or investigate?
+      placeholder: We need to investigate...
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: Background
+      description: Provide context for why this spike is necessary. What led to this investigation?
+      placeholder: This spike is necessary because...
+    validations:
+      required: true
+  - type: textarea
+    id: key-questions
+    attributes:
+      label: Key Questions to Answer
+      description: List the main questions this spike should answer
+      placeholder: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+  - type: textarea
+    id: suggested-approach
+    attributes:
+      label: Suggested Approach
+      description: Outline a potential method for conducting this investigation
+      placeholder: We could approach this by...
+  - type: input
+    id: time-box
+    attributes:
+      label: Time Box
+      description: Specify the maximum time to be spent on this spike
+      placeholder: e.g., 2 days, 1 week
+    validations:
+      required: true
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Deliverables
+      description: List the expected outcomes of this spike
+      placeholder: |
+        - Documentation
+        - Proof of concept
+        - Presentation
+    validations:
+      required: true
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: Additional Notes
+      description: Any other relevant information or resources
