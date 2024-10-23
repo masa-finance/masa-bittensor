@@ -18,27 +18,27 @@
 
 import pytest
 import asyncio
-from neurons.miner import Miner
-from masa.base.miner import BaseMinerNeuron
+from neurons.validator import Validator
+from masa.base.validator import BaseValidatorNeuron
 
 
-class TestMiner:
+class TestValidator:
 
     @pytest.fixture
-    async def miner(self):
-        config = BaseMinerNeuron.config()
+    async def validator(self):
+        config = BaseValidatorNeuron.config()
         config.netuid = 165
         config.subtensor.network = "test"
         config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
-        config.wallet.name = "miner"
+        config.wallet.name = "validator"
         config.wallet.hotkey = "default"
-        config.axon.port = 8091
+        config.axon.port = 8092
 
-        miner_instance = Miner(config=config)
-        return miner_instance
+        validator_instance = Validator(config=config)
+        return validator_instance
 
     @pytest.mark.asyncio
-    async def test_miner_has_uid(self, miner):
-        miner_instance = await miner
-        uid = miner_instance.uid
+    async def test_miner_has_uid(self, validator):
+        validator_instance = await validator
+        uid = validator_instance.uid
         assert uid > -1, "UID should be greater than -1 for success"
