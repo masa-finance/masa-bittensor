@@ -1,0 +1,88 @@
+name: Issue
+description: Create a new development task (feature, improvement, documentation, tests)
+title: "[Type]: "
+labels: ["task"]
+assignees: []
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Impact
+      description: Select the priority level for this issue
+      options:
+        - P0 - Critical (Immediate action required)
+        - P1 - High (Urgent)
+        - P2 - Medium (Important)
+        - P3 - Low (Can be scheduled)
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Issue Type
+      description: What kind of development task is this?
+      options:
+        - Feature Implementation
+        - Technical Improvement
+        - Documentation Update
+        - Test Coverage
+        - Technical Debt
+        - Performance Optimization
+        - Security Enhancement
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Technical Description
+      description: Provide a clear technical description of what needs to be implemented
+      placeholder: |
+        Technical context:
+        - What needs to be built/changed
+        - Key technical considerations
+        - Potential impact areas
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: List specific, testable criteria that must be met for this task to be considered complete
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Unit tests added/updated
+        - [ ] Documentation updated
+    validations:
+      required: true
+  - type: textarea
+    id: technical-details
+    attributes:
+      label: Implementation Details
+      description: Provide technical details, architecture decisions, or implementation guidance
+      placeholder: |
+        - Technical approach
+        - API changes
+        - Database changes
+        - Configuration changes
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: List any technical dependencies or prerequisites
+      placeholder: |
+        - Related PRs
+        - System dependencies
+        - External services
+    validations:
+      required: true
+  - type: input
+    id: estimated-effort
+    attributes:
+      label: Estimated Effort
+      description: Provide a rough estimate of the development time required
+      placeholder: e.g., 3 story points, 2 days
+    validations:
+      required: true
