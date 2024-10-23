@@ -1,0 +1,49 @@
+name: Development Task
+description: Create a new development task
+title: "[ISSUE]: "
+labels: ["Task", "Triage"]
+projects: ["Masa Subnet"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Technical Description
+      description: Provide a clear technical description of what needs to be implemented
+      placeholder: |
+        Technical context:
+        - What needs to be built/changed
+        - Key technical considerations
+        - Potential impact areas
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: List specific, testable criteria that must be met for this task to be considered complete
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Unit tests added/updated
+        - [ ] Documentation updated
+    validations:
+      required: true
+  - type: textarea
+    id: technical-details
+    attributes:
+      label: Implementation Details
+      description: Provide technical details, architecture decisions, or implementation guidance
+      placeholder: |
+        - Technical approach
+        - API changes
+        - Database changes
+        - Configuration changes
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: List any technical dependencies or prerequisites
+      placeholder: |
+        - Related PRs
+        - System dependencies
+        - External services

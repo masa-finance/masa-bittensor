@@ -1,0 +1,52 @@
+name: Spike Investigation
+description: Create a spike for investigation or research tasks
+title: "[SPIKE]: "
+labels: ["Spike", "Triage"]
+projects: ["Masa Subnet"]
+body:
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem Statement
+      description: Clearly define the problem or uncertainty that needs investigation
+      placeholder: We need to investigate/understand...
+    validations:
+      required: true
+  - type: input
+    id: time-box
+    attributes:
+      label: Time Box
+      description: Specify the maximum time to be spent on this spike
+      placeholder: e.g., 2 days, 1 week
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: Background
+      description: Provide context for why this spike is necessary
+      placeholder: This spike is necessary because...
+  - type: textarea
+    id: key-questions
+    attributes:
+      label: Key Questions to Answer
+      description: List the main questions this spike should answer
+      placeholder: |
+        1. 
+        2. 
+        3. 
+  - type: textarea
+    id: suggested-approach
+    attributes:
+      label: Suggested Approach
+      description: Outline a potential method for conducting this investigation
+      placeholder: We could approach this by...
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Deliverables
+      description: List the expected outcomes of this spike
+      placeholder: |
+        - Documentation
+        - Proof of concept
+        - Technical recommendations
