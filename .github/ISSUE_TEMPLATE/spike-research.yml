@@ -12,33 +12,6 @@ body:
       placeholder: We need to investigate/understand...
     validations:
       required: true
-  - type: textarea
-    id: background
-    attributes:
-      label: Background
-      description: Provide context for why this spike is necessary
-      placeholder: This spike is necessary because...
-    validations:
-      required: true
-  - type: textarea
-    id: key-questions
-    attributes:
-      label: Key Questions to Answer
-      description: List the main questions this spike should answer
-      placeholder: |
-        1. 
-        2. 
-        3. 
-    validations:
-      required: true
-  - type: textarea
-    id: suggested-approach
-    attributes:
-      label: Suggested Approach
-      description: Outline a potential method for conducting this investigation
-      placeholder: We could approach this by...
-    validations:
-      required: true
   - type: input
     id: time-box
     attributes:
@@ -48,6 +21,27 @@ body:
     validations:
       required: true
   - type: textarea
+    id: background
+    attributes:
+      label: Background
+      description: Provide context for why this spike is necessary
+      placeholder: This spike is necessary because...
+  - type: textarea
+    id: key-questions
+    attributes:
+      label: Key Questions to Answer
+      description: List the main questions this spike should answer
+      placeholder: |
+        1. 
+        2. 
+        3. 
+  - type: textarea
+    id: suggested-approach
+    attributes:
+      label: Suggested Approach
+      description: Outline a potential method for conducting this investigation
+      placeholder: We could approach this by...
+  - type: textarea
     id: deliverables
     attributes:
       label: Deliverables
@@ -56,5 +50,3 @@ body:
         - Documentation
         - Proof of concept
         - Technical recommendations
-    validations:
-      required: true
