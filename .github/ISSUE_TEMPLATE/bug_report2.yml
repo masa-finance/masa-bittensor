@@ -1,21 +1,9 @@
 name: Bug Report
 description: Report a technical issue or bug
-title: "Bug: "
-labels: ["bug"]
-assignees: []
+title: "[BUG]: "
+labels: ["Bug", "Triage"]
+projects: ["Masa Subnet"]
 body:
-  - type: dropdown
-    id: priority
-    attributes:
-      label: Priority Impact
-      description: Select the priority level for this bug
-      options:
-        - P0 - Critical (Service down/Security issue)
-        - P1 - High (Major functionality broken)
-        - P2 - Medium (Feature partially broken)
-        - P3 - Low (Minor issue/UI glitch)
-    validations:
-      required: true
   - type: textarea
     id: description
     attributes:
