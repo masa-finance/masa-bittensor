@@ -1,36 +1,9 @@
 name: Issue
-description: Create a new development task (feature, improvement, documentation, tests)
-title: "[Type]: "
-labels: ["task"]
-assignees: []
+description: Create a new development task
+title: "[ISSUE]: "
+labels: ["Task", "Triage"]
+projects: ["Masa Subnet"]
 body:
-  - type: dropdown
-    id: priority
-    attributes:
-      label: Priority Impact
-      description: Select the priority level for this issue
-      options:
-        - P0 - Critical (Immediate action required)
-        - P1 - High (Urgent)
-        - P2 - Medium (Important)
-        - P3 - Low (Can be scheduled)
-    validations:
-      required: true
-  - type: dropdown
-    id: type
-    attributes:
-      label: Issue Type
-      description: What kind of development task is this?
-      options:
-        - Feature Implementation
-        - Technical Improvement
-        - Documentation Update
-        - Test Coverage
-        - Technical Debt
-        - Performance Optimization
-        - Security Enhancement
-    validations:
-      required: true
   - type: textarea
     id: description
     attributes:
@@ -76,13 +49,5 @@ body:
         - Related PRs
         - System dependencies
         - External services
-    validations:
-      required: true
-  - type: input
-    id: estimated-effort
-    attributes:
-      label: Estimated Effort
-      description: Provide a rough estimate of the development time required
-      placeholder: e.g., 3 story points, 2 days
     validations:
       required: true
