@@ -1,30 +1,88 @@
----
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: bug, unconfirmed, 
----
-
-<!-- Thanks for helping us to improve masa-bittensor! We welcome all bug reports. 
-Please fill out each area of the template so we can better help you. Comments like this will be hidden when you post but you can delete them if you wish. -->
-
-**Masa-Bittensor version:**
-<!-- Container Image or Masa-Bittensor tag/commit -->
-
-**Environment, CPU architecture, OS, and Version:**
-<!-- Provide the output from "uname -a", HW specs, if it's a VM  -->
-
-**Describe the bug**
-<!-- A clear and concise description of what the bug is. -->
-
-**To Reproduce**
-<!-- Steps to reproduce the behavior, including the Masa-Bittensor command used, if any -->
-
-**Expected behavior**
-<!-- A clear and concise description of what you expected to happen. -->
-
-**Logs**
-<!-- If applicable, add logs while running masa-oracle to help explain your problem.  -->
-
-**Additional context**
-<!-- Add any other context about the problem here. -->
+name: Bug Report
+description: Report a technical issue or bug
+title: "Bug: "
+labels: ["bug"]
+assignees: []
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Impact
+      description: Select the priority level for this bug
+      options:
+        - P0 - Critical (Service down/Security issue)
+        - P1 - High (Major functionality broken)
+        - P2 - Medium (Feature partially broken)
+        - P3 - Low (Minor issue/UI glitch)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Provide a clear technical description of the bug
+      placeholder: |
+        Describe:
+        - What's broken
+        - Impact on system/users
+        - Frequency of occurrence
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Provide detailed steps to reproduce this bug
+      placeholder: |
+        1. Environment setup/configuration
+        2. Exact steps to trigger the issue
+        3. What to observe
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: Describe what should happen
+      placeholder: Under normal conditions, the system should...
+    validations:
+      required: true
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: Describe what actually happens
+      placeholder: |
+        - What went wrong
+        - Error messages
+        - System behavior
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Which environment is this occurring in?
+      placeholder: e.g., Production, Staging, Development
+    validations:
+      required: true
+  - type: textarea
+    id: technical-context
+    attributes:
+      label: Technical Context
+      description: Provide relevant technical details
+      placeholder: |
+        - System version
+        - Component versions
+        - Relevant logs
+        - Stack trace
+    validations:
+      required: true
+  - type: textarea
+    id: possible-solution
+    attributes:
+      label: Possible Solution
+      description: If you have technical insights on the potential fix, share them here
+      placeholder: Consider checking/fixing...
+    validations:
+      required: true
