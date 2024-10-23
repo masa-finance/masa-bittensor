@@ -21,7 +21,7 @@ import unittest
 from neurons.miner import Miner
 
 
-from masa.base.miner import BaseMinerNeuron
+from masa.base.validator import BaseValidatorNeuron
 
 from bittensor_wallet import Wallet
 
@@ -37,19 +37,18 @@ class TemplateValidatorNeuronTestCase(unittest.IsolatedAsyncioTestCase):
     miner = None
 
     async def asyncSetUp(self):
-        config = BaseMinerNeuron.config()
-        # bt.logging.info(f"Config: {config}")
+        config = BaseValidatorNeuron.config()
 
         config.netuid = 165
         config.subtensor.network = "test"
         config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
-        config.wallet.name = "miner"
+        config.wallet.name = "validator"
         config.wallet.hotkey = "default"
-        config.axon.port = 8091
+        config.axon.port = 8092
 
         self.miner = Miner(config=config)
 
-    def test_miner_has_uid(self):
+    def test_validator_has_uid(self):
         uid = self.miner.uid
 
         self.assertGreater(uid, -1, "UID should be greater than -1 for success")
