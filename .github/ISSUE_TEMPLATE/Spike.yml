@@ -1,21 +1,9 @@
 name: Spike
 description: Create a spike for investigation or research tasks
-title: "Spike: "
-labels: ["spike"]
-assignees: []
+title: "[SPIKE]: "
+labels: ["Spike", "Triage"]
+projects: ["Masa Subnet"]
 body:
-  - type: dropdown
-    id: priority
-    attributes:
-      label: Priority Impact
-      description: Select the priority level for this spike
-      options:
-        - P0 - Critical (Immediate action required)
-        - P1 - High (Urgent)
-        - P2 - Medium (Important)
-        - P3 - Low (Can be scheduled)
-    validations:
-      required: true
   - type: textarea
     id: problem-statement
     attributes:
