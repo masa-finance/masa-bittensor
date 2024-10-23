@@ -64,13 +64,9 @@ body:
         - Component versions
         - Relevant logs
         - Stack trace
-    validations:
-      required: true
   - type: textarea
     id: possible-solution
     attributes:
       label: Possible Solution
       description: If you have technical insights on the potential fix, share them here
       placeholder: Consider checking/fixing...
-    validations:
-      required: true
