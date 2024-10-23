@@ -16,29 +16,17 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import unittest
-
-from neurons.miner import Miner
-
-
+import pytest
+import asyncio
+from neurons.validator import Validator
 from masa.base.validator import BaseValidatorNeuron
 
-from bittensor_wallet import Wallet
 
-wallet_validator = Wallet()
-wallet_validator.create(coldkey_use_password=False)
+class TestValidator:
 
-
-class TemplateValidatorNeuronTestCase(unittest.IsolatedAsyncioTestCase):
-    """
-    This class contains unit tests for the MinerNeuron classes.
-    """
-
-    miner = None
-
-    async def asyncSetUp(self):
+    @pytest.fixture
+    async def validator(self):
         config = BaseValidatorNeuron.config()
-
         config.netuid = 165
         config.subtensor.network = "test"
         config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
@@ -46,10 +34,11 @@ class TemplateValidatorNeuronTestCase(unittest.IsolatedAsyncioTestCase):
         config.wallet.hotkey = "default"
         config.axon.port = 8092
 
-        self.miner = Miner(config=config)
+        validator_instance = Validator(config=config)
+        return validator_instance
 
-    def test_validator_has_uid(self):
-        uid = self.miner.uid
-
-        self.assertGreater(uid, -1, "UID should be greater than -1 for success")
-        return
+    @pytest.mark.asyncio
+    async def test_miner_has_uid(self, validator):
+        validator_instance = await validator
+        uid = validator_instance.uid
+        assert uid > -1, "UID should be greater than -1 for success"
