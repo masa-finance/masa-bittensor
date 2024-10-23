@@ -38,8 +38,6 @@ body:
         - API changes
         - Database changes
         - Configuration changes
-    validations:
-      required: true
   - type: textarea
     id: dependencies
     attributes:
@@ -49,5 +47,3 @@ body:
         - Related PRs
         - System dependencies
         - External services
-    validations:
-      required: true
