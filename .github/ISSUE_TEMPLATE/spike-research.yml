@@ -1,7 +1,7 @@
 name: Spike Investigation
 description: Create a spike for investigation or research tasks
 title: "[SPIKE]: "
-labels: ["Spike", "Triage"]
+labels: ["spike", "triage"]
 projects: ["Masa Subnet"]
 body:
   - type: textarea
