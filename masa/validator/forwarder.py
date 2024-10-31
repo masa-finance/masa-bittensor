@@ -30,7 +30,7 @@ from masa.utils.uids import get_random_miner_uids
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
-TIMEOUT = 8
+TIMEOUT = 10
 
 
 class Forwarder:
@@ -74,7 +74,7 @@ class Forwarder:
         query: str = f"(Bitcoin) since:{datetime.now().strftime('%Y-%m-%d')}",
         count: int = 3,
     ):
-        request = RecentTweetsSynapse(query=query, count=count)
+        request = RecentTweetsSynapse(query=query, count=count, timeout=TIMEOUT)
         formatted_responses, _ = await self.forward_request(
             request=request, sample_size=self.validator.config.neuron.sample_size
         )
@@ -130,7 +130,7 @@ class Forwarder:
         try:
             trending_queries = TrendingQueries().fetch()
             self.validator.keywords = [
-                query["query"] for query in trending_queries[:10]
+                query["query"] for query in trending_queries[:10]  # top 10 trends
             ]
             bt.logging.info(f"Trending queries: {self.validator.keywords}")
         except Exception as e:
@@ -151,13 +151,13 @@ class Forwarder:
             "%Y-%m-%d"
         )}"
 
-        # TODO, the "max" is determined by the miner
-        request = RecentTweetsSynapse(query=query)
-
+        # note, the count is determined by the miner config --twitter.max_tweets_per_request
+        volume_checking_timeout = 20
+        request = RecentTweetsSynapse(query=query, timeout=volume_checking_timeout)
         responses, miner_uids = await self.forward_request(
             request,
             sample_size=self.validator.config.neuron.sample_size_volume,
-            timeout=20,
+            timeout=volume_checking_timeout,
         )
 
         all_valid_tweets = []

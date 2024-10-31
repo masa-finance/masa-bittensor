@@ -9,6 +9,7 @@ class RecentTweetsSynapse(bt.Synapse):
     query: str
     count: Optional[int] = None
     response: Optional[Any] = None
+    timeout: Optional[int] = 10
 
     def deserialize(self) -> Optional[Any]:
         return self.response
@@ -24,7 +25,7 @@ def forward_recent_tweets(
 class TwitterTweetsRequest(MasaProtocolRequest):
     def __init__(self, max_tweets: int):
         super().__init__()
-        # note, this value is max tweets per request for synthetic scoring
+        # note, the count is determined by the miner config --twitter.max_tweets_per_request
         self.max_tweets = max_tweets
 
     def get_recent_tweets(
@@ -36,6 +37,7 @@ class TwitterTweetsRequest(MasaProtocolRequest):
         response = self.post(
             "/data/twitter/tweets/recent",
             body={"query": synapse.query, "count": synapse.count or self.max_tweets},
+            timeout=synapse.timeout,
         )
         if response.ok:
             data = self.format(response)
