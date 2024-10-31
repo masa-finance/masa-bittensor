@@ -287,13 +287,6 @@ def add_validator_args(cls, parser):
     )
 
     parser.add_argument(
-        "--neuron.twitter_config_url",
-        type=str,
-        help="URL for fetching volume testing keywords",
-        default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config/twitter.json",
-    )
-
-    parser.add_argument(
         "--enable_validator_api",
         action="store_true",
         help="Set this flag to enable Validator's API",

@@ -30,7 +30,7 @@ from masa.miner.twitter.followers import TwitterFollowersSynapse
 from masa.base.healthcheck import PingAxonSynapse, get_external_ip
 from masa.utils.uids import get_random_miner_uids
 
-from masa_ai.tools.validator.main import main as validate
+from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
 TIMEOUT = 8
 
@@ -128,41 +128,38 @@ class Forwarder:
             for response in all_responses
         ]
 
-    async def fetch_twitter_config(self):
-        async with aiohttp.ClientSession() as session:
-            url = self.validator.config.neuron.twitter_config_url
-            async with session.get(url) as response:
-                if response.status == 200:
-                    configRaw = await response.text()
-                    config = json.loads(configRaw)
-                    bt.logging.info(f"Twitter config fetched!: {config}")
-                    self.validator.keywords = config["keywords"]
-                    self.validator.count = int(config["count"])
-                else:
-                    bt.logging.error(
-                        f"Failed to fetch config from GitHub: {response.status}"
-                    )
-                    # note, defaults
-                    self.validator.keywords = ["crypto", "bitcoin", "masa"]
-                    self.validator.count = 3
+    async def fetch_twitter_queries(self):
+        try:
+            trending_queries = TrendingQueries().fetch()
+            self.validator.keywords = [
+                query["query"] for query in trending_queries[:10]
+            ]
+            bt.logging.info(f"Trending queries: {self.validator.keywords}")
+        except Exception as e:
+            # handle failed fetch - default to popular keywords
+            bt.logging.error(f"Error fetching trending queries: {e}")
+            self.validator.keywords = ["crypto", "btc", "eth"]
 
     async def get_miners_volumes(self):
         if len(self.validator.versions) == 0:
             bt.logging.info("Pinging axons to get miner versions...")
             return await self.ping_axons()
         if len(self.validator.keywords) == 0 or self.check_tempo():
-            await self.fetch_twitter_config()
+            await self.fetch_twitter_queries()
 
         random_keyword = random.choice(self.validator.keywords)
-        today = datetime.now(UTC).strftime("%Y-%m-%d")
-        query = f"({random_keyword.strip()}) since:{today}"
-        request = RecentTweetsSynapse(query=query, count=self.validator.count)
+        yesterday = datetime.now(UTC) - datetime.timedelta(days=1)
+        query = f"({random_keyword.strip()}) since:{yesterday.strftime(
+            "%Y-%m-%d"
+        )}"
+        request = RecentTweetsSynapse(query=query, count=1000000)
 
         responses, miner_uids = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size_volume
         )
 
         all_valid_tweets = []
+        tweet_validator = TweetValidator()
         for response, uid in zip(responses, miner_uids):
             valid_tweets = []
             all_responses = dict(response).get("response", [])
@@ -183,7 +180,7 @@ class Forwarder:
                     "Tweet", {}
                 )
 
-                is_valid = validate(
+                is_valid = tweet_validator.validate(
                     random_tweet.get("ID"),
                     random_tweet.get("Name"),
                     random_tweet.get("Username"),
@@ -228,20 +225,15 @@ class Forwarder:
                     random_tweet.get("Timestamp", 0), UTC
                 )
 
-                today = datetime.now(UTC)
-                is_same_day = (
-                    tweet_timestamp.year == today.year
-                    and tweet_timestamp.month == today.month
-                    and tweet_timestamp.day == today.day
-                )
+                is_since_date_requested = yesterday <= tweet_timestamp
 
-                if not is_same_day:
+                if not is_since_date_requested:
                     bt.logging.warning(
-                        f"Tweet timestamp {tweet_timestamp} is not from today {today}"
+                        f"Tweet timestamp {tweet_timestamp} is not since {yesterday}"
                     )
 
                 # note, they passed the spot check!
-                if is_valid and query_in_tweet and is_same_day:
+                if is_valid and query_in_tweet and is_since_date_requested:
                     bt.logging.success(
                         f"Miner {uid} passed the spot check with query: {random_keyword}"
                     )
