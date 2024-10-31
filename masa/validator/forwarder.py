@@ -18,10 +18,8 @@
 
 import bittensor as bt
 from typing import Any
-from datetime import datetime, UTC
-import aiohttp
+from datetime import datetime, UTC, timedelta
 import random
-import json
 
 from masa.miner.twitter.tweets import RecentTweetsSynapse
 from masa.miner.twitter.profile import TwitterProfileSynapse
@@ -148,7 +146,7 @@ class Forwarder:
             await self.fetch_twitter_queries()
 
         random_keyword = random.choice(self.validator.keywords)
-        yesterday = datetime.now(UTC) - datetime.timedelta(days=1)
+        yesterday = datetime.now(UTC) - timedelta(days=1)
         query = f"({random_keyword.strip()}) since:{yesterday.strftime(
             "%Y-%m-%d"
         )}"
