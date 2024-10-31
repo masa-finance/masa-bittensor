@@ -2,6 +2,8 @@ import typing
 import requests
 import bittensor as bt
 
+# TODO we can refactor this to synapses directory, as both vali and miner use
+
 
 class PingAxonSynapse(bt.Synapse):
     sent_from: typing.Optional[str]

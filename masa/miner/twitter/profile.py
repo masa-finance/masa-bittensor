@@ -4,6 +4,7 @@ from masa.miner.masa_protocol_request import MasaProtocolRequest
 from masa.types.twitter import TwitterProfileObject
 
 
+# TODO we can refactor this to synapses directory, as both vali and miner use
 class TwitterProfileSynapse(bt.Synapse):
     username: str
     response: Optional[Any] = None

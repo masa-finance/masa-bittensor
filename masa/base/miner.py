@@ -33,7 +33,7 @@ from masa.base.healthcheck import forward_ping, PingAxonSynapse
 
 from masa.miner.twitter.profile import forward_twitter_profile
 from masa.miner.twitter.followers import forward_twitter_followers
-from masa.miner.twitter.tweets import forward_recent_tweets
+from masa.miner.twitter.tweets import forward_recent_tweets, RecentTweetsSynapse
 
 
 class BaseMinerNeuron(BaseNeuron):
@@ -86,7 +86,7 @@ class BaseMinerNeuron(BaseNeuron):
         )
 
         self.axon.attach(
-            forward_fn=forward_recent_tweets,
+            forward_fn=self.forward_tweets_synapse,
             blacklist_fn=self.blacklist_recent_tweets,
             priority_fn=self.priority_recent_tweets,
         )
@@ -108,6 +108,13 @@ class BaseMinerNeuron(BaseNeuron):
         )  # note, this will be variable per environment
 
         self.load_state()
+
+    def forward_tweets_synapse(
+        self, synapse: RecentTweetsSynapse
+    ) -> RecentTweetsSynapse:
+        return forward_recent_tweets(
+            synapse, self.config.twitter.max_tweets_per_request
+        )
 
     def forward_ping_synapse(self, synapse: PingAxonSynapse) -> PingAxonSynapse:
         return forward_ping(synapse, self.spec_version)

@@ -151,11 +151,13 @@ class Forwarder:
             "%Y-%m-%d"
         )}"
 
-        # TODO, the count needs to be determined by the miner
-        request = RecentTweetsSynapse(query=query, count=100)
+        # TODO, the "max" is determined by the miner
+        request = RecentTweetsSynapse(query=query)
 
         responses, miner_uids = await self.forward_request(
-            request, sample_size=self.validator.config.neuron.sample_size_volume
+            request,
+            sample_size=self.validator.config.neuron.sample_size_volume,
+            timeout=20,
         )
 
         all_valid_tweets = []
@@ -237,9 +239,7 @@ class Forwarder:
                     bt.logging.success(
                         f"Miner {uid} passed the spot check with query: {random_keyword}"
                     )
-                    for tweet in unique_tweets_response[
-                        : self.validator.count
-                    ]:  # note, limits to the count requested
+                    for tweet in unique_tweets_response:
                         if tweet:
                             tweet_embedding = self.validator.model.encode(str(tweet))
                             similarity = (

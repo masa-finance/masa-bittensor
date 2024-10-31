@@ -173,6 +173,13 @@ def add_miner_args(cls, parser):
     )
 
     parser.add_argument(
+        "--twitter.max_tweets_per_request",
+        type=int,
+        help="Defines the max number of tweets to scrape per request.",
+        default=200,
+    )
+
+    parser.add_argument(
         "--neuron.debug",
         action="store_true",
         help="Sets debug to true",
