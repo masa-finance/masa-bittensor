@@ -150,7 +150,9 @@ class Forwarder:
         query = f"({random_keyword.strip()}) since:{yesterday.strftime(
             "%Y-%m-%d"
         )}"
-        request = RecentTweetsSynapse(query=query, count=1000000)
+
+        # TODO, the count needs to be determined by the miner
+        request = RecentTweetsSynapse(query=query, count=100)
 
         responses, miner_uids = await self.forward_request(
             request, sample_size=self.validator.config.neuron.sample_size_volume
@@ -178,7 +180,7 @@ class Forwarder:
                     "Tweet", {}
                 )
 
-                is_valid = tweet_validator.validate(
+                is_valid = tweet_validator.validate_tweet(
                     random_tweet.get("ID"),
                     random_tweet.get("Name"),
                     random_tweet.get("Username"),
