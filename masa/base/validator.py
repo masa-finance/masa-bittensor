@@ -459,6 +459,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 "scores": self.scores,
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
+                "tweets_by_uid": self.tweets_by_uid,
                 # TODO, note, this grows indefinitely, we need a central store for this
                 "indexed_tweets": self.indexed_tweets,
             },
@@ -477,12 +478,14 @@ class BaseValidatorNeuron(BaseNeuron):
             self.scores = dict(state).get("scores", [])
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
+            self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
             self.indexed_tweets = dict(state).get("indexed_tweets", [])
         else:
             self.step = 0
             self.scores = torch.zeros(self.metagraph.n)
             self.hotkeys = []
             self.volumes = []
+            self.tweets_by_uid = {}
             self.indexed_tweets = []
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."

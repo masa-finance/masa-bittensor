@@ -179,11 +179,13 @@ class Forwarder:
             if not all_responses:
                 continue
 
-            unique_tweets_response = {
-                resp["Tweet"]["ID"]: resp
-                for resp in all_responses
-                if "Tweet" in resp and "ID" in resp["Tweet"]
-            }.values()
+            unique_tweets_response = list(
+                {
+                    resp["Tweet"]["ID"]: resp
+                    for resp in all_responses
+                    if "Tweet" in resp and "ID" in resp["Tweet"]
+                }.values()
+            )
 
             if unique_tweets_response is not None:
                 # note, first spot check this payload, ensuring a random tweet is valid
@@ -262,10 +264,31 @@ class Forwarder:
                 else:
                     bt.logging.warning(f"Miner {uid} failed the spot check!")
 
-            self.validator.scorer.add_volume(int(uid), len(valid_tweets))
-            bt.logging.info(f"Miner {uid} produced {len(valid_tweets)} valid tweets")
             all_valid_tweets.extend(valid_tweets)
 
+            # note, score only unique tweets per miner (uid)
+            uid_int = int(uid)
+
+            if not self.validator.tweets_by_uid.get(uid_int):
+                # TODO we need to wipe this from sync metagraph when hotkey changes
+                self.validator.tweets_by_uid[uid_int] = {
+                    tweet["Tweet"]["ID"] for tweet in valid_tweets
+                }
+                self.validator.scorer.add_volume(uid_int, len(valid_tweets))
+                bt.logging.success(
+                    f"Miner {uid_int} produced {len(valid_tweets)} valid new tweets"
+                )
+            else:
+                existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
+                new_tweet_ids = {tweet["Tweet"]["ID"] for tweet in valid_tweets}
+                updates = new_tweet_ids - existing_tweet_ids
+                self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
+                self.validator.scorer.add_volume(uid_int, len(updates))
+                bt.logging.success(
+                    f"Miner {uid_int} produced {len(updates)} new tweets, with a total of {len(self.validator.tweets_by_uid[uid_int])}."
+                )
+
+        # tweet indexing
         query_exists = False
         for indexed_tweet in self.validator.indexed_tweets:
             if indexed_tweet["query"] == query:
