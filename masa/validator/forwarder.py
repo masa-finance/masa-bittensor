@@ -179,13 +179,11 @@ class Forwarder:
             if not all_responses:
                 continue
 
-            unique_tweets_response = []
-            existing_ids = set()
-            for resp in all_responses:
-                tweet_id = resp.get("Tweet", {}).get("ID")
-                if tweet_id and tweet_id not in existing_ids:
-                    unique_tweets_response.append(resp)
-                    existing_ids.add(tweet_id)
+            unique_tweets_response = {
+                resp["Tweet"]["ID"]: resp
+                for resp in all_responses
+                if "Tweet" in resp and "ID" in resp["Tweet"]
+            }.values()
 
             if unique_tweets_response is not None:
                 # note, first spot check this payload, ensuring a random tweet is valid
