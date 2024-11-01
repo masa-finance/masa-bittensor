@@ -163,7 +163,7 @@ class API:
 
         self.app.add_api_route(
             "/tweets",
-            self.show_indexed_tweets,
+            self.show_tweets_by_query,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
             response_description="Get indexed tweets",
@@ -173,7 +173,7 @@ class API:
         # note, only for testing / wiping state
         # self.app.add_api_route(
         #     "/tweets",
-        #     self.delete_indexed_tweets,
+        #     self.delete_tweets_by_query,
         #     methods=["DELETE"],
         #     dependencies=[Depends(self.get_self)],
         #     response_description="Delete indexed tweets",
@@ -201,8 +201,8 @@ class API:
             return JSONResponse(content=scores.tolist())
         return JSONResponse(content=[])
 
-    async def show_indexed_tweets(self):
-        tweets = self.validator.indexed_tweets
+    async def show_tweets_by_query(self):
+        tweets = self.validator.tweets_by_query
         if len(tweets) > 0:
             return JSONResponse(content=tweets)
         return JSONResponse(content=[])
@@ -216,12 +216,12 @@ class API:
             }
         )
 
-    def delete_indexed_tweets(self):
-        self.validator.indexed_tweets = []
+    def delete_tweets_by_query(self):
+        self.validator.tweets_by_query = []
         return JSONResponse(
             content={
                 "message": "Index tweets deleted",
-                "volumes": self.validator.indexed_tweets,
+                "volumes": self.validator.tweets_by_query,
             }
         )
 

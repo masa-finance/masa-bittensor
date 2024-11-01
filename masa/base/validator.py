@@ -108,7 +108,6 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_scoring_block = 0
 
         self.versions = []  # note, for storing uid versions
-        self.keyword = ""  # note, current keyword
         self.keywords = []  # note, for volume scoring queries
         self.uncalled_uids = set()  # note, for volume scoring queries
         self.volume_window = 6  # note, score volumes from last 6 tempos
@@ -463,8 +462,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
                 "tweets_by_uid": self.tweets_by_uid,
-                # TODO, note, this grows indefinitely, we need a central store for this
-                "indexed_tweets": self.indexed_tweets,
+                "tweets_by_query": self.tweets_by_query,
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -482,14 +480,14 @@ class BaseValidatorNeuron(BaseNeuron):
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
             self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
-            self.indexed_tweets = dict(state).get("indexed_tweets", [])
+            self.tweets_by_query = dict(state).get("tweets_by_query", {})
         else:
             self.step = 0
             self.scores = torch.zeros(self.metagraph.n)
             self.hotkeys = []
             self.volumes = []
             self.tweets_by_uid = {}
-            self.indexed_tweets = []
+            self.tweets_by_query = {}
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )
