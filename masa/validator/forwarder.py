@@ -268,7 +268,6 @@ class Forwarder:
             uid_int = int(uid)
 
             if not self.validator.tweets_by_uid.get(uid_int):
-                # TODO we need to wipe this from sync metagraph when hotkey changes
                 self.validator.tweets_by_uid[uid_int] = {
                     tweet["Tweet"]["ID"] for tweet in valid_tweets
                 }
