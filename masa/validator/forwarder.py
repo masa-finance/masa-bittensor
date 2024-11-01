@@ -259,7 +259,7 @@ class Forwarder:
                                     tweet_embedding,
                                 )
                             )
-                            if similarity >= 60:  # pretty strict
+                            if similarity >= 70:  # pretty strict
                                 valid_tweets.append(tweet)
                 else:
                     bt.logging.warning(f"Miner {uid} failed the spot check!")
