@@ -219,7 +219,10 @@ class API:
     async def show_tweets_by_uid(self):
         tweets = self.validator.tweets_by_uid
         if len(tweets) > 0:
-            return JSONResponse(content=tweets)
+            serializable_tweets = {
+                uid: list(tweet_set) for uid, tweet_set in tweets.items()
+            }
+            return JSONResponse(content=serializable_tweets)
         return JSONResponse(content=[])
 
     def delete_miner_volumes(self):
