@@ -389,6 +389,9 @@ class BaseValidatorNeuron(BaseNeuron):
                     if uid in volume["miners"]:
                         volume["miners"][uid] = 0
 
+                # Replace unique tweets by uid
+                self.tweets_by_uid[uid] = set()
+
         # Check to see if the metagraph has changed size.
         # If so, we need to add new hotkeys and moving averages.
         if len(self.hotkeys) < len(self.metagraph.hotkeys):
