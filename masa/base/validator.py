@@ -111,6 +111,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.keyword = ""  # note, current keyword
         self.keywords = []  # note, for volume scoring queries
         self.uncalled_uids = set()  # note, for volume scoring queries
+        self.volume_window = 6  # note, score volumes from last 6 tempos
 
         if self.config.subtensor._mock:
             self.dendrite = MockDendrite(wallet=self.wallet)
@@ -382,7 +383,7 @@ class BaseValidatorNeuron(BaseNeuron):
             if hotkey != self.metagraph.hotkeys[uid]:
                 self.scores[uid] = 0  # hotkey has been replaced
                 # Take the last 6 objects in the self.volumes list
-                recent_volumes = self.volumes[-6:]
+                recent_volumes = self.volumes[-self.volume_window :]
                 # Replace all instances of miners[uid] and set their values to 0
                 for volume in recent_volumes:
                     if uid in volume["miners"]:

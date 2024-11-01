@@ -21,8 +21,6 @@ import torch
 import scipy.stats as stats
 from fastapi.responses import JSONResponse
 
-VOLUME_SCORING_WINDOW = 6
-
 
 class Scorer:
     def __init__(self, validator):
@@ -36,7 +34,9 @@ class Scorer:
 
         if not self.validator.volumes or self.validator.volumes[-1]["tempo"] != tempo:
             self.validator.volumes.append({"tempo": tempo, "miners": {}})
-            self.validator.volumes = self.validator.volumes[-VOLUME_SCORING_WINDOW:]
+            self.validator.volumes = self.validator.volumes[
+                -self.validator.volume_window :
+            ]
 
         if miner_uid not in self.validator.volumes[-1]["miners"]:
             self.validator.volumes[-1]["miners"][miner_uid] = 0
@@ -46,7 +46,7 @@ class Scorer:
         volumes = self.validator.volumes
 
         miner_volumes = {}
-        for volume in volumes[-VOLUME_SCORING_WINDOW:]:
+        for volume in volumes[-self.validator.volume_window :]:
             for miner_uid, vol in volume["miners"].items():
                 if miner_uid not in miner_volumes:
                     miner_volumes[miner_uid] = 0
