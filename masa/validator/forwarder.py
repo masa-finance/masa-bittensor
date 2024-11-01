@@ -286,7 +286,9 @@ class Forwarder:
                     f"Miner {uid_int} produced {len(updates)} new tweets, with a total of {len(self.validator.tweets_by_uid[uid_int])}."
                 )
 
-        # tweet indexing
+        # note, indexing tweets on the validator cpu
+        # TODO, we need to move this to a central database / location
+        # note, most validators have their API off so this data cannot currently be accessed by default
         if random_keyword in self.validator.tweets_by_query:
             existing_tweet_ids = {
                 tweet["Tweet"]["ID"]
