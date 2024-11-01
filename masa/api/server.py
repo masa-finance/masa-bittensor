@@ -162,11 +162,20 @@ class API:
         )
 
         self.app.add_api_route(
-            "/tweets",
+            "/tweets_by_query",
             self.show_tweets_by_query,
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
-            response_description="Get indexed tweets",
+            response_description="Get indexed tweets by query",
+            tags=["data"],
+        )
+
+        self.app.add_api_route(
+            "/tweets_by_uid",
+            self.show_tweets_by_uid,
+            methods=["GET"],
+            dependencies=[Depends(self.get_self)],
+            response_description="Get indexed tweets by UID",
             tags=["data"],
         )
 
@@ -203,6 +212,12 @@ class API:
 
     async def show_tweets_by_query(self):
         tweets = self.validator.tweets_by_query
+        if len(tweets) > 0:
+            return JSONResponse(content=tweets)
+        return JSONResponse(content=[])
+
+    async def show_tweets_by_query(self):
+        tweets = self.validator.tweets_by_uid
         if len(tweets) > 0:
             return JSONResponse(content=tweets)
         return JSONResponse(content=[])
