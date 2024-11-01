@@ -216,7 +216,7 @@ class API:
             return JSONResponse(content=tweets)
         return JSONResponse(content=[])
 
-    async def show_tweets_by_query(self):
+    async def show_tweets_by_uid(self):
         tweets = self.validator.tweets_by_uid
         if len(tweets) > 0:
             return JSONResponse(content=tweets)
