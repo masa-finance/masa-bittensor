@@ -153,11 +153,9 @@ class Forwarder:
         if len(self.validator.keywords) == 0 or self.check_tempo():
             await self.fetch_twitter_queries()
 
-        if not self.validator.keyword or len(self.validator.uncalled_uids) == 0:
-            self.validator.keyword = random.choice(self.validator.keywords)
-
+        random_keyword = random.choice(self.validator.keywords)
         yesterday = datetime.now(UTC) - timedelta(days=1)
-        query = f'("{self.validator.keyword.strip()}") since:{yesterday.strftime(
+        query = f'("{random_keyword.strip()}") since:{yesterday.strftime(
             "%Y-%m-%d"
         )}'
         bt.logging.info(f"Volume checking for: {query}")
@@ -179,13 +177,13 @@ class Forwarder:
             if not all_responses:
                 continue
 
-            unique_tweets_response = []
-            existing_ids = set()
-            for resp in all_responses:
-                tweet_id = resp.get("Tweet", {}).get("ID")
-                if tweet_id and tweet_id not in existing_ids:
-                    unique_tweets_response.append(resp)
-                    existing_ids.add(tweet_id)
+            unique_tweets_response = list(
+                {
+                    resp["Tweet"]["ID"]: resp
+                    for resp in all_responses
+                    if "Tweet" in resp and "ID" in resp["Tweet"]
+                }.values()
+            )
 
             if unique_tweets_response is not None:
                 # note, first spot check this payload, ensuring a random tweet is valid
@@ -203,7 +201,7 @@ class Forwarder:
                 )
 
                 query_words = (
-                    self.normalize_whitespace(self.validator.keyword.replace('"', ""))
+                    self.normalize_whitespace(random_keyword.replace('"', ""))
                     .strip()
                     .lower()
                     .split()
@@ -231,7 +229,7 @@ class Forwarder:
 
                 if not query_in_tweet:
                     bt.logging.warning(
-                        f"Query: {self.validator.keyword} is not in the tweet: {fields_to_check}"
+                        f"Query: {random_keyword} is not in the tweet: {fields_to_check}"
                     )
 
                 tweet_timestamp = datetime.fromtimestamp(
@@ -248,7 +246,7 @@ class Forwarder:
                 # note, they passed the spot check!
                 if is_valid and query_in_tweet and is_since_date_requested:
                     bt.logging.success(
-                        f"Miner {uid} passed the spot check with query: {self.validator.keyword}"
+                        f"Miner {uid} passed the spot check with query: {random_keyword}"
                     )
                     for tweet in unique_tweets_response:
                         if tweet:
@@ -259,42 +257,56 @@ class Forwarder:
                                     tweet_embedding,
                                 )
                             )
-                            if similarity >= 60:  # pretty strict
+                            if similarity >= 70:  # pretty strict
                                 valid_tweets.append(tweet)
                 else:
                     bt.logging.warning(f"Miner {uid} failed the spot check!")
 
-            self.validator.scorer.add_volume(int(uid), len(valid_tweets))
-            bt.logging.info(f"Miner {uid} produced {len(valid_tweets)} valid tweets")
             all_valid_tweets.extend(valid_tweets)
 
-        query_exists = False
-        for indexed_tweet in self.validator.indexed_tweets:
-            if indexed_tweet["query"] == query:
-                existing_tweet_ids = {
-                    tweet["Tweet"]["ID"] for tweet in indexed_tweet["tweets"]
-                }
-                unique_valid_tweets = [
-                    tweet
-                    for tweet in all_valid_tweets
-                    if tweet["Tweet"]["ID"] not in existing_tweet_ids
-                ]
-                indexed_tweet["tweets"].extend(unique_valid_tweets)
-                query_exists = True
-                break
+            # note, score only unique tweets per miner (uid)
+            uid_int = int(uid)
 
-        if not query_exists:
-            payload = {
-                "query": query,
-                "tweets": [
-                    tweet
-                    for tweet in {
-                        tweet["Tweet"]["ID"]: tweet
-                        for tweet in all_valid_tweets  # note, only unique tweets
-                    }.values()
-                ],
+            if not self.validator.tweets_by_uid.get(uid_int):
+                self.validator.tweets_by_uid[uid_int] = {
+                    tweet["Tweet"]["ID"] for tweet in valid_tweets
+                }
+                self.validator.scorer.add_volume(uid_int, len(valid_tweets))
+                bt.logging.success(
+                    f"Miner {uid_int} produced {len(valid_tweets)} valid new tweets"
+                )
+            else:
+                existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
+                new_tweet_ids = {tweet["Tweet"]["ID"] for tweet in valid_tweets}
+                updates = new_tweet_ids - existing_tweet_ids
+                self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
+                self.validator.scorer.add_volume(uid_int, len(updates))
+                bt.logging.success(
+                    f"Miner {uid_int} produced {len(updates)} new tweets, with a total of {len(self.validator.tweets_by_uid[uid_int])}."
+                )
+
+        # note, indexing tweets on the validator cpu
+        # TODO, we need to move this to a central database / location
+        # note, most validators have their API off so this data cannot currently be accessed by default
+        if random_keyword in self.validator.tweets_by_query:
+            existing_tweet_ids = {
+                tweet["Tweet"]["ID"]
+                for tweet in self.validator.tweets_by_query[random_keyword]
             }
-            self.validator.indexed_tweets.append(payload)
+            unique_valid_tweets = [
+                tweet
+                for tweet in all_valid_tweets
+                if tweet["Tweet"]["ID"] not in existing_tweet_ids
+            ]
+            self.validator.tweets_by_query[random_keyword].extend(unique_valid_tweets)
+        else:
+            self.validator.tweets_by_query[random_keyword] = [
+                tweet
+                for tweet in {
+                    tweet["Tweet"]["ID"]: tweet
+                    for tweet in all_valid_tweets  # note, only unique tweets
+                }.values()
+            ]
 
         # note, set the last volume block to the current block
         self.validator.last_volume_block = self.validator.subtensor.block
