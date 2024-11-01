@@ -26,7 +26,7 @@ from masa.miner.twitter.profile import TwitterProfileSynapse
 from masa.miner.twitter.followers import TwitterFollowersSynapse
 
 from masa.base.healthcheck import PingAxonSynapse, get_external_ip
-from masa.utils.uids import get_random_miner_uids
+from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
@@ -38,9 +38,17 @@ class Forwarder:
         self.validator = validator
 
     async def forward_request(
-        self, request: Any, sample_size: int, timeout: int = TIMEOUT
+        self,
+        request: Any,
+        sample_size: int,
+        timeout: int = TIMEOUT,
+        sequential: bool = False,
     ):
-        miner_uids = await get_random_miner_uids(self.validator, k=sample_size)
+        if sequential:
+            miner_uids = await get_uncalled_miner_uids(self.validator, k=sample_size)
+        else:
+            miner_uids = await get_random_miner_uids(self.validator, k=sample_size)
+
         dendrite = bt.dendrite(wallet=self.validator.wallet)
         responses = await dendrite(
             [self.validator.metagraph.axons[uid] for uid in miner_uids],
@@ -145,19 +153,22 @@ class Forwarder:
         if len(self.validator.keywords) == 0 or self.check_tempo():
             await self.fetch_twitter_queries()
 
-        random_keyword = random.choice(self.validator.keywords)
+        if not self.validator.keyword or len(self.validator.uncalled_uids) == 0:
+            self.validator.keyword = random.choice(self.validator.keywords)
+
         yesterday = datetime.now(UTC) - timedelta(days=1)
-        query = f"({random_keyword.strip()}) since:{yesterday.strftime(
+        query = f"({self.validator.keyword.strip()}) since:{yesterday.strftime(
             "%Y-%m-%d"
         )}"
+        bt.logging.info(f"Volume checking for: {query}")
 
-        # note, the count is determined by the miner config --twitter.max_tweets_per_request
         volume_checking_timeout = 20
         request = RecentTweetsSynapse(query=query, timeout=volume_checking_timeout)
         responses, miner_uids = await self.forward_request(
             request,
             sample_size=self.validator.config.neuron.sample_size_volume,
             timeout=volume_checking_timeout,
+            sequential=True,
         )
 
         all_valid_tweets = []
@@ -192,7 +203,7 @@ class Forwarder:
                 )
 
                 query_words = (
-                    self.normalize_whitespace(random_keyword.replace('"', ""))
+                    self.normalize_whitespace(self.validator.keyword.replace('"', ""))
                     .strip()
                     .lower()
                     .split()
@@ -220,7 +231,7 @@ class Forwarder:
 
                 if not query_in_tweet:
                     bt.logging.warning(
-                        f"Query: {random_keyword} is not in the tweet: {fields_to_check}"
+                        f"Query: {self.validator.keyword} is not in the tweet: {fields_to_check}"
                     )
 
                 tweet_timestamp = datetime.fromtimestamp(
@@ -237,7 +248,7 @@ class Forwarder:
                 # note, they passed the spot check!
                 if is_valid and query_in_tweet and is_since_date_requested:
                     bt.logging.success(
-                        f"Miner {uid} passed the spot check with query: {random_keyword}"
+                        f"Miner {uid} passed the spot check with query: {self.validator.keyword}"
                     )
                     for tweet in unique_tweets_response:
                         if tweet:
