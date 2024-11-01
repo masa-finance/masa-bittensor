@@ -157,9 +157,9 @@ class Forwarder:
             self.validator.keyword = random.choice(self.validator.keywords)
 
         yesterday = datetime.now(UTC) - timedelta(days=1)
-        query = f"({self.validator.keyword.strip()}) since:{yesterday.strftime(
+        query = f'("{self.validator.keyword.strip()}") since:{yesterday.strftime(
             "%Y-%m-%d"
-        )}"
+        )}'
         bt.logging.info(f"Volume checking for: {query}")
 
         volume_checking_timeout = 20
