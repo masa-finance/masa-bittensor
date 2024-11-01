@@ -107,7 +107,10 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_volume_block = 0
         self.last_scoring_block = 0
 
-        self.keywords = []  # note, for volume queries
+        self.versions = []  # note, for storing uid versions
+        self.keywords = []  # note, for volume scoring queries
+        self.uncalled_uids = set()  # note, for volume scoring queries
+        self.volume_window = 6  # note, score volumes from last 6 tempos
 
         if self.config.subtensor._mock:
             self.dendrite = MockDendrite(wallet=self.wallet)
@@ -378,6 +381,15 @@ class BaseValidatorNeuron(BaseNeuron):
         for uid, hotkey in enumerate(self.hotkeys):
             if hotkey != self.metagraph.hotkeys[uid]:
                 self.scores[uid] = 0  # hotkey has been replaced
+                # Take the last 6 objects in the self.volumes list
+                recent_volumes = self.volumes[-self.volume_window :]
+                # Replace all instances of miners[uid] and set their values to 0
+                for volume in recent_volumes:
+                    if uid in volume["miners"]:
+                        volume["miners"][uid] = 0
+
+                # Replace unique tweets by uid
+                self.tweets_by_uid[uid] = set()
 
         # Check to see if the metagraph has changed size.
         # If so, we need to add new hotkeys and moving averages.
@@ -449,8 +461,8 @@ class BaseValidatorNeuron(BaseNeuron):
                 "scores": self.scores,
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
-                "versions": self.versions,
-                "indexed_tweets": self.indexed_tweets,
+                "tweets_by_uid": self.tweets_by_uid,
+                "tweets_by_query": self.tweets_by_query,
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -467,15 +479,15 @@ class BaseValidatorNeuron(BaseNeuron):
             self.scores = dict(state).get("scores", [])
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
-            self.versions = dict(state).get("versions", [])
-            self.indexed_tweets = dict(state).get("indexed_tweets", [])
+            self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
+            self.tweets_by_query = dict(state).get("tweets_by_query", {})
         else:
             self.step = 0
             self.scores = torch.zeros(self.metagraph.n)
             self.hotkeys = []
             self.volumes = []
-            self.versions = []
-            self.indexed_tweets = []
+            self.tweets_by_uid = {}
+            self.tweets_by_query = {}
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )
