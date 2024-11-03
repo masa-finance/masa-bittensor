@@ -38,7 +38,13 @@ class TestValidator:
         return validator_instance
 
     @pytest.mark.asyncio
-    async def test_miner_has_uid(self, validator):
+    async def test_validator_has_uid(self, validator):
         validator_instance = await validator
         uid = validator_instance.uid
         assert uid > -1, "UID should be greater than -1 for success"
+
+    @pytest.mark.asyncio
+    async def test_validator_twitter_profile_request(self, validator):
+        validator_instance = await validator
+        response = await validator_instance.forwarder.get_twitter_profile()
+        assert response is not None, "Response should not be None"
