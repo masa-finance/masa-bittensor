@@ -40,11 +40,12 @@ class Forwarder:
     async def forward_request(
         self,
         request: Any,
-        sample_size: int,
+        sample_size: int = None,
         timeout: int = None,
         sequential: bool = False,
     ):
-
+        if not sample_size:
+            sample_size = self.validator.subnet_config.get("organic").get("sample_size")
         if not timeout:
             timeout = self.validator.subnet_config.get("organic").get("timeout")
         if sequential:
@@ -73,7 +74,6 @@ class Forwarder:
         request = TwitterProfileSynapse(username=username)
         formatted_responses, _ = await self.forward_request(
             request=request,
-            sample_size=self.validator.subnet_config.get("organic").get("sample_size"),
         )
         return formatted_responses
 
@@ -81,7 +81,6 @@ class Forwarder:
         request = TwitterFollowersSynapse(username=username, count=count)
         formatted_responses, _ = await self.forward_request(
             request=request,
-            sample_size=self.validator.subnet_config.get("organic").get("sample_size"),
         )
         return formatted_responses
 
@@ -97,7 +96,6 @@ class Forwarder:
         )
         formatted_responses, _ = await self.forward_request(
             request=request,
-            sample_size=self.validator.subnet_config.get("organic").get("sample_size"),
         )
         return formatted_responses
 
