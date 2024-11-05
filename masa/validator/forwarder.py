@@ -165,10 +165,9 @@ class Forwarder:
                     bt.logging.error(
                         f"Failed to fetch config from GitHub: {response.status}"
                     )
-                    # note, defaults
-                    self.validator.dynamic_config = {
-                        "scoring": {"timeout": 40, "sample_size": 10, "cadence": 0.01}
-                    }
+                    # use local config.json if remote fetch fails
+                    with open("config.json", "r") as config_file:
+                        self.validator.dynamic_config = json.load(config_file)
 
     async def get_miners_volumes(self):
         if len(self.validator.versions) == 0:
