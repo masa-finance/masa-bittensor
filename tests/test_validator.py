@@ -17,7 +17,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import pytest
-import asyncio
 from neurons.validator import Validator
 from masa.base.validator import BaseValidatorNeuron
 
@@ -33,7 +32,7 @@ class TestValidator:
         config.wallet.name = "validator"
         config.wallet.hotkey = "default"
         config.axon.port = 8092
-
+        config.neuron.dont_save_events = True
         validator_instance = Validator(config=config)
         return validator_instance
 
@@ -44,7 +43,15 @@ class TestValidator:
         assert uid > -1, "UID should be greater than -1 for success"
 
     @pytest.mark.asyncio
-    async def test_validator_twitter_profile_request(self, validator):
+    async def test_validator_get_twitter_profile(self, validator):
         validator_instance = await validator
+        ping_axons_response = await validator_instance.forwarder.ping_axons()
+        m_axons = len(validator_instance.metagraph.axons)
+        sample_size = validator_instance.config.neuron.sample_size
         response = await validator_instance.forwarder.get_twitter_profile()
-        assert response is not None, "Response should not be None"
+
+        assert m_axons == len(ping_axons_response), "axons length mismatch"
+        assert len(response) == sample_size, "sample size mismatch"
+        for item in response:
+            assert "uid" in item, "property missing"
+            assert "response" in item, "property missing"

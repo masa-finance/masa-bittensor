@@ -49,6 +49,9 @@ class Forwarder:
         else:
             miner_uids = await get_random_miner_uids(self.validator, k=sample_size)
 
+        if len(miner_uids) == 0:
+            return [], []
+
         dendrite = bt.dendrite(wallet=self.validator.wallet)
         responses = await dendrite(
             [self.validator.metagraph.axons[uid] for uid in miner_uids],
@@ -154,13 +157,17 @@ class Forwarder:
             await self.fetch_twitter_queries()
 
         random_keyword = random.choice(self.validator.keywords)
-        yesterday = datetime.now(UTC) - timedelta(days=1)
+        yesterday = datetime.now(UTC).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ) - timedelta(days=1)
         query = f'("{random_keyword.strip()}") since:{yesterday.strftime(
             "%Y-%m-%d"
         )}'
         bt.logging.info(f"Volume checking for: {query}")
 
-        volume_checking_timeout = 20
+        volume_checking_timeout = (
+            10 if self.validator.config.subtensor.network == "test" else 40
+        )
         request = RecentTweetsSynapse(query=query, timeout=volume_checking_timeout)
         responses, miner_uids = await self.forward_request(
             request,

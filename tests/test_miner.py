@@ -17,7 +17,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import pytest
-import asyncio
 from neurons.miner import Miner
 from masa.base.miner import BaseMinerNeuron
 
@@ -32,6 +31,7 @@ class TestMiner:
         config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
         config.wallet.name = "miner"
         config.wallet.hotkey = "default"
+        config.blacklist.force_validator_permit = True
         config.axon.port = 8091
 
         miner_instance = Miner(config=config)
