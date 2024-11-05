@@ -5,11 +5,11 @@ MAINNET = network finney
 #####                       SELECT YOUR ENV                        #####
 ########################################################################
 
-# SUBTENSOR_ENVIRONMENT = $(TESTNET)
-SUBTENSOR_ENVIRONMENT = $(MAINNET)
+SUBTENSOR_ENVIRONMENT = $(TESTNET)
+# SUBTENSOR_ENVIRONMENT = $(MAINNET)
 
-# NETUID = 165 # testnet
-NETUID = 42 # mainnet
+NETUID = 165 # testnet
+# NETUID = 42 # mainnet
 
 ########################################################################
 #####                       USEFUL COMMANDS                        #####
@@ -46,10 +46,10 @@ set-weights:
 	btcli root weights --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 run-miner:
-	python neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug --blacklist.force_validator_permit
+	python neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug --blacklist.force_validator_permit --twitter.max_tweets_per_request 1
 
 run-validator:
-	python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug --neuron.axon_off
+	python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug --neuron.axon_off --enable_validator_api
 
 hyperparameters:
 	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)

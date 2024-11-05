@@ -19,6 +19,8 @@
 import bittensor as bt
 from typing import Any
 from datetime import datetime, UTC, timedelta
+import aiohttp
+import json
 import random
 
 from masa.miner.twitter.tweets import RecentTweetsSynapse
@@ -149,12 +151,33 @@ class Forwarder:
             bt.logging.error(f"Error fetching trending queries: {e}")
             self.validator.keywords = ["crypto", "btc", "eth"]
 
+    async def fetch_dynamic_config(self):
+        async with aiohttp.ClientSession() as session:
+            # url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config.json"
+            url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/refs/heads/feat--trending-queries/config.json"
+            async with session.get(url) as response:
+                if response.status == 200:
+                    configRaw = await response.text()
+                    config = json.loads(configRaw)
+                    bt.logging.info(f"Dynamic config fetched!: {config}")
+                    self.validator.dynamic_config = config
+                else:
+                    bt.logging.error(
+                        f"Failed to fetch config from GitHub: {response.status}"
+                    )
+                    # note, defaults
+                    self.validator.dynamic_config = {
+                        "scoring": {"timeout": 40, "sample_size": 10, "cadence": 0.01}
+                    }
+
     async def get_miners_volumes(self):
         if len(self.validator.versions) == 0:
             bt.logging.info("Pinging axons to get miner versions...")
             return await self.ping_axons()
         if len(self.validator.keywords) == 0 or self.check_tempo():
             await self.fetch_twitter_queries()
+        if len(self.validator.dynamic_config) == 0 or self.check_tempo():
+            await self.fetch_dynamic_config()
 
         random_keyword = random.choice(self.validator.keywords)
         yesterday = datetime.now(UTC).replace(

@@ -1,0 +1,7 @@
+{
+  "scoring": {
+    "timeout": 40,
+    "sample_size": 10,
+    "cadence": 0.01
+  }
+}
