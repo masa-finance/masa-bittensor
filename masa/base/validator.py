@@ -102,6 +102,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+        self.block_time = 12
 
         self.last_sync_block = 0
         self.last_tempo_block = 0
@@ -185,8 +186,7 @@ class BaseValidatorNeuron(BaseNeuron):
                     self.last_sync_block = self.block
             except Exception as e:
                 bt.logging.error(f"Error running sync: {e}")
-            # TODO is there a better way to go about this?
-            await asyncio.sleep(3 * 12)
+            await asyncio.sleep(self.block_time)
 
     async def run_miner_ping(self):
         while not self.should_exit:
@@ -195,19 +195,21 @@ class BaseValidatorNeuron(BaseNeuron):
                     await self.forwarder.ping_axons()
             except Exception as e:
                 bt.logging.error(f"Error running miner ping: {e}")
-            # TODO is there a better way to go about this?
-            await asyncio.sleep(self.tempo / 2 * 12)
+            await asyncio.sleep(self.block_time)
 
     async def run_miner_volume(self):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_volume_block
-                if blocks_since_last_check >= self.tempo / 100:
+                blocks_to_wait = self.tempo * self.subnet_config.get("synthetic").get(
+                    "cadence"
+                )
+                bt.logging.success(f"blocks to wait: {blocks_to_wait}")
+                if blocks_since_last_check >= blocks_to_wait:
                     await self.forwarder.get_miners_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner volume: {e}")
-            # TODO is there a better way to go about this?
-            await asyncio.sleep(self.tempo / 200 * 12)
+            await asyncio.sleep(self.block_time)
 
     async def run_miner_scoring(self):
         while not self.should_exit:
@@ -217,8 +219,7 @@ class BaseValidatorNeuron(BaseNeuron):
                     await self.scorer.score_miner_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner scoring: {e}")
-            # TODO is there a better way to go about this?
-            await asyncio.sleep(self.tempo / 100 * 12)
+            await asyncio.sleep(self.block_time)
 
     # note, runs every tempo
     async def run_auto_update(self):

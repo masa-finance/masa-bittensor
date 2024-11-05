@@ -161,8 +161,7 @@ class Forwarder:
 
     async def fetch_subnet_config(self):
         async with aiohttp.ClientSession() as session:
-            # url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config.json"
-            url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/refs/heads/feat--trending-queries/config.json"
+            url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config.json"
             network_type = (
                 "testnet"
                 if self.validator.config.subtensor.network == "test"
@@ -199,6 +198,9 @@ class Forwarder:
             "%Y-%m-%d"
         )}'
         bt.logging.info(f"Volume checking for: {query}")
+        bt.logging.success(
+            f"synthetic timeout from config: {self.validator.subnet_config.get("synthetic").get("timeout")}"
+        )
         request = RecentTweetsSynapse(
             query=query,
             timeout=self.validator.subnet_config.get("synthetic").get("timeout"),

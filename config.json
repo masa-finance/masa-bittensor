@@ -22,7 +22,7 @@
     "synthetic": {
       "timeout": 10,
       "sample_size": 5,
-      "cadence": 0.03
+      "cadence": 0.005
     },
     "healthcheck": {
       "timeout": 6,
