@@ -17,6 +17,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import pytest
+import asyncio
 from neurons.validator import Validator
 from masa.base.validator import BaseValidatorNeuron
 
@@ -75,3 +76,12 @@ class TestValidator:
         validator_instance = await validator
         await validator_instance.forwarder.fetch_twitter_queries()
         assert validator_instance.keywords != [], "keywords are empty"
+
+    @pytest.mark.asyncio
+    async def test_validator_score_miners(self, validator):
+        validator_instance = await validator
+        current_block = validator_instance.last_scoring_block
+        await validator_instance.forwarder.get_miners_volumes()
+        await validator_instance.forwarder.score_miner_volumes()
+        new_block = validator_instance.last_scoring_block
+        assert current_block != new_block, "miner scoring did not run properly"
