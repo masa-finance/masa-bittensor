@@ -221,7 +221,6 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.error(f"Error running miner scoring: {e}")
             await asyncio.sleep(self.block_time)
 
-    # note, runs every tempo
     async def run_auto_update(self):
         while not self.should_exit:
             try:
@@ -229,7 +228,7 @@ class BaseValidatorNeuron(BaseNeuron):
                     self.auto_update()
             except Exception as e:
                 bt.logging.error(f"Error running auto update: {e}")
-            await asyncio.sleep(self.tempo * 12)  # note, 12 seconds per block
+            await asyncio.sleep(self.tempo * self.block_time)
 
     def run_sync_in_loop(self):
         asyncio.run(self.run_sync())
