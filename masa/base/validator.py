@@ -111,7 +111,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.keywords = []  # note, for volume scoring queries
         self.uncalled_uids = set()  # note, for volume scoring queries
         self.volume_window = 6  # note, score volumes from last 6 tempos
-        self.dynamic_config = {}
+        self.subnet_config = {}
 
         if self.config.subtensor._mock:
             self.dendrite = MockDendrite(wallet=self.wallet)

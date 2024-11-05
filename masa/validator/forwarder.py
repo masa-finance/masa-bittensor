@@ -151,7 +151,7 @@ class Forwarder:
             bt.logging.error(f"Error fetching trending queries: {e}")
             self.validator.keywords = ["crypto", "btc", "eth"]
 
-    async def fetch_dynamic_config(self):
+    async def fetch_subnet_config(self):
         async with aiohttp.ClientSession() as session:
             # url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config.json"
             url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/refs/heads/feat--trending-queries/config.json"
@@ -160,14 +160,14 @@ class Forwarder:
                     configRaw = await response.text()
                     config = json.loads(configRaw)
                     bt.logging.info(f"Dynamic config fetched!: {config}")
-                    self.validator.dynamic_config = config
+                    self.validator.subnet_config = config
                 else:
                     bt.logging.error(
                         f"Failed to fetch config from GitHub: {response.status}"
                     )
                     # use local config.json if remote fetch fails
                     with open("config.json", "r") as config_file:
-                        self.validator.dynamic_config = json.load(config_file)
+                        self.validator.subnet_config = json.load(config_file)
 
     async def get_miners_volumes(self):
         if len(self.validator.versions) == 0:
@@ -175,9 +175,10 @@ class Forwarder:
             return await self.ping_axons()
         if len(self.validator.keywords) == 0 or self.check_tempo():
             await self.fetch_twitter_queries()
-        if len(self.validator.dynamic_config) == 0 or self.check_tempo():
-            await self.fetch_dynamic_config()
+        if len(self.validator.subnet_config) == 0 or self.check_tempo():
+            await self.fetch_subnet_config()
 
+        bt.logging.success(f"Dynamic config: {self.validator.subnet_config}")
         random_keyword = random.choice(self.validator.keywords)
         yesterday = datetime.now(UTC).replace(
             hour=0, minute=0, second=0, microsecond=0
