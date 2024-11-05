@@ -62,7 +62,7 @@ class TestValidator:
         current_block = validator_instance.last_volume_block
         await validator_instance.forwarder.get_miners_volumes()
         new_block = validator_instance.last_volume_block
-        assert current_block != new_block, "tweets_by_query is not populated"
+        assert current_block != new_block, "miner volume check did not run properly"
 
     @pytest.mark.asyncio
     async def test_validator_fetch_subnet_config(self, validator):
