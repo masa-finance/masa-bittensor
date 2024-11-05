@@ -7,7 +7,7 @@ packages = ["masa"]
 
 [project]
 name = "masa"
-version = "1.0.2"
+version = "1.1.0"
 description = "bittensor subnet for masa protocol"
 authors = [
     { name = "masa.ai", email = "hello@masa.ai" }
