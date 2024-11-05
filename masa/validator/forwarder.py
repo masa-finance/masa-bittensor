@@ -32,8 +32,6 @@ from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
-TIMEOUT = 10
-
 
 class Forwarder:
     def __init__(self, validator):
@@ -43,9 +41,12 @@ class Forwarder:
         self,
         request: Any,
         sample_size: int,
-        timeout: int = TIMEOUT,
+        timeout: int = None,
         sequential: bool = False,
     ):
+
+        if not timeout:
+            timeout = self.validator.subnet_config.get("organic").get("timeout")
         if sequential:
             miner_uids = await get_uncalled_miner_uids(self.validator, k=sample_size)
         else:
@@ -71,14 +72,16 @@ class Forwarder:
     async def get_twitter_profile(self, username: str = "getmasafi"):
         request = TwitterProfileSynapse(username=username)
         formatted_responses, _ = await self.forward_request(
-            request=request, sample_size=self.validator.config.neuron.sample_size
+            request=request,
+            sample_size=self.validator.subnet_config.get("organic").get("sample_size"),
         )
         return formatted_responses
 
     async def get_twitter_followers(self, username: str = "getmasafi", count: int = 10):
         request = TwitterFollowersSynapse(username=username, count=count)
         formatted_responses, _ = await self.forward_request(
-            request=request, sample_size=self.validator.config.neuron.sample_size
+            request=request,
+            sample_size=self.validator.subnet_config.get("organic").get("sample_size"),
         )
         return formatted_responses
 
@@ -87,9 +90,14 @@ class Forwarder:
         query: str = f"(Bitcoin) since:{datetime.now().strftime('%Y-%m-%d')}",
         count: int = 3,
     ):
-        request = RecentTweetsSynapse(query=query, count=count, timeout=TIMEOUT)
+        request = RecentTweetsSynapse(
+            query=query,
+            count=count,
+            timeout=self.validator.subnet_config.get("organic").get("timeout"),
+        )
         formatted_responses, _ = await self.forward_request(
-            request=request, sample_size=self.validator.config.neuron.sample_size
+            request=request,
+            sample_size=self.validator.subnet_config.get("organic").get("sample_size"),
         )
         return formatted_responses
 
@@ -112,7 +120,7 @@ class Forwarder:
         request = PingAxonSynapse(
             sent_from=get_external_ip(), is_active=False, version=0
         )
-        sample_size = self.validator.config.neuron.sample_size_ping
+        sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         dendrite = bt.dendrite(wallet=self.validator.wallet)
         all_responses = []
         for i in range(0, len(self.validator.metagraph.axons), sample_size):
@@ -121,7 +129,7 @@ class Forwarder:
                 batch,
                 request,
                 deserialize=False,
-                timeout=TIMEOUT,
+                timeout=self.validator.subnet_config.get("healthcheck").get("timeout"),
             )
             all_responses.extend(batch_responses)
 
@@ -155,19 +163,29 @@ class Forwarder:
         async with aiohttp.ClientSession() as session:
             # url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config.json"
             url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/refs/heads/feat--trending-queries/config.json"
+            network_type = (
+                "testnet"
+                if self.validator.config.subtensor.network == "test"
+                else "mainnet"
+            )
             async with session.get(url) as response:
                 if response.status == 200:
                     configRaw = await response.text()
                     config = json.loads(configRaw)
-                    bt.logging.info(f"Dynamic config fetched!: {config}")
-                    self.validator.subnet_config = config
+                    subnet_config = config.get(network_type, {})
+                    bt.logging.info(
+                        f"fetched {network_type} config from github: {subnet_config}"
+                    )
+                    self.validator.subnet_config = subnet_config
                 else:
                     bt.logging.error(
-                        f"Failed to fetch config from GitHub: {response.status}"
+                        f"failed to fetch subnet config from GitHub: {response.status}"
                     )
                     # use local config.json if remote fetch fails
                     with open("config.json", "r") as config_file:
-                        self.validator.subnet_config = json.load(config_file)
+                        config = json.load(config_file)
+                        subnet_config = config.get(network_type, {})
+                        self.validator.subnet_config = subnet_config
 
     async def get_miners_volumes(self):
         if len(self.validator.versions) == 0:
@@ -178,7 +196,6 @@ class Forwarder:
         if len(self.validator.subnet_config) == 0 or self.check_tempo():
             await self.fetch_subnet_config()
 
-        bt.logging.success(f"Dynamic config: {self.validator.subnet_config}")
         random_keyword = random.choice(self.validator.keywords)
         yesterday = datetime.now(UTC).replace(
             hour=0, minute=0, second=0, microsecond=0
@@ -187,15 +204,16 @@ class Forwarder:
             "%Y-%m-%d"
         )}'
         bt.logging.info(f"Volume checking for: {query}")
-
-        volume_checking_timeout = (
-            10 if self.validator.config.subtensor.network == "test" else 40
+        request = RecentTweetsSynapse(
+            query=query,
+            timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
         )
-        request = RecentTweetsSynapse(query=query, timeout=volume_checking_timeout)
         responses, miner_uids = await self.forward_request(
             request,
-            sample_size=self.validator.config.neuron.sample_size_volume,
-            timeout=volume_checking_timeout,
+            sample_size=self.validator.subnet_config.get("synthetic").get(
+                "sample_size"
+            ),
+            timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
             sequential=True,
         )
 

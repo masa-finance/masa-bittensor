@@ -1,16 +1,32 @@
 {
   "mainnet": {
-    "scoring": {
-      "timeout": 40,
+    "organic": {
+      "sample_size": 3,
+      "timeout": 10
+    },
+    "synthetic": {
       "sample_size": 10,
+      "timeout": 40,
       "cadence": 0.01
+    },
+    "healthcheck": {
+      "timeout": 10,
+      "sample_size": 25
     }
   },
   "testnet": {
-    "scoring": {
+    "organic": {
+      "sample_size": 3,
+      "timeout": 10
+    },
+    "synthetic": {
       "timeout": 10,
       "sample_size": 5,
       "cadence": 0.03
+    },
+    "healthcheck": {
+      "timeout": 6,
+      "sample_size": 25
     }
   }
 }

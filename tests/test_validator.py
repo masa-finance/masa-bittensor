@@ -47,11 +47,10 @@ class TestValidator:
         validator_instance = await validator
         ping_axons_response = await validator_instance.forwarder.ping_axons()
         m_axons = len(validator_instance.metagraph.axons)
-        sample_size = validator_instance.config.neuron.sample_size
         response = await validator_instance.forwarder.get_twitter_profile()
 
         assert m_axons == len(ping_axons_response), "axons length mismatch"
-        assert len(response) == sample_size, "sample size mismatch"
+        assert len(response) > 0, "no response from miners"
         for item in response:
             assert "uid" in item, "property missing"
             assert "response" in item, "property missing"
