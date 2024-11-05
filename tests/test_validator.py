@@ -82,6 +82,6 @@ class TestValidator:
         validator_instance = await validator
         current_block = validator_instance.last_scoring_block
         await validator_instance.forwarder.get_miners_volumes()
-        await validator_instance.forwarder.score_miner_volumes()
+        await validator_instance.scorer.score_miner_volumes()
         new_block = validator_instance.last_scoring_block
         assert current_block != new_block, "miner scoring did not run properly"
