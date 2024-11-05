@@ -181,11 +181,6 @@ class Forwarder:
                     bt.logging.error(
                         f"failed to fetch subnet config from GitHub: {response.status}"
                     )
-                    # use local config.json if remote fetch fails
-                    with open("config.json", "r") as config_file:
-                        config = json.load(config_file)
-                        subnet_config = config.get(network_type, {})
-                        self.validator.subnet_config = subnet_config
 
     async def get_miners_volumes(self):
         if len(self.validator.versions) == 0:

@@ -19,6 +19,7 @@
 import os
 import copy
 import torch
+import json
 import asyncio
 import argparse
 import threading
@@ -28,7 +29,6 @@ from typing import List
 
 from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_validator_args
-from masa.mock import MockDendrite
 
 from masa.validator.scorer import Scorer
 from masa.validator.forwarder import Forwarder
@@ -55,6 +55,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         self.forwarder = Forwarder(self)
         self.scorer = Scorer(self)
+
         self.model = SentenceTransformer(
             "all-MiniLM-L6-v2"
         )  # Load a pre-trained model for embeddings
@@ -111,13 +112,19 @@ class BaseValidatorNeuron(BaseNeuron):
         self.keywords = []  # note, for volume scoring queries
         self.uncalled_uids = set()  # note, for volume scoring queries
         self.volume_window = 6  # note, score volumes from last 6 tempos
-        self.subnet_config = {}
 
-        if self.config.subtensor._mock:
-            self.dendrite = MockDendrite(wallet=self.wallet)
-        else:
-            self.dendrite = bt.dendrite(wallet=self.wallet)
+        # load config file for subnet specific settings as default
+        # note, every tempo we fetch the latest config file from github main branch
+        with open("config.json", "r") as config_file:
+            config = json.load(config_file)
+            network = (
+                "testnet" if self.config.subtensor.network == "test" else "mainnet"
+            )
+            subnet_config = config.get(network, {})
+            bt.logging.info(f"Loaded subnet config: {subnet_config}")
+            self.subnet_config = subnet_config
 
+        self.dendrite = bt.dendrite(wallet=self.wallet)
         self.scores = torch.zeros(
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
