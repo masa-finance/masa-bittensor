@@ -54,3 +54,24 @@ class TestValidator:
         for item in response:
             assert "uid" in item, "property missing"
             assert "response" in item, "property missing"
+
+    @pytest.mark.asyncio
+    async def test_validator_get_miners_volumes(self, validator):
+        validator_instance = await validator
+        await validator_instance.forwarder.ping_axons()
+        current_block = validator_instance.last_volume_block
+        await validator_instance.forwarder.get_miners_volumes()
+        new_block = validator_instance.last_volume_block
+        assert current_block != new_block, "tweets_by_query is not populated"
+
+    @pytest.mark.asyncio
+    async def test_validator_fetch_subnet_config(self, validator):
+        validator_instance = await validator
+        await validator_instance.forwarder.fetch_subnet_config()
+        assert validator_instance.subnet_config != {}, "subnet config is empty"
+
+    @pytest.mark.asyncio
+    async def test_validator_fetch_twitter_queries(self, validator):
+        validator_instance = await validator
+        await validator_instance.forwarder.fetch_twitter_queries()
+        assert validator_instance.keywords != [], "keywords are empty"
