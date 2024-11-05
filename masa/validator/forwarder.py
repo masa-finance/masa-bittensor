@@ -188,12 +188,7 @@ class Forwarder:
             await self.fetch_subnet_config()
 
         random_keyword = random.choice(self.validator.keywords)
-        yesterday = datetime.now(UTC).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ) - timedelta(days=1)
-        query = f'("{random_keyword.strip()}") since:{yesterday.strftime(
-            "%Y-%m-%d"
-        )}'
+        query = f'"{random_keyword.strip()}"'
         bt.logging.info(f"Volume checking for: {query}")
         request = RecentTweetsSynapse(
             query=query,
@@ -275,6 +270,9 @@ class Forwarder:
                     random_tweet.get("Timestamp", 0), UTC
                 )
 
+                yesterday = datetime.now(UTC).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                ) - timedelta(days=1)
                 is_since_date_requested = yesterday <= tweet_timestamp
 
                 if not is_since_date_requested:
