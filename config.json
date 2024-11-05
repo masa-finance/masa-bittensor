@@ -7,11 +7,12 @@
     "synthetic": {
       "sample_size": 10,
       "timeout": 40,
-      "cadence": 0.01
+      "blocks": 3
     },
     "healthcheck": {
       "timeout": 10,
-      "sample_size": 25
+      "sample_size": 25,
+      "blocks": 360
     }
   },
   "testnet": {
@@ -21,12 +22,13 @@
     },
     "synthetic": {
       "timeout": 10,
-      "sample_size": 5,
-      "cadence": 0.005
+      "sample_size": 2,
+      "blocks": 1
     },
     "healthcheck": {
       "timeout": 6,
-      "sample_size": 25
+      "sample_size": 25,
+      "blocks": 180
     }
   }
 }

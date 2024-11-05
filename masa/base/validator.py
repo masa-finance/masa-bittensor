@@ -108,6 +108,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_tempo_block = 0
         self.last_volume_block = 0
         self.last_scoring_block = 0
+        self.last_healthcheck_block = 0
 
         self.versions = []  # note, for storing uid versions
         self.keywords = []  # note, for volume scoring queries
@@ -191,7 +192,9 @@ class BaseValidatorNeuron(BaseNeuron):
     async def run_miner_ping(self):
         while not self.should_exit:
             try:
-                if self.forwarder.check_tempo():
+                blocks_since_last_check = self.block - self.last_healthcheck_block
+                blocks_to_wait = self.subnet_config.get("healthcheck").get("blocks")
+                if blocks_since_last_check >= blocks_to_wait:
                     await self.forwarder.ping_axons()
             except Exception as e:
                 bt.logging.error(f"Error running miner ping: {e}")
@@ -201,10 +204,7 @@ class BaseValidatorNeuron(BaseNeuron):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_volume_block
-                blocks_to_wait = self.tempo * self.subnet_config.get("synthetic").get(
-                    "cadence"
-                )
-                bt.logging.success(f"blocks to wait: {blocks_to_wait}")
+                blocks_to_wait = self.subnet_config.get("synthetic").get("blocks")
                 if blocks_since_last_check >= blocks_to_wait:
                     await self.forwarder.get_miners_volumes()
             except Exception as e:

@@ -135,8 +135,7 @@ class Forwarder:
 
         self.validator.versions = [response.version for response in all_responses]
         bt.logging.info(f"Miner Versions: {self.validator.versions}")
-        self.validator.last_tempo_block = self.validator.subtensor.block
-
+        self.validator.last_healthcheck_block = self.validator.subtensor.block
         return [
             {
                 "status_code": response.dendrite.status_code,
@@ -198,9 +197,6 @@ class Forwarder:
             "%Y-%m-%d"
         )}'
         bt.logging.info(f"Volume checking for: {query}")
-        bt.logging.success(
-            f"synthetic timeout from config: {self.validator.subnet_config.get("synthetic").get("timeout")}"
-        )
         request = RecentTweetsSynapse(
             query=query,
             timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
