@@ -22,7 +22,7 @@
     },
     "synthetic": {
       "timeout": 10,
-      "sample_size": 2,
+      "sample_size": 5,
       "blocks": 1
     },
     "healthcheck": {
