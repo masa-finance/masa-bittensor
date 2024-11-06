@@ -16,6 +16,11 @@ jobs:
         with:
           python-version: "3.12"  # Explicitly set Python version to match requires-python
           
+      - name: Setup bittensor wallet directory
+        run: |
+          mkdir -p /home/runner/.bittensor/wallets/miner/hotkeys
+          echo "${{ secrets.TEST_MINER_HOTKEY }}" > /home/runner/.bittensor/wallets/miner/hotkeys/default
+          
       - name: Upgrade pip and setuptools
         run: |
           python -m pip install --upgrade pip
