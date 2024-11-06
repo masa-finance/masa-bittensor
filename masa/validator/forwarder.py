@@ -29,7 +29,8 @@ from masa.synapses import (
     TwitterProfileSynapse,
 )
 
-from masa.synapses import PingAxonSynapse, get_external_ip
+from masa.synapses import PingAxonSynapse
+from masa.base.healthcheck import get_external_ip
 from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
