@@ -29,7 +29,8 @@ from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_miner_args
 
 from typing import Dict
-from masa.synapses import handle_ping, PingAxonSynapse
+from masa.synapses import PingAxonSynapse
+from masa.base.healthcheck import handle_ping
 
 from masa.miner.twitter.profile import handle_twitter_profile
 from masa.miner.twitter.followers import handle_twitter_followers
