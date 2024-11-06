@@ -19,15 +19,20 @@
 import pytest
 from neurons.miner import Miner
 from masa.base.miner import BaseMinerNeuron
+
+from masa.synapses import (
+    TwitterProfileSynapse,
+    TwitterFollowersSynapse,
+    RecentTweetsSynapse,
+)
+
 from masa.miner.twitter.profile import (
-    TwitterProfileRequest,
     TwitterProfileSynapse,
 )
 from masa.miner.twitter.followers import (
     TwitterFollowersRequest,
-    TwitterFollowersSynapse,
 )
-from masa.miner.twitter.tweets import TwitterTweetsRequest, RecentTweetsSynapse
+from masa.miner.twitter.tweets import TwitterTweetsRequest
 
 
 class TestMiner:

@@ -1,23 +1,11 @@
 import bittensor as bt
-from typing import List, Optional, Any
+from typing import List, Optional
 from masa.miner.masa_protocol_request import MasaProtocolRequest
 from masa.types.twitter import ProtocolTwitterTweetResponse
+from masa.synapses import RecentTweetsSynapse
 
 
-# TODO we can refactor this to synapses directory, as both vali and miner use
-class RecentTweetsSynapse(bt.Synapse):
-    query: str
-    count: Optional[int] = None
-    response: Optional[Any] = None
-    timeout: Optional[int] = 10
-
-    def deserialize(self) -> Optional[Any]:
-        return self.response
-
-
-def forward_recent_tweets(
-    synapse: RecentTweetsSynapse, max: int
-) -> RecentTweetsSynapse:
+def handle_recent_tweets(synapse: RecentTweetsSynapse, max: int) -> RecentTweetsSynapse:
     synapse.response = TwitterTweetsRequest(max).get_recent_tweets(synapse)
     return synapse
 
@@ -25,8 +13,10 @@ def forward_recent_tweets(
 class TwitterTweetsRequest(MasaProtocolRequest):
     def __init__(self, max_tweets: int):
         super().__init__()
-        # note, the count is determined by the miner config --twitter.max_tweets_per_request
-        self.max_tweets = max_tweets
+        # note, the max is determined by the miner config --twitter.max_tweets_per_request
+        self.max_tweets = min(
+            max_tweets, 450
+        )  # 450 is the protocol's limit per account / request
 
     def get_recent_tweets(
         self, synapse: RecentTweetsSynapse

@@ -23,11 +23,13 @@ import aiohttp
 import json
 import random
 
-from masa.miner.twitter.tweets import RecentTweetsSynapse
-from masa.miner.twitter.profile import TwitterProfileSynapse
-from masa.miner.twitter.followers import TwitterFollowersSynapse
+from masa.synapses import (
+    RecentTweetsSynapse,
+    TwitterFollowersSynapse,
+    TwitterProfileSynapse,
+)
 
-from masa.base.healthcheck import PingAxonSynapse, get_external_ip
+from masa.synapses import PingAxonSynapse, get_external_ip
 from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator

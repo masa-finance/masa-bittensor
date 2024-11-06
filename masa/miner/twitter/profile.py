@@ -1,19 +1,11 @@
 import bittensor as bt
-from typing import List, Optional, Any
+from typing import List
 from masa.miner.masa_protocol_request import MasaProtocolRequest
 from masa.types.twitter import TwitterProfileObject
+from masa.synapses import TwitterProfileSynapse
 
 
-# TODO we can refactor this to synapses directory, as both vali and miner use
-class TwitterProfileSynapse(bt.Synapse):
-    username: str
-    response: Optional[Any] = None
-
-    def deserialize(self) -> Any:
-        return self.response
-
-
-def forward_twitter_profile(synapse: TwitterProfileSynapse) -> TwitterProfileSynapse:
+def handle_twitter_profile(synapse: TwitterProfileSynapse) -> TwitterProfileSynapse:
     synapse.response = TwitterProfileRequest().get_profile(synapse)
     return synapse
 
