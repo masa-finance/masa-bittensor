@@ -22,7 +22,9 @@ jobs:
       - name: Setup bittensor wallet directory
         run: |
           mkdir -p /home/runner/.bittensor/wallets/miner/hotkeys
-          echo "${{ secrets.TEST_MINER_HOTKEY }}" > /home/runner/.bittensor/wallets/miner/hotkeys/default
+          chmod 700 /home/runner/.bittensor/wallets/miner/hotkeys
+          echo '${{ secrets.TEST_MINER_HOTKEY }}' > /home/runner/.bittensor/wallets/miner/hotkeys/default
+          chmod 600 /home/runner/.bittensor/wallets/miner/hotkeys/default
           
       - name: Upgrade pip and setuptools
         run: |
@@ -35,7 +37,6 @@ jobs:
       - name: Install test dependencies
         run: |
           pip install 'pytest==7.2.2' pytest-cov pytest-asyncio
-          # Not upgrading munch to avoid conflicts with bittensor dependencies
         
       - name: Run miner tests
         run: |
