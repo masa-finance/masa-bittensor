@@ -6,8 +6,8 @@ jobs:
     name: Run tests and collect coverage
     runs-on: ubuntu-latest
     env:
-      NEST_ASYNCIO: 1  # Explicitly set nest_asyncio
-      JUPYTER_PLATFORM_DIRS: 1  # Address Jupyter paths warning
+      NEST_ASYNCIO: 1
+      JUPYTER_PLATFORM_DIRS: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,9 +34,9 @@ jobs:
         
       - name: Install test dependencies
         run: |
-          pip install pytest pytest-cov pytest-asyncio pytest-warnings
-          pip install --upgrade munch  # Upgrade munch to address pkg_resources warning
-          
+          pip install 'pytest==7.2.2' pytest-cov pytest-asyncio
+          # Not upgrading munch to avoid conflicts with bittensor dependencies
+        
       - name: Run miner tests
         run: |
           python -m pytest \
