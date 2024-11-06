@@ -21,6 +21,10 @@ jobs:
           
       - name: Setup bittensor wallet directory
         run: |
+          mkdir -p /home/runner/.bittensor/wallets/validator/hotkeys
+          chmod 700 /home/runner/.bittensor/wallets/validator/hotkeys
+          echo '${{ secrets.TEST_VALIDATOR_HOTKEY }}' > /home/runner/.bittensor/wallets/validator/hotkeys/default
+          chmod 600 /home/runner/.bittensor/wallets/validator/hotkeys/default
           mkdir -p /home/runner/.bittensor/wallets/miner/hotkeys
           chmod 700 /home/runner/.bittensor/wallets/miner/hotkeys
           echo '${{ secrets.TEST_MINER_HOTKEY }}' > /home/runner/.bittensor/wallets/miner/hotkeys/default
