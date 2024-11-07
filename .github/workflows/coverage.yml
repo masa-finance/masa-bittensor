@@ -5,6 +5,9 @@ jobs:
   test:
     name: Run tests and collect coverage
     runs-on: ubuntu-latest
+    env:
+      NEST_ASYNCIO: 1
+      JUPYTER_PLATFORM_DIRS: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -14,7 +17,18 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12"  # Explicitly set Python version to match requires-python
+          python-version: "3.12"
+          
+      - name: Setup bittensor wallet directory
+        run: |
+          mkdir -p /home/runner/.bittensor/wallets/validator/hotkeys
+          chmod 700 /home/runner/.bittensor/wallets/validator/hotkeys
+          echo '${{ secrets.TEST_VALIDATOR_HOTKEY }}' > /home/runner/.bittensor/wallets/validator/hotkeys/default
+          chmod 600 /home/runner/.bittensor/wallets/validator/hotkeys/default
+          mkdir -p /home/runner/.bittensor/wallets/miner/hotkeys
+          chmod 700 /home/runner/.bittensor/wallets/miner/hotkeys
+          echo '${{ secrets.TEST_MINER_HOTKEY }}' > /home/runner/.bittensor/wallets/miner/hotkeys/default
+          chmod 600 /home/runner/.bittensor/wallets/miner/hotkeys/default
           
       - name: Upgrade pip and setuptools
         run: |
@@ -25,13 +39,30 @@ jobs:
         run: pip install .
         
       - name: Install test dependencies
-        run: pip install pytest pytest-cov
+        run: |
+          pip install 'pytest==7.2.2' pytest-cov pytest-asyncio
         
       - name: Run miner tests
-        run: python -m pytest --cov --cov-append --cov-report=xml tests/test_miner.py
+        run: |
+          python -m pytest \
+            --cov \
+            --cov-append \
+            --cov-report=xml \
+            -W ignore::DeprecationWarning \
+            -W ignore::PendingDeprecationWarning \
+            -W ignore::RuntimeWarning \
+            tests/test_miner.py
         
       - name: Run validator tests
-        run: python -m pytest --cov --cov-append --cov-report=xml tests/test_validator.py
+        run: |
+          python -m pytest \
+            --cov \
+            --cov-append \
+            --cov-report=xml \
+            -W ignore::DeprecationWarning \
+            -W ignore::PendingDeprecationWarning \
+            -W ignore::RuntimeWarning \
+            tests/test_validator.py
         
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v4
