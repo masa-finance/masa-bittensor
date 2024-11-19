@@ -276,7 +276,7 @@ class BaseMinerNeuron(BaseNeuron):
         # Load the state of the miner from file.
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
-            state = torch.load(state_path)
+            state = torch.load(state_path, map_location=torch.device("cpu"))
             self.neurons_permit_stake = dict(state).get("neurons_permit_stake", {})
         else:
             self.neurons_permit_stake = {}
