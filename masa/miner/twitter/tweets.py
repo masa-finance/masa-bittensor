@@ -1,9 +1,9 @@
 import bittensor as bt
+import requests
 from typing import List, Optional
 from masa.miner.masa_protocol_request import MasaProtocolRequest
 from masa.types.twitter import ProtocolTwitterTweetResponse
 from masa.synapses import RecentTweetsSynapse
-import requests
 
 
 def handle_recent_tweets(synapse: RecentTweetsSynapse, max: int) -> RecentTweetsSynapse:
