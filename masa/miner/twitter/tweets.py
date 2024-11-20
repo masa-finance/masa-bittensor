@@ -3,6 +3,7 @@ from typing import List, Optional
 from masa.miner.masa_protocol_request import MasaProtocolRequest
 from masa.types.twitter import ProtocolTwitterTweetResponse
 from masa.synapses import RecentTweetsSynapse
+import requests
 
 
 def handle_recent_tweets(synapse: RecentTweetsSynapse, max: int) -> RecentTweetsSynapse:
@@ -22,17 +23,22 @@ class TwitterTweetsRequest(MasaProtocolRequest):
         bt.logging.info(
             f"Getting {synapse.count or self.max_tweets} recent tweets for: {synapse.query}"
         )
-        response = self.post(
-            "/data/twitter/tweets/recent",
-            body={"query": synapse.query, "count": synapse.count or self.max_tweets},
-            timeout=synapse.timeout,
-        )
-        if response.ok:
-            data = self.format(response)
-            bt.logging.success(f"Sending {len(data)} tweets to validator...")
-            return data
-        else:
-            bt.logging.error(
-                f"Twitter recent tweets request failed with status code: {response.status_code}"
+        try:
+            response = self.post(
+                "/data/twitter/tweets/recent",
+                body={
+                    "query": synapse.query,
+                    "count": synapse.count or self.max_tweets,
+                },
+                timeout=synapse.timeout,
             )
-            return None
+            if response.ok:
+                data = self.format(response)
+                bt.logging.success(f"Sending {len(data)} tweets to validator...")
+                return data
+            else:
+                bt.logging.error(
+                    f"Recent tweets request failed with status code: {response.status_code}"
+                )
+        except requests.exceptions.RequestException as e:
+            bt.logging.error(f"Recent tweets request failed: {e}")
