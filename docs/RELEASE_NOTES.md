@@ -4,28 +4,26 @@ title: Masa Bittensor Release Notes
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
 
+This release of the subnet focuses on increased miner competition and fairness. Validators now fetch trending queries, ensuring there is ample volume for miners to scrape. Additionally, validators exhaust the list of miners before repeating, reducing the randomness in scoring. To increase miner competition, there is no longer a validator-defined maximum number of tweets per request - this maximum is now set by the miners themselves, through the --twitter.max_tweets_per_request argument.
+
 ### New Features
-* feat: auto update by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/250
-* feat: miner testing by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/247
-* feat: additional notebooks by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/240
-* feat: hide validators api by default by @hide-on-bush-x in https://github.com/masa-finance/masa-bittensor/pull/252
-* feat: adding two scripts for generating and verifying signatures by @hide-on-bush-x in https://github.com/masa-finance/masa-bittensor/pull/221
-* feat: validator volume increase test by @hide-on-bush-x in https://github.com/masa-finance/masa-bittensor/pull/248
-* feat: adding new wallet config for latests sdk by @hide-on-bush-x in https://github.com/masa-finance/masa-bittensor/pull/260
-* feat: miner spot checking by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/265
+* feat: trending queries by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/301
+* feat: adding E2E test and coverage by @hide-on-bush-x in https://github.com/masa-finance/masa-bittensor/pull/288
 
 ### Bug Fixes
-* fix: auto-update by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/261
-* fix: update twitter config by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/264
-* fix: setting weights by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/266
-* fix: fine tuning before 1.0.0 release by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/267
+* fix: more fair queries by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/286
+* fix: spike to spike.yml by @Luka-Loncar in https://github.com/masa-finance/masa-bittensor/pull/285
+* fix: update to python v3.12 in classifiers list by @5u6r054 in https://github.com/masa-finance/masa-bittensor/pull/293
+* fix: update makefile to support axon_off for validator by @grantdfoster in https://github.com/masa-finance/masa-bittensor/pull/290
+* fix: fix tests by adding registered miner and validator wallets as secrets, among other things by @5u6r054 in https://github.com/masa-finance/masa-bittensor/pull/306
 
-### Continuous Integration
-* ci: remove debug logs from gh workflow by @obasilakis in https://github.com/masa-finance/masa-bittensor/pull/161
+### CI / CD
+* ci: stop broken docker_publish.yml workflow from running on main branch until its fixed by @5u6r054 in https://github.com/masa-finance/masa-bittensor/pull/292
+* chore: add spike template by @Luka-Loncar in https://github.com/masa-finance/masa-bittensor/pull/284
 
-### Chores
-* chore: adding better contribute.md by @hide-on-bush-x in https://github.com/masa-finance/masa-bittensor/pull/257
+## New Contributors
+* @Luka-Loncar made their first contribution in https://github.com/masa-finance/masa-bittensor/pull/284
 
-**Full Changelog**: https://github.com/masa-finance/masa-bittensor/compare/v0.8.0...v1.0.0
+**Full Changelog**: https://github.com/masa-finance/masa-bittensor/compare/v1.0.2...v1.1.0
 
 [All Releases](https://github.com/masa-finance/masa-bittensor/releases)
