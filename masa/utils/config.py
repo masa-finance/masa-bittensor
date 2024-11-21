@@ -78,13 +78,6 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="Mock neuron and all network components.",
-        default=False,
-    )
-
-    parser.add_argument(
         "--neuron.events_retention_size",
         type=str,
         help="Events retention size.",
@@ -173,6 +166,13 @@ def add_miner_args(cls, parser):
     )
 
     parser.add_argument(
+        "--twitter.max_tweets_per_request",
+        type=int,
+        help="Defines the max number of tweets to scrape per request.",
+        default=100,
+    )
+
+    parser.add_argument(
         "--neuron.debug",
         action="store_true",
         help="Sets debug to true",
@@ -188,44 +188,6 @@ def add_validator_args(cls, parser):
         type=str,
         help="Trials for this neuron go in neuron.root / (wallet_cold - wallet_hot) / neuron.name. ",
         default="validator",
-    )
-
-    parser.add_argument(
-        "--neuron.timeout",
-        type=float,
-        help="The timeout for each forward call in seconds.",
-        default=10,
-    )
-
-    parser.add_argument(
-        "--neuron.num_concurrent_forwards",
-        type=int,
-        help="The number of concurrent forwards running at any time.",
-        default=1,
-    )
-
-    # note, for all organic validator forwards (requests through API)
-    parser.add_argument(
-        "--neuron.sample_size",
-        type=int,
-        help="The number of miners to query in a single step.",
-        default=3,
-    )
-
-    # note, for versioning thread
-    parser.add_argument(
-        "--neuron.sample_size_ping",
-        type=int,
-        help="The number of miners to query for version testing.",
-        default=25,
-    )
-
-    # note, for volume testing thread
-    parser.add_argument(
-        "--neuron.sample_size_volume",
-        type=int,
-        help="The number of miners to query for volume testing.",
-        default=10,
     )
 
     parser.add_argument(
@@ -246,8 +208,6 @@ def add_validator_args(cls, parser):
         "--neuron.axon_off",
         "--axon_off",
         action="store_true",
-        # Note: the validator needs to serve an Axon with their IP or they may
-        #   be blacklisted by the firewall of serving peers on the network.
         help="Set this flag to not attempt to serve an Axon.",
         default=False,
     )
@@ -284,13 +244,6 @@ def add_validator_args(cls, parser):
         action="store_true",
         help="Sets debug to true",
         default=False,
-    )
-
-    parser.add_argument(
-        "--neuron.twitter_config_url",
-        type=str,
-        help="URL for fetching volume testing keywords",
-        default="https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config/twitter.json",
     )
 
     parser.add_argument(

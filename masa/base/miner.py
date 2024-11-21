@@ -29,11 +29,12 @@ from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_miner_args
 
 from typing import Dict
-from masa.base.healthcheck import forward_ping, PingAxonSynapse
+from masa.synapses import PingAxonSynapse
+from masa.base.healthcheck import handle_ping
 
-from masa.miner.twitter.profile import forward_twitter_profile
-from masa.miner.twitter.followers import forward_twitter_followers
-from masa.miner.twitter.tweets import forward_recent_tweets
+from masa.miner.twitter.profile import handle_twitter_profile
+from masa.miner.twitter.followers import handle_twitter_followers
+from masa.miner.twitter.tweets import handle_recent_tweets, RecentTweetsSynapse
 
 
 class BaseMinerNeuron(BaseNeuron):
@@ -71,22 +72,22 @@ class BaseMinerNeuron(BaseNeuron):
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info("Attaching forward functions to miner axon.")
 
-        self.axon.attach(forward_fn=self.forward_ping_synapse)
+        self.axon.attach(forward_fn=self.handle_ping_wrapper)
 
         self.axon.attach(
-            forward_fn=forward_twitter_profile,
+            forward_fn=handle_twitter_profile,
             blacklist_fn=self.blacklist_twitter_profile,
             priority_fn=self.priority_twitter_profile,
         )
 
         self.axon.attach(
-            forward_fn=forward_twitter_followers,
+            forward_fn=handle_twitter_followers,
             blacklist_fn=self.blacklist_twitter_followers,
             priority_fn=self.priority_twitter_followers,
         )
 
         self.axon.attach(
-            forward_fn=forward_recent_tweets,
+            forward_fn=self.handle_recent_tweets_wrapper,
             blacklist_fn=self.blacklist_recent_tweets,
             priority_fn=self.priority_recent_tweets,
         )
@@ -109,8 +110,13 @@ class BaseMinerNeuron(BaseNeuron):
 
         self.load_state()
 
-    def forward_ping_synapse(self, synapse: PingAxonSynapse) -> PingAxonSynapse:
-        return forward_ping(synapse, self.spec_version)
+    def handle_recent_tweets_wrapper(
+        self, synapse: RecentTweetsSynapse
+    ) -> RecentTweetsSynapse:
+        return handle_recent_tweets(synapse, self.config.twitter.max_tweets_per_request)
+
+    def handle_ping_wrapper(self, synapse: PingAxonSynapse) -> PingAxonSynapse:
+        return handle_ping(synapse, self.spec_version)
 
     def run(self):
         """
@@ -270,7 +276,7 @@ class BaseMinerNeuron(BaseNeuron):
         # Load the state of the miner from file.
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
-            state = torch.load(state_path)
+            state = torch.load(state_path, map_location=torch.device("cpu"))
             self.neurons_permit_stake = dict(state).get("neurons_permit_stake", {})
         else:
             self.neurons_permit_stake = {}

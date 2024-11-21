@@ -1,0 +1,34 @@
+{
+  "mainnet": {
+    "organic": {
+      "sample_size": 3,
+      "timeout": 10
+    },
+    "synthetic": {
+      "sample_size": 10,
+      "timeout": 40,
+      "blocks": 3
+    },
+    "healthcheck": {
+      "timeout": 10,
+      "sample_size": 25,
+      "blocks": 360
+    }
+  },
+  "testnet": {
+    "organic": {
+      "sample_size": 3,
+      "timeout": 10
+    },
+    "synthetic": {
+      "timeout": 10,
+      "sample_size": 5,
+      "blocks": 1
+    },
+    "healthcheck": {
+      "timeout": 6,
+      "sample_size": 25,
+      "blocks": 180
+    }
+  }
+}

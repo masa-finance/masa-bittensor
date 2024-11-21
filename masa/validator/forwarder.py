@@ -18,21 +18,22 @@
 
 import bittensor as bt
 from typing import Any
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 import aiohttp
-import random
 import json
+import random
 
-from masa.miner.twitter.tweets import RecentTweetsSynapse
-from masa.miner.twitter.profile import TwitterProfileSynapse
-from masa.miner.twitter.followers import TwitterFollowersSynapse
+from masa.synapses import (
+    RecentTweetsSynapse,
+    TwitterFollowersSynapse,
+    TwitterProfileSynapse,
+)
 
-from masa.base.healthcheck import PingAxonSynapse, get_external_ip
-from masa.utils.uids import get_random_miner_uids
+from masa.synapses import PingAxonSynapse
+from masa.base.healthcheck import get_external_ip
+from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
 
-from masa_ai.tools.validator.main import main as validate
-
-TIMEOUT = 8
+from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
 
 class Forwarder:
@@ -40,9 +41,24 @@ class Forwarder:
         self.validator = validator
 
     async def forward_request(
-        self, request: Any, sample_size: int, timeout: int = TIMEOUT
+        self,
+        request: Any,
+        sample_size: int = None,
+        timeout: int = None,
+        sequential: bool = False,
     ):
-        miner_uids = await get_random_miner_uids(self.validator, k=sample_size)
+        if not sample_size:
+            sample_size = self.validator.subnet_config.get("organic").get("sample_size")
+        if not timeout:
+            timeout = self.validator.subnet_config.get("organic").get("timeout")
+        if sequential:
+            miner_uids = await get_uncalled_miner_uids(self.validator, k=sample_size)
+        else:
+            miner_uids = await get_random_miner_uids(self.validator, k=sample_size)
+
+        if len(miner_uids) == 0:
+            return [], []
+
         dendrite = bt.dendrite(wallet=self.validator.wallet)
         responses = await dendrite(
             [self.validator.metagraph.axons[uid] for uid in miner_uids],
@@ -60,14 +76,14 @@ class Forwarder:
     async def get_twitter_profile(self, username: str = "getmasafi"):
         request = TwitterProfileSynapse(username=username)
         formatted_responses, _ = await self.forward_request(
-            request=request, sample_size=self.validator.config.neuron.sample_size
+            request=request,
         )
         return formatted_responses
 
     async def get_twitter_followers(self, username: str = "getmasafi", count: int = 10):
         request = TwitterFollowersSynapse(username=username, count=count)
         formatted_responses, _ = await self.forward_request(
-            request=request, sample_size=self.validator.config.neuron.sample_size
+            request=request,
         )
         return formatted_responses
 
@@ -76,9 +92,13 @@ class Forwarder:
         query: str = f"(Bitcoin) since:{datetime.now().strftime('%Y-%m-%d')}",
         count: int = 3,
     ):
-        request = RecentTweetsSynapse(query=query, count=count)
+        request = RecentTweetsSynapse(
+            query=query,
+            count=count,
+            timeout=self.validator.subnet_config.get("organic").get("timeout"),
+        )
         formatted_responses, _ = await self.forward_request(
-            request=request, sample_size=self.validator.config.neuron.sample_size
+            request=request,
         )
         return formatted_responses
 
@@ -101,7 +121,7 @@ class Forwarder:
         request = PingAxonSynapse(
             sent_from=get_external_ip(), is_active=False, version=0
         )
-        sample_size = self.validator.config.neuron.sample_size_ping
+        sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         dendrite = bt.dendrite(wallet=self.validator.wallet)
         all_responses = []
         for i in range(0, len(self.validator.metagraph.axons), sample_size):
@@ -110,14 +130,13 @@ class Forwarder:
                 batch,
                 request,
                 deserialize=False,
-                timeout=TIMEOUT,
+                timeout=self.validator.subnet_config.get("healthcheck").get("timeout"),
             )
             all_responses.extend(batch_responses)
 
         self.validator.versions = [response.version for response in all_responses]
         bt.logging.info(f"Miner Versions: {self.validator.versions}")
-        self.validator.last_tempo_block = self.validator.subtensor.block
-
+        self.validator.last_healthcheck_block = self.validator.subtensor.block
         return [
             {
                 "status_code": response.dendrite.status_code,
@@ -128,54 +147,80 @@ class Forwarder:
             for response in all_responses
         ]
 
-    async def fetch_twitter_config(self):
+    async def fetch_twitter_queries(self):
+        try:
+            trending_queries = TrendingQueries().fetch()
+            self.validator.keywords = [
+                query["query"] for query in trending_queries[:10]  # top 10 trends
+            ]
+            bt.logging.info(f"Trending queries: {self.validator.keywords}")
+        except Exception as e:
+            # handle failed fetch - default to popular keywords
+            bt.logging.error(f"Error fetching trending queries: {e}")
+            self.validator.keywords = ["crypto", "btc", "eth"]
+
+    async def fetch_subnet_config(self):
         async with aiohttp.ClientSession() as session:
-            url = self.validator.config.neuron.twitter_config_url
+            url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config.json"
+            network_type = (
+                "testnet"
+                if self.validator.config.subtensor.network == "test"
+                else "mainnet"
+            )
             async with session.get(url) as response:
                 if response.status == 200:
                     configRaw = await response.text()
                     config = json.loads(configRaw)
-                    bt.logging.info(f"Twitter config fetched!: {config}")
-                    self.validator.keywords = config["keywords"]
-                    self.validator.count = int(config["count"])
+                    subnet_config = config.get(network_type, {})
+                    bt.logging.info(
+                        f"fetched {network_type} config from github: {subnet_config}"
+                    )
+                    self.validator.subnet_config = subnet_config
                 else:
                     bt.logging.error(
-                        f"Failed to fetch config from GitHub: {response.status}"
+                        f"failed to fetch subnet config from GitHub: {response.status}"
                     )
-                    # note, defaults
-                    self.validator.keywords = ["crypto", "bitcoin", "masa"]
-                    self.validator.count = 3
 
     async def get_miners_volumes(self):
         if len(self.validator.versions) == 0:
             bt.logging.info("Pinging axons to get miner versions...")
             return await self.ping_axons()
         if len(self.validator.keywords) == 0 or self.check_tempo():
-            await self.fetch_twitter_config()
+            await self.fetch_twitter_queries()
+        if len(self.validator.subnet_config) == 0 or self.check_tempo():
+            await self.fetch_subnet_config()
 
         random_keyword = random.choice(self.validator.keywords)
-        today = datetime.now(UTC).strftime("%Y-%m-%d")
-        query = f"({random_keyword.strip()}) since:{today}"
-        request = RecentTweetsSynapse(query=query, count=self.validator.count)
-
+        query = f'"{random_keyword.strip()}"'
+        bt.logging.info(f"Volume checking for: {query}")
+        request = RecentTweetsSynapse(
+            query=query,
+            timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
+        )
         responses, miner_uids = await self.forward_request(
-            request, sample_size=self.validator.config.neuron.sample_size_volume
+            request,
+            sample_size=self.validator.subnet_config.get("synthetic").get(
+                "sample_size"
+            ),
+            timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
+            sequential=True,
         )
 
         all_valid_tweets = []
+        tweet_validator = TweetValidator()
         for response, uid in zip(responses, miner_uids):
             valid_tweets = []
             all_responses = dict(response).get("response", [])
             if not all_responses:
                 continue
 
-            unique_tweets_response = []
-            existing_ids = set()
-            for resp in all_responses:
-                tweet_id = resp.get("Tweet", {}).get("ID")
-                if tweet_id and tweet_id not in existing_ids:
-                    unique_tweets_response.append(resp)
-                    existing_ids.add(tweet_id)
+            unique_tweets_response = list(
+                {
+                    resp["Tweet"]["ID"]: resp
+                    for resp in all_responses
+                    if "Tweet" in resp and "ID" in resp["Tweet"]
+                }.values()
+            )
 
             if unique_tweets_response is not None:
                 # note, first spot check this payload, ensuring a random tweet is valid
@@ -183,7 +228,7 @@ class Forwarder:
                     "Tweet", {}
                 )
 
-                is_valid = validate(
+                is_valid = tweet_validator.validate_tweet(
                     random_tweet.get("ID"),
                     random_tweet.get("Name"),
                     random_tweet.get("Username"),
@@ -228,26 +273,22 @@ class Forwarder:
                     random_tweet.get("Timestamp", 0), UTC
                 )
 
-                today = datetime.now(UTC)
-                is_same_day = (
-                    tweet_timestamp.year == today.year
-                    and tweet_timestamp.month == today.month
-                    and tweet_timestamp.day == today.day
-                )
+                yesterday = datetime.now(UTC).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                ) - timedelta(days=1)
+                is_since_date_requested = yesterday <= tweet_timestamp
 
-                if not is_same_day:
+                if not is_since_date_requested:
                     bt.logging.warning(
-                        f"Tweet timestamp {tweet_timestamp} is not from today {today}"
+                        f"Tweet timestamp {tweet_timestamp} is not since {yesterday}"
                     )
 
                 # note, they passed the spot check!
-                if is_valid and query_in_tweet and is_same_day:
+                if is_valid and query_in_tweet and is_since_date_requested:
                     bt.logging.success(
                         f"Miner {uid} passed the spot check with query: {random_keyword}"
                     )
-                    for tweet in unique_tweets_response[
-                        : self.validator.count
-                    ]:  # note, limits to the count requested
+                    for tweet in unique_tweets_response:
                         if tweet:
                             tweet_embedding = self.validator.model.encode(str(tweet))
                             similarity = (
@@ -256,42 +297,56 @@ class Forwarder:
                                     tweet_embedding,
                                 )
                             )
-                            if similarity >= 60:  # pretty strict
+                            if similarity >= 70:  # pretty strict
                                 valid_tweets.append(tweet)
                 else:
                     bt.logging.warning(f"Miner {uid} failed the spot check!")
 
-            self.validator.scorer.add_volume(int(uid), len(valid_tweets))
-            bt.logging.info(f"Miner {uid} produced {len(valid_tweets)} valid tweets")
             all_valid_tweets.extend(valid_tweets)
 
-        query_exists = False
-        for indexed_tweet in self.validator.indexed_tweets:
-            if indexed_tweet["query"] == query:
-                existing_tweet_ids = {
-                    tweet["Tweet"]["ID"] for tweet in indexed_tweet["tweets"]
-                }
-                unique_valid_tweets = [
-                    tweet
-                    for tweet in all_valid_tweets
-                    if tweet["Tweet"]["ID"] not in existing_tweet_ids
-                ]
-                indexed_tweet["tweets"].extend(unique_valid_tweets)
-                query_exists = True
-                break
+            # note, score only unique tweets per miner (uid)
+            uid_int = int(uid)
 
-        if not query_exists:
-            payload = {
-                "query": query,
-                "tweets": [
-                    tweet
-                    for tweet in {
-                        tweet["Tweet"]["ID"]: tweet
-                        for tweet in all_valid_tweets  # note, only unique tweets
-                    }.values()
-                ],
+            if not self.validator.tweets_by_uid.get(uid_int):
+                self.validator.tweets_by_uid[uid_int] = {
+                    tweet["Tweet"]["ID"] for tweet in valid_tweets
+                }
+                self.validator.scorer.add_volume(uid_int, len(valid_tweets))
+                bt.logging.success(
+                    f"Miner {uid_int} produced {len(valid_tweets)} valid new tweets"
+                )
+            else:
+                existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
+                new_tweet_ids = {tweet["Tweet"]["ID"] for tweet in valid_tweets}
+                updates = new_tweet_ids - existing_tweet_ids
+                self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
+                self.validator.scorer.add_volume(uid_int, len(updates))
+                bt.logging.success(
+                    f"Miner {uid_int} produced {len(updates)} new tweets, with a total of {len(self.validator.tweets_by_uid[uid_int])}."
+                )
+
+        # note, indexing tweets on the validator cpu
+        # TODO, we need to move this to a central database / location
+        # note, most validators have their API off so this data cannot currently be accessed by default
+        if random_keyword in self.validator.tweets_by_query:
+            existing_tweet_ids = {
+                tweet["Tweet"]["ID"]
+                for tweet in self.validator.tweets_by_query[random_keyword]
             }
-            self.validator.indexed_tweets.append(payload)
+            unique_valid_tweets = [
+                tweet
+                for tweet in all_valid_tweets
+                if tweet["Tweet"]["ID"] not in existing_tweet_ids
+            ]
+            self.validator.tweets_by_query[random_keyword].extend(unique_valid_tweets)
+        else:
+            self.validator.tweets_by_query[random_keyword] = [
+                tweet
+                for tweet in {
+                    tweet["Tweet"]["ID"]: tweet
+                    for tweet in all_valid_tweets  # note, only unique tweets
+                }.values()
+            ]
 
         # note, set the last volume block to the current block
         self.validator.last_volume_block = self.validator.subtensor.block

@@ -19,6 +19,7 @@
 import os
 import copy
 import torch
+import json
 import asyncio
 import argparse
 import threading
@@ -28,7 +29,6 @@ from typing import List
 
 from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_validator_args
-from masa.mock import MockDendrite
 
 from masa.validator.scorer import Scorer
 from masa.validator.forwarder import Forwarder
@@ -55,6 +55,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         self.forwarder = Forwarder(self)
         self.scorer = Scorer(self)
+
         self.model = SentenceTransformer(
             "all-MiniLM-L6-v2"
         )  # Load a pre-trained model for embeddings
@@ -101,20 +102,31 @@ class BaseValidatorNeuron(BaseNeuron):
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+        self.block_time = 12
 
         self.last_sync_block = 0
         self.last_tempo_block = 0
         self.last_volume_block = 0
         self.last_scoring_block = 0
+        self.last_healthcheck_block = 0
 
-        self.keywords = []  # note, for volume queries
-        self.count = 0  # note, for volume queries
+        self.versions = []  # note, for storing uid versions
+        self.keywords = []  # note, for volume scoring queries
+        self.uncalled_uids = set()  # note, for volume scoring queries
+        self.volume_window = 6  # note, score volumes from last 6 tempos
 
-        if self.config.subtensor._mock:
-            self.dendrite = MockDendrite(wallet=self.wallet)
-        else:
-            self.dendrite = bt.dendrite(wallet=self.wallet)
+        # load config file for subnet specific settings as default
+        # note, every tempo we fetch the latest config file from github main branch
+        with open("config.json", "r") as config_file:
+            config = json.load(config_file)
+            network = (
+                "testnet" if self.config.subtensor.network == "test" else "mainnet"
+            )
+            subnet_config = config.get(network, {})
+            bt.logging.info(f"Loaded subnet config: {subnet_config}")
+            self.subnet_config = subnet_config
 
+        self.dendrite = bt.dendrite(wallet=self.wallet)
         self.scores = torch.zeros(
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
@@ -175,29 +187,29 @@ class BaseValidatorNeuron(BaseNeuron):
                     self.last_sync_block = self.block
             except Exception as e:
                 bt.logging.error(f"Error running sync: {e}")
-            # TODO is there a better way to go about this?
-            await asyncio.sleep(3 * 12)
+            await asyncio.sleep(self.block_time)
 
     async def run_miner_ping(self):
         while not self.should_exit:
             try:
-                if self.forwarder.check_tempo():
+                blocks_since_last_check = self.block - self.last_healthcheck_block
+                blocks_to_wait = self.subnet_config.get("healthcheck").get("blocks")
+                if blocks_since_last_check >= blocks_to_wait:
                     await self.forwarder.ping_axons()
             except Exception as e:
                 bt.logging.error(f"Error running miner ping: {e}")
-            # TODO is there a better way to go about this?
-            await asyncio.sleep(self.tempo / 2 * 12)
+            await asyncio.sleep(self.block_time)
 
     async def run_miner_volume(self):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_volume_block
-                if blocks_since_last_check >= self.tempo / 100:
+                blocks_to_wait = self.subnet_config.get("synthetic").get("blocks")
+                if blocks_since_last_check >= blocks_to_wait:
                     await self.forwarder.get_miners_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner volume: {e}")
-            # TODO is there a better way to go about this?
-            await asyncio.sleep(self.tempo / 200 * 12)
+            await asyncio.sleep(self.block_time)
 
     async def run_miner_scoring(self):
         while not self.should_exit:
@@ -207,10 +219,8 @@ class BaseValidatorNeuron(BaseNeuron):
                     await self.scorer.score_miner_volumes()
             except Exception as e:
                 bt.logging.error(f"Error running miner scoring: {e}")
-            # TODO is there a better way to go about this?
-            await asyncio.sleep(self.tempo / 100 * 12)
+            await asyncio.sleep(self.block_time)
 
-    # note, runs every tempo
     async def run_auto_update(self):
         while not self.should_exit:
             try:
@@ -218,7 +228,7 @@ class BaseValidatorNeuron(BaseNeuron):
                     self.auto_update()
             except Exception as e:
                 bt.logging.error(f"Error running auto update: {e}")
-            await asyncio.sleep(self.tempo * 12)  # note, 12 seconds per block
+            await asyncio.sleep(self.tempo * self.block_time)
 
     def run_sync_in_loop(self):
         asyncio.run(self.run_sync())
@@ -379,6 +389,15 @@ class BaseValidatorNeuron(BaseNeuron):
         for uid, hotkey in enumerate(self.hotkeys):
             if hotkey != self.metagraph.hotkeys[uid]:
                 self.scores[uid] = 0  # hotkey has been replaced
+                # Take the last 6 objects in the self.volumes list
+                recent_volumes = self.volumes[-self.volume_window :]
+                # Replace all instances of miners[uid] and set their values to 0
+                for volume in recent_volumes:
+                    if uid in volume["miners"]:
+                        volume["miners"][uid] = 0
+
+                # Replace unique tweets by uid
+                self.tweets_by_uid[uid] = set()
 
         # Check to see if the metagraph has changed size.
         # If so, we need to add new hotkeys and moving averages.
@@ -450,8 +469,8 @@ class BaseValidatorNeuron(BaseNeuron):
                 "scores": self.scores,
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
-                "versions": self.versions,
-                "indexed_tweets": self.indexed_tweets,
+                "tweets_by_uid": self.tweets_by_uid,
+                "tweets_by_query": self.tweets_by_query,
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -463,20 +482,20 @@ class BaseValidatorNeuron(BaseNeuron):
         # Load the state of the validator from file.
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
-            state = torch.load(state_path)
+            state = torch.load(state_path, map_location=torch.device("cpu"))
             self.step = dict(state).get("step", 0)
             self.scores = dict(state).get("scores", [])
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
-            self.versions = dict(state).get("versions", [])
-            self.indexed_tweets = dict(state).get("indexed_tweets", [])
+            self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
+            self.tweets_by_query = dict(state).get("tweets_by_query", {})
         else:
             self.step = 0
             self.scores = torch.zeros(self.metagraph.n)
             self.hotkeys = []
             self.volumes = []
-            self.versions = []
-            self.indexed_tweets = []
+            self.tweets_by_uid = {}
+            self.tweets_by_query = {}
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )
