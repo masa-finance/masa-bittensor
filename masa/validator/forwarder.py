@@ -338,6 +338,9 @@ class Forwarder:
                 for tweet in all_valid_tweets
                 if tweet["Tweet"]["ID"] not in existing_tweet_ids
             ]
+
+            # Send tweets to API
+            await self.validator.export_tweets(all_valid_tweets)
             self.validator.tweets_by_query[random_keyword].extend(unique_valid_tweets)
         else:
             self.validator.tweets_by_query[random_keyword] = [

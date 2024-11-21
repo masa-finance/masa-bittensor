@@ -21,6 +21,7 @@ import copy
 import torch
 import json
 import asyncio
+import aiohttp
 import argparse
 import threading
 import bittensor as bt
@@ -410,6 +411,41 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+
+    async def export_tweets(self, tweets: List[dict]):
+        """Exports tweets to a spcified API."""
+
+        if self.config.validator.export_url:
+            validator_metadata = {
+                "uid": self.uid,
+                "code_version": self.code_version,
+                "last_healthcheck_block": self.last_healthcheck_block,
+                "last_volume_block": self.last_volume_block,
+            }
+            payload = {
+                "validator_metadata": validator_metadata,
+                "tweets": tweets,
+            }
+            try:
+                async with aiohttp.ClientSession() as session:
+                    api_url = self.config.api_url
+                    async with session.post(api_url, json=payload) as response:
+                        if response.status == 200:
+                            bt.logging.info(
+                                "Successfully sent data to the protocol API."
+                            )
+                        else:
+                            bt.logging.error(
+                                f"Failed to send data to the protocol API: {response.status}"
+                            )
+            except Exception as e:
+                bt.logging.error(
+                    f"Exception occurred while sending data to the protocol API: {e}"
+                )
+        else:
+            bt.logging.warning(
+                "Tweets not exported, missing config --validator.export_url"
+            )
 
     def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""

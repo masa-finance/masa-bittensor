@@ -253,6 +253,13 @@ def add_validator_args(cls, parser):
         default=False,
     )
 
+    parser.add_argument(
+        "--validator.export_url",
+        type=str,
+        help="Path to export tweets.",
+        default=None,
+    )
+
 
 def config(cls):
     """
