@@ -33,12 +33,56 @@ class TestValidator:
         config.wallet.name = "validator"
         config.wallet.hotkey = "default"
         config.axon.port = 8092
-
+        config.neuron.dont_save_events = True
         validator_instance = Validator(config=config)
         return validator_instance
 
     @pytest.mark.asyncio
-    async def test_miner_has_uid(self, validator):
+    async def test_validator_has_uid(self, validator):
         validator_instance = await validator
         uid = validator_instance.uid
         assert uid > -1, "UID should be greater than -1 for success"
+
+    @pytest.mark.asyncio
+    async def test_validator_get_twitter_profile(self, validator):
+        validator_instance = await validator
+        ping_axons_response = await validator_instance.forwarder.ping_axons()
+        m_axons = len(validator_instance.metagraph.axons)
+        response = await validator_instance.forwarder.get_twitter_profile()
+
+        assert m_axons == len(ping_axons_response), "axons length mismatch"
+        assert len(response) > 0, "no response from miners"
+        for item in response:
+            assert "uid" in item, "property missing"
+            assert "response" in item, "property missing"
+
+    @pytest.mark.asyncio
+    async def test_validator_get_miners_volumes(self, validator):
+        validator_instance = await validator
+        await validator_instance.forwarder.ping_axons()
+        current_block = validator_instance.last_volume_block
+        await validator_instance.forwarder.get_miners_volumes()
+        new_block = validator_instance.last_volume_block
+        assert current_block != new_block, "miner volume check did not run properly"
+
+    @pytest.mark.asyncio
+    async def test_validator_fetch_subnet_config(self, validator):
+        validator_instance = await validator
+        await validator_instance.forwarder.fetch_subnet_config()
+        assert validator_instance.subnet_config != {}, "subnet config is empty"
+
+    @pytest.mark.asyncio
+    async def test_validator_fetch_twitter_queries(self, validator):
+        validator_instance = await validator
+        await validator_instance.forwarder.fetch_twitter_queries()
+        assert validator_instance.keywords != [], "keywords are empty"
+
+    # TODO CI/CD not working for this yet...
+    # @pytest.mark.asyncio
+    # async def test_validator_score_miners(self, validator):
+    #     validator_instance = await validator
+    #     current_block = validator_instance.last_scoring_block
+    #     await validator_instance.forwarder.get_miners_volumes()
+    #     await validator_instance.scorer.score_miner_volumes()
+    #     new_block = validator_instance.last_scoring_block
+    #     assert current_block != new_block, "miner scoring did not run properly"

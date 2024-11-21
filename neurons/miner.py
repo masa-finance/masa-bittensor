@@ -22,9 +22,11 @@ import bittensor as bt
 
 from masa.base.miner import BaseMinerNeuron
 
-from masa.miner.twitter.profile import TwitterProfileSynapse
-from masa.miner.twitter.followers import TwitterFollowersSynapse
-from masa.miner.twitter.tweets import RecentTweetsSynapse
+from masa.synapses import (
+    TwitterFollowersSynapse,
+    TwitterProfileSynapse,
+    RecentTweetsSynapse,
+)
 
 
 class Miner(BaseMinerNeuron):

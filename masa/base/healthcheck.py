@@ -1,18 +1,9 @@
-import typing
 import requests
 import bittensor as bt
+from masa.synapses import PingAxonSynapse
 
 
-class PingAxonSynapse(bt.Synapse):
-    sent_from: typing.Optional[str]
-    is_active: typing.Optional[bool]
-    version: typing.Optional[int]
-
-    def deserialize(self) -> int:
-        return self.version
-
-
-def forward_ping(synapse: PingAxonSynapse, spec_version: int) -> PingAxonSynapse:
+def handle_ping(synapse: PingAxonSynapse, spec_version: int) -> PingAxonSynapse:
     synapse.is_active = True
     synapse.version = spec_version
     bt.logging.info(

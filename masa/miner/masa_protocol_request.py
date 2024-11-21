@@ -11,19 +11,19 @@ class MasaProtocolRequest:
         self.base_url = os.getenv("ORACLE_BASE_URL", "http://localhost:8080/api/v1")
         self.headers = {"Authorization": ""}
 
-    def get(self, path) -> requests.Response:
+    def get(self, path, timeout=REQUEST_TIMEOUT_IN_SECONDS) -> requests.Response:
         return requests.get(
             f"{self.base_url}{path}",
             headers=self.headers,
-            timeout=REQUEST_TIMEOUT_IN_SECONDS,
+            timeout=timeout,
         )
 
-    def post(self, path, body) -> requests.Response:
+    def post(self, path, body, timeout=REQUEST_TIMEOUT_IN_SECONDS) -> requests.Response:
         return requests.post(
             f"{self.base_url}{path}",
             json=body,
             headers=self.headers,
-            timeout=REQUEST_TIMEOUT_IN_SECONDS,
+            timeout=timeout,
         )
 
     def format(self, response: requests.Response):

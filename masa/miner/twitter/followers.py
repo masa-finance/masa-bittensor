@@ -1,19 +1,11 @@
 import bittensor as bt
-from typing import List, Optional, Any
+from typing import List
 from masa.miner.masa_protocol_request import MasaProtocolRequest
 from masa.types.twitter import TwitterFollowerObject
+from masa.synapses import TwitterFollowersSynapse
 
 
-class TwitterFollowersSynapse(bt.Synapse):
-    username: str
-    count: int
-    response: Optional[Any] = None
-
-    def deserialize(self) -> Any:
-        return self.response
-
-
-def forward_twitter_followers(
+def handle_twitter_followers(
     synapse: TwitterFollowersSynapse,
 ) -> TwitterFollowersSynapse:
     synapse.response = TwitterFollowersRequest().get_followers(synapse)
