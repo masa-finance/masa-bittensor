@@ -506,6 +506,10 @@ class BaseValidatorNeuron(BaseNeuron):
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
                 "tweets_by_uid": self.tweets_by_uid,
+<<<<<<< HEAD
+=======
+                "tweets_by_query": self.tweets_by_query,
+>>>>>>> a58f54a4805c8797b7739bcc6fc00be8d160da86
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -523,12 +527,20 @@ class BaseValidatorNeuron(BaseNeuron):
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
             self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
+<<<<<<< HEAD
+=======
+            self.tweets_by_query = dict(state).get("tweets_by_query", {})
+>>>>>>> a58f54a4805c8797b7739bcc6fc00be8d160da86
         else:
             self.step = 0
             self.scores = torch.zeros(self.metagraph.n)
             self.hotkeys = []
             self.volumes = []
             self.tweets_by_uid = {}
+<<<<<<< HEAD
+=======
+            self.tweets_by_query = {}
+>>>>>>> a58f54a4805c8797b7739bcc6fc00be8d160da86
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )
