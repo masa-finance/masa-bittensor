@@ -325,31 +325,8 @@ class Forwarder:
                     f"Miner {uid_int} produced {len(updates)} new tweets, with a total of {len(self.validator.tweets_by_uid[uid_int])}."
                 )
 
-        # note, indexing tweets on the validator cpu
-        # TODO, we need to move this to a central database / location
-        # note, most validators have their API off so this data cannot currently be accessed by default
-        if random_keyword in self.validator.tweets_by_query:
-            existing_tweet_ids = {
-                tweet["Tweet"]["ID"]
-                for tweet in self.validator.tweets_by_query[random_keyword]
-            }
-            unique_valid_tweets = [
-                tweet
-                for tweet in all_valid_tweets
-                if tweet["Tweet"]["ID"] not in existing_tweet_ids
-            ]
-
-            # Send tweets to API
-            await self.validator.export_tweets(all_valid_tweets)
-            self.validator.tweets_by_query[random_keyword].extend(unique_valid_tweets)
-        else:
-            self.validator.tweets_by_query[random_keyword] = [
-                tweet
-                for tweet in {
-                    tweet["Tweet"]["ID"]: tweet
-                    for tweet in all_valid_tweets  # note, only unique tweets
-                }.values()
-            ]
+        # Send tweets to API
+        await self.validator.export_tweets(all_valid_tweets)
 
         # note, set the last volume block to the current block
         self.validator.last_volume_block = self.validator.subtensor.block
