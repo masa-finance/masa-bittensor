@@ -414,8 +414,8 @@ class BaseValidatorNeuron(BaseNeuron):
 
     async def export_tweets(self, tweets: List[dict], query: str):
         """Exports tweets to a spcified API."""
-
-        if self.config.validator.export_url:
+        api_url = self.config.validator.export_url
+        if api_url:
             payload = {
                 "Hotkey": self.wallet.hotkey.ss58_address,
                 "Query": query,
@@ -423,7 +423,6 @@ class BaseValidatorNeuron(BaseNeuron):
             }
             try:
                 async with aiohttp.ClientSession() as session:
-                    api_url = self.config.api_url
                     async with session.post(api_url, json=payload) as response:
                         if response.status == 200:
                             bt.logging.success(
