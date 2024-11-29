@@ -412,26 +412,21 @@ class BaseValidatorNeuron(BaseNeuron):
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
-    async def export_tweets(self, tweets: List[dict]):
+    async def export_tweets(self, tweets: List[dict], query: str):
         """Exports tweets to a spcified API."""
 
         if self.config.validator.export_url:
-            validator_metadata = {
-                "uid": self.uid,
-                "code_version": self.code_version,
-                "last_healthcheck_block": self.last_healthcheck_block,
-                "last_volume_block": self.last_volume_block,
-            }
             payload = {
-                "validator_metadata": validator_metadata,
-                "tweets": tweets,
+                "Hotkey": self.wallet.hotkey.ss58_address,
+                "Query": query,
+                "Tweets": tweets,
             }
             try:
                 async with aiohttp.ClientSession() as session:
                     api_url = self.config.api_url
                     async with session.post(api_url, json=payload) as response:
                         if response.status == 200:
-                            bt.logging.info(
+                            bt.logging.success(
                                 "Successfully sent data to the protocol API."
                             )
                         else:
@@ -506,10 +501,6 @@ class BaseValidatorNeuron(BaseNeuron):
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
                 "tweets_by_uid": self.tweets_by_uid,
-<<<<<<< HEAD
-=======
-                "tweets_by_query": self.tweets_by_query,
->>>>>>> a58f54a4805c8797b7739bcc6fc00be8d160da86
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -527,20 +518,12 @@ class BaseValidatorNeuron(BaseNeuron):
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
             self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
-<<<<<<< HEAD
-=======
-            self.tweets_by_query = dict(state).get("tweets_by_query", {})
->>>>>>> a58f54a4805c8797b7739bcc6fc00be8d160da86
         else:
             self.step = 0
             self.scores = torch.zeros(self.metagraph.n)
             self.hotkeys = []
             self.volumes = []
             self.tweets_by_uid = {}
-<<<<<<< HEAD
-=======
-            self.tweets_by_query = {}
->>>>>>> a58f54a4805c8797b7739bcc6fc00be8d160da86
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )

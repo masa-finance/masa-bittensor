@@ -257,7 +257,8 @@ def add_validator_args(cls, parser):
         "--validator.export_url",
         type=str,
         help="Path to export tweets.",
-        default=None,
+        # TODO change this to actual API endpoint in production
+        default="http://localhost:8081/v1.0.0/subnet/tweets",
     )
 
 

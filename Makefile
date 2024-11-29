@@ -5,11 +5,11 @@ MAINNET = network finney
 #####                       SELECT YOUR ENV                        #####
 ########################################################################
 
-# SUBTENSOR_ENVIRONMENT = $(TESTNET)
-SUBTENSOR_ENVIRONMENT = $(MAINNET)
+SUBTENSOR_ENVIRONMENT = $(TESTNET)
+# SUBTENSOR_ENVIRONMENT = $(MAINNET)
 
-# NETUID = 165 # testnet
-NETUID = 42 # mainnet
+NETUID = 165 # testnet
+# NETUID = 42 # mainnet
 
 ########################################################################
 #####                       USEFUL COMMANDS                        #####

@@ -326,7 +326,7 @@ class Forwarder:
                 )
 
         # Send tweets to API
-        await self.validator.export_tweets(all_valid_tweets)
+        await self.validator.export_tweets(all_valid_tweets, query)
 
         # note, set the last volume block to the current block
         self.validator.last_volume_block = self.validator.subtensor.block
