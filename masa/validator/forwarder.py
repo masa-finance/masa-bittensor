@@ -327,7 +327,8 @@ class Forwarder:
 
         # Send tweets to API
         await self.validator.export_tweets(
-            all_valid_tweets, query.strip().replace('"', "")
+            list({tweet["Tweet"]["ID"]: tweet for tweet in all_valid_tweets}.values()),
+            query.strip().replace('"', ""),
         )
 
         # note, set the last volume block to the current block
