@@ -253,6 +253,13 @@ def add_validator_args(cls, parser):
         default=False,
     )
 
+    parser.add_argument(
+        "--validator.export_url",
+        type=str,
+        help="Path to export tweets.",
+        default="https://test.protocol-api.masa.ai/v1.0.0/subnet/tweets",
+    )
+
 
 def config(cls):
     """
