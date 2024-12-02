@@ -21,6 +21,7 @@ import copy
 import torch
 import json
 import asyncio
+import aiohttp
 import argparse
 import threading
 import bittensor as bt
@@ -411,6 +412,35 @@ class BaseValidatorNeuron(BaseNeuron):
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
+    async def export_tweets(self, tweets: List[dict], query: str):
+        """Exports tweets to a spcified API."""
+        api_url = self.config.validator.export_url
+        if api_url:
+            payload = {
+                "Hotkey": self.wallet.hotkey.ss58_address,
+                "Query": query,
+                "Tweets": tweets,
+            }
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(api_url, json=payload) as response:
+                        if response.status == 200:
+                            bt.logging.success(
+                                "Successfully sent data to the protocol API."
+                            )
+                        else:
+                            bt.logging.error(
+                                f"Failed to send data to the protocol API: {response.status}"
+                            )
+            except Exception as e:
+                bt.logging.error(
+                    f"Exception occurred while sending data to the protocol API: {e}"
+                )
+        else:
+            bt.logging.warning(
+                "Tweets not exported, missing config --validator.export_url"
+            )
+
     def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""
 
@@ -470,7 +500,6 @@ class BaseValidatorNeuron(BaseNeuron):
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
                 "tweets_by_uid": self.tweets_by_uid,
-                "tweets_by_query": self.tweets_by_query,
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -488,14 +517,12 @@ class BaseValidatorNeuron(BaseNeuron):
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
             self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
-            self.tweets_by_query = dict(state).get("tweets_by_query", {})
         else:
             self.step = 0
             self.scores = torch.zeros(self.metagraph.n)
             self.hotkeys = []
             self.volumes = []
             self.tweets_by_uid = {}
-            self.tweets_by_query = {}
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )
