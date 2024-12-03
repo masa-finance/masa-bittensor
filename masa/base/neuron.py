@@ -45,7 +45,6 @@ class ScrapeTwitter(MasaProtocolRequest):
     def get_recent_tweets(
         self, synapse: RecentTweetsSynapse
     ) -> Optional[List[ProtocolTwitterTweetResponse]]:
-        bt.logging.info(f"Scraping {synapse.count} recent tweets for: {synapse.query}")
         try:
             response = self.post(
                 "/data/twitter/tweets/recent",
@@ -57,14 +56,13 @@ class ScrapeTwitter(MasaProtocolRequest):
             )
             if response.ok:
                 data = self.format(response)
-                bt.logging.success(f"Scraped {len(data)} tweets...")
                 return data
             else:
                 bt.logging.error(
-                    f"Recent tweets request failed with status code: {response.status_code}"
+                    f"scraping tweets failed with status code: {response.status_code}"
                 )
         except requests.exceptions.RequestException as e:
-            bt.logging.error(f"Recent tweets request failed: {e}")
+            bt.logging.error(f"scraping tweets request failed: {e}")
 
 
 class BaseNeuron(ABC):
@@ -234,7 +232,7 @@ class BaseNeuron(ABC):
             ]
             bt.logging.info(f"adding {len(new_tweets)} new tweets to storage...")
             stored_tweets.extend(new_tweets)
-            bt.logging.info(f"saving {len(stored_tweets)} tweets to {file_path}...")
+            bt.logging.success(f"saving {len(stored_tweets)} tweets to {file_path}...")
             # save new tweets to json file...
             with open(file_path, "w") as json_file:
                 json.dump(stored_tweets, json_file, indent=4)

@@ -7,7 +7,7 @@ import json
 
 
 def handle_recent_tweets(synapse: RecentTweetsSynapse, max: int) -> RecentTweetsSynapse:
-    synapse.response = TwitterTweetsRequest(max).get_recent_tweets(synapse)
+    synapse.response = TwitterTweetsRequest().get_recent_tweets(synapse)
     return synapse
 
 
@@ -27,7 +27,9 @@ class TwitterTweetsRequest(MasaProtocolRequest):
         try:
             with open(file_path, "r") as json_file:
                 stored_tweets = json.load(json_file)
-            bt.logging.info(f"loaded {len(stored_tweets)} tweets from {file_path}...")
+            bt.logging.success(
+                f"sending {len(stored_tweets)} tweets from {file_path}..."
+            )
             return stored_tweets
         except FileNotFoundError:
             bt.logging.warning(f"no existing file for {file_path}")
