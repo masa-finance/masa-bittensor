@@ -210,7 +210,7 @@ class BaseNeuron(ABC):
             self.auto_update()
 
         query = random.choice(self.queries)
-        file_path = f"{query}.json"
+        file_path = f"tweets/{query}.json"
         # load stored tweets...
         try:
             with open(file_path, "r") as json_file:

@@ -22,7 +22,7 @@ class TwitterTweetsRequest(MasaProtocolRequest):
     ) -> Optional[List[ProtocolTwitterTweetResponse]]:
         bt.logging.info(f"Getting recent tweets for: {synapse.query}")
         query = synapse.query
-        file_path = f"{query}.json"
+        file_path = f"tweets/{query.strip().replace('"', "")}.json"
         bt.logging.info(f"validator requesting tweets for {query}...")
 
         # load stored tweets...
