@@ -1,0 +1,468 @@
+[
+    {
+        "Tweet": {
+            "ConversationID": "1863740153598185825",
+            "GIFs": null,
+            "Hashtags": null,
+            "HTML": "<a href=\"https://twitter.com/Acyn\">@Acyn</a> <br><a href=\"https://t.co/NKRXxVSppK\"><img src=\"https://pbs.twimg.com/media/Gd1W6bAaEAEO3gM.jpg\"/></a>",
+            "ID": "1863741385003896848",
+            "InReplyToStatus": null,
+            "InReplyToStatusID": "1863740153598185825",
+            "IsQuoted": false,
+            "IsPin": false,
+            "IsReply": true,
+            "IsRetweet": false,
+            "IsSelfThread": false,
+            "Likes": 0,
+            "Name": "Jill",
+            "Mentions": [
+                {
+                    "ID": "16635277",
+                    "Username": "Acyn",
+                    "Name": "Acyn"
+                }
+            ],
+            "PermanentURL": "https://twitter.com/cmon_now/status/1863741385003896848",
+            "Photos": [
+                {
+                    "ID": "1863741382483120129",
+                    "URL": "https://pbs.twimg.com/media/Gd1W6bAaEAEO3gM.jpg"
+                }
+            ],
+            "Place": null,
+            "QuotedStatus": null,
+            "QuotedStatusID": "",
+            "Replies": 0,
+            "Retweets": 0,
+            "RetweetedStatus": null,
+            "RetweetedStatusID": "",
+            "Text": "@Acyn https://t.co/NKRXxVSppK",
+            "Thread": null,
+            "TimeParsed": "2024-12-03T00:25:47Z",
+            "Timestamp": 1733185547,
+            "URLs": null,
+            "UserID": "32294491",
+            "Username": "cmon_now",
+            "Videos": null,
+            "Views": 0,
+            "SensitiveContent": false
+        },
+        "Error": null
+    },
+    {
+        "Tweet": {
+            "ConversationID": "1863741380159287464",
+            "GIFs": null,
+            "Hashtags": null,
+            "HTML": "\u0627\u0644\u0627\u062a\u062d\u0627\u062f \u0641\u064a\u0646\u0648\u0631\u062f \u0631\u064a\u0627\u0644 \u0633\u0648\u0633\u064a\u062f\u0627\u062f \u062a\u0648\u062a\u0646\u0647\u0627\u0645 \u0647\u0648\u062a\u0633\u0628\u0631 \u0628\u0631\u0634\u0644\u0648\u0646\u0629<br><br>\u06aa\u06c6\u062f \u062e\u0636\u0645 \u0645\u0628\u0627\u0634\u0631<br><br>\u25ac\u0625\u064a\u0647\u066e\u0631\u0628\u25ac \u2190 CNU3074",
+            "ID": "1863741380159287464",
+            "InReplyToStatus": null,
+            "InReplyToStatusID": "",
+            "IsQuoted": false,
+            "IsPin": false,
+            "IsReply": false,
+            "IsRetweet": false,
+            "IsSelfThread": false,
+            "Likes": 0,
+            "Name": "\u0628\u062b \ud83e\udeb3 \u0643&#x624;\u062f \u062e&#x635;\u0645 \u0627&#x64A;\u0647\u0631\u0628 \u0627\u064a\u0647&#x64A;\u0631\u0628",
+            "Mentions": null,
+            "PermanentURL": "https://twitter.com/JillMoon364133/status/1863741380159287464",
+            "Photos": null,
+            "Place": null,
+            "QuotedStatus": null,
+            "QuotedStatusID": "",
+            "Replies": 0,
+            "Retweets": 0,
+            "RetweetedStatus": null,
+            "RetweetedStatusID": "",
+            "Text": "\u0627\u0644\u0627\u062a\u062d\u0627\u062f \u0641\u064a\u0646\u0648\u0631\u062f \u0631\u064a\u0627\u0644 \u0633\u0648\u0633\u064a\u062f\u0627\u062f \u062a\u0648\u062a\u0646\u0647\u0627\u0645 \u0647\u0648\u062a\u0633\u0628\u0631 \u0628\u0631\u0634\u0644\u0648\u0646\u0629\n\n\u06aa\u06c6\u062f \u062e\u0636\u0645 \u0645\u0628\u0627\u0634\u0631\n\n\u25ac\u0625\u064a\u0647\u066e\u0631\u0628\u25ac \u2190 CNU3074",
+            "Thread": null,
+            "TimeParsed": "2024-12-03T00:25:46Z",
+            "Timestamp": 1733185546,
+            "URLs": null,
+            "UserID": "1771737904252956672",
+            "Username": "JillMoon364133",
+            "Videos": null,
+            "Views": 0,
+            "SensitiveContent": false
+        },
+        "Error": null
+    },
+    {
+        "Tweet": {
+            "ConversationID": "1863741375381909800",
+            "GIFs": null,
+            "Hashtags": [
+                "riyadh"
+            ],
+            "HTML": "Massage in  <br><br>riyadh  24/24<br>           <br><a href=\"http://wa.me/+971564715866\">https://t.co/h024DHvDy8</a><br> <br><a href=\"https://twitter.com/hashtag/riyadh\">#riyadh</a><br>\ud83d\udc77\ud83c\udf41ng\u1ecdc cu\u1ed9i \ud83c\udfc8\ud83e\uddbc <br><a href=\"https://t.co/QbXqyNsRcK\"><img src=\"https://pbs.twimg.com/media/Gd1W2KWWYAA6u78.jpg\"/></a><br><img src=\"https://pbs.twimg.com/media/Gd1W2wuWgAAhKn4.jpg\"/>",
+            "ID": "1863741375381909800",
+            "InReplyToStatus": null,
+            "InReplyToStatusID": "",
+            "IsQuoted": false,
+            "IsPin": false,
+            "IsReply": false,
+            "IsRetweet": false,
+            "IsSelfThread": false,
+            "Likes": 0,
+            "Name": "Jill Virgilio",
+            "Mentions": null,
+            "PermanentURL": "https://twitter.com/JillVirgil91351/status/1863741375381909800",
+            "Photos": [
+                {
+                    "ID": "1863741309292273664",
+                    "URL": "https://pbs.twimg.com/media/Gd1W2KWWYAA6u78.jpg"
+                },
+                {
+                    "ID": "1863741319593492480",
+                    "URL": "https://pbs.twimg.com/media/Gd1W2wuWgAAhKn4.jpg"
+                }
+            ],
+            "Place": null,
+            "QuotedStatus": null,
+            "QuotedStatusID": "",
+            "Replies": 0,
+            "Retweets": 0,
+            "RetweetedStatus": null,
+            "RetweetedStatusID": "",
+            "Text": "Massage in  \n\nriyadh  24/24\n           \nhttps://t.co/h024DHvDy8\n \n#riyadh\n\ud83d\udc77\ud83c\udf41ng\u1ecdc cu\u1ed9i \ud83c\udfc8\ud83e\uddbc https://t.co/QbXqyNsRcK",
+            "Thread": null,
+            "TimeParsed": "2024-12-03T00:25:45Z",
+            "Timestamp": 1733185545,
+            "URLs": [
+                "http://wa.me/+971564715866"
+            ],
+            "UserID": "1845207866887766016",
+            "Username": "JillVirgil91351",
+            "Videos": null,
+            "Views": 0,
+            "SensitiveContent": false
+        },
+        "Error": null
+    },
+    {
+        "Tweet": {
+            "ConversationID": "1863724468452888746",
+            "GIFs": null,
+            "Hashtags": null,
+            "HTML": "<a href=\"https://twitter.com/JackPosobiec\">@JackPosobiec</a> So now the strategy is to blame Jill? They're both evil.",
+            "ID": "1863741366385381495",
+            "InReplyToStatus": null,
+            "InReplyToStatusID": "1863724468452888746",
+            "IsQuoted": false,
+            "IsPin": false,
+            "IsReply": true,
+            "IsRetweet": false,
+            "IsSelfThread": false,
+            "Likes": 0,
+            "Name": "LilRascal",
+            "Mentions": [
+                {
+                    "ID": "592730371",
+                    "Username": "JackPosobiec",
+                    "Name": "Jack Poso \ud83c\uddfa\ud83c\uddf8"
+                }
+            ],
+            "PermanentURL": "https://twitter.com/rascal113646/status/1863741366385381495",
+            "Photos": null,
+            "Place": null,
+            "QuotedStatus": null,
+            "QuotedStatusID": "",
+            "Replies": 0,
+            "Retweets": 0,
+            "RetweetedStatus": null,
+            "RetweetedStatusID": "",
+            "Text": "@JackPosobiec So now the strategy is to blame Jill? They're both evil.",
+            "Thread": null,
+            "TimeParsed": "2024-12-03T00:25:43Z",
+            "Timestamp": 1733185543,
+            "URLs": null,
+            "UserID": "1709391188120502272",
+            "Username": "rascal113646",
+            "Videos": null,
+            "Views": 0,
+            "SensitiveContent": false
+        },
+        "Error": null
+    },
+    {
+        "Tweet": {
+            "ConversationID": "1863740290026156300",
+            "GIFs": null,
+            "Hashtags": null,
+            "HTML": "<a href=\"https://twitter.com/RBPundit\">@RBPundit</a> Yeah Neilla died in 72 he met Jill 75.",
+            "ID": "1863741358613111031",
+            "InReplyToStatus": null,
+            "InReplyToStatusID": "1863740665877651853",
+            "IsQuoted": false,
+            "IsPin": false,
+            "IsReply": true,
+            "IsRetweet": false,
+            "IsSelfThread": false,
+            "Likes": 0,
+            "Name": "1967mustangman",
+            "Mentions": [
+                {
+                    "ID": "41410702",
+                    "Username": "RBPundit",
+                    "Name": "RBe"
+                }
+            ],
+            "PermanentURL": "https://twitter.com/1967mustangman/status/1863741358613111031",
+            "Photos": null,
+            "Place": null,
+            "QuotedStatus": null,
+            "QuotedStatusID": "",
+            "Replies": 0,
+            "Retweets": 0,
+            "RetweetedStatus": null,
+            "RetweetedStatusID": "",
+            "Text": "@RBPundit Yeah Neilla died in 72 he met Jill 75.",
+            "Thread": null,
+            "TimeParsed": "2024-12-03T00:25:41Z",
+            "Timestamp": 1733185541,
+            "URLs": null,
+            "UserID": "16475840",
+            "Username": "1967mustangman",
+            "Videos": null,
+            "Views": 0,
+            "SensitiveContent": false
+        },
+        "Error": null
+    },
+    {
+        "Tweet": {
+            "ConversationID": "1863665288342016015",
+            "GIFs": null,
+            "Hashtags": null,
+            "HTML": "<a href=\"https://twitter.com/FischerKing64\">@FischerKing64</a> <a href=\"https://twitter.com/StephenFleming\">@StephenFleming</a> I eliminated several avenues of study by simply being revolted that Econ basically wanted papers parroting modern monetary theory, or calling Sowell racist.",
+            "ID": "1863741346722226685",
+            "InReplyToStatus": null,
+            "InReplyToStatusID": "1863732754354942096",
+            "IsQuoted": false,
+            "IsPin": false,
+            "IsReply": true,
+            "IsRetweet": false,
+            "IsSelfThread": false,
+            "Likes": 0,
+            "Name": "Jill McClellan",
+            "Mentions": [
+                {
+                    "ID": "1016908862136332288",
+                    "Username": "FischerKing64",
+                    "Name": "FischerKing"
+                },
+                {
+                    "ID": "39933",
+                    "Username": "StephenFleming",
+                    "Name": "Stephen Fleming"
+                }
+            ],
+            "PermanentURL": "https://twitter.com/JillBugs41570/status/1863741346722226685",
+            "Photos": null,
+            "Place": null,
+            "QuotedStatus": null,
+            "QuotedStatusID": "",
+            "Replies": 0,
+            "Retweets": 0,
+            "RetweetedStatus": null,
+            "RetweetedStatusID": "",
+            "Text": "@FischerKing64 @StephenFleming I eliminated several avenues of study by simply being revolted that Econ basically wanted papers parroting modern monetary theory, or calling Sowell racist.",
+            "Thread": null,
+            "TimeParsed": "2024-12-03T00:25:38Z",
+            "Timestamp": 1733185538,
+            "URLs": null,
+            "UserID": "1745936768669483008",
+            "Username": "JillBugs41570",
+            "Videos": null,
+            "Views": 0,
+            "SensitiveContent": false
+        },
+        "Error": null
+    },
+    {
+        "Tweet": {
+            "ConversationID": "1863741342737744044",
+            "GIFs": null,
+            "Hashtags": null,
+            "HTML": "\u0645\u0627\u0646\u0634\u0633\u062a\u0631 \u0633\u064a\u062a\u064a \u0648\u0648\u0644\u0641\u0631\u0647\u0627\u0645\u0628\u062a\u0648\u0646 \u0648\u0627\u0646\u062f\u0631\u0631\u0632<br><br>\u25ac\u0646\u0645\u0634\u063e\u25ac<br>\u25d7CX10\u25d6<br><br>\u25ac\u067a\u0648\u0646\u25ac<br>\u25d7SAAS\u25d6",
+            "ID": "1863741342737744044",
+            "InReplyToStatus": null,
+            "InReplyToStatusID": "",
+            "IsQuoted": false,
+            "IsPin": false,
+            "IsReply": false,
+            "IsRetweet": false,
+            "IsSelfThread": false,
+            "Likes": 0,
+            "Name": "\u0643&#x624;\u062f \u062e&#x635;\u0645 \u0646&#x645;\u0634&#x64A; \u0646&#x624;\u0646 czi",
+            "Mentions": null,
+            "PermanentURL": "https://twitter.com/JillDavis156662/status/1863741342737744044",
+            "Photos": null,
+            "Place": null,
+            "QuotedStatus": null,
+            "QuotedStatusID": "",
+            "Replies": 0,
+            "Retweets": 0,
+            "RetweetedStatus": null,
+            "RetweetedStatusID": "",
+            "Text": "\u0645\u0627\u0646\u0634\u0633\u062a\u0631 \u0633\u064a\u062a\u064a \u0648\u0648\u0644\u0641\u0631\u0647\u0627\u0645\u0628\u062a\u0648\u0646 \u0648\u0627\u0646\u062f\u0631\u0631\u0632\n\n\u25ac\u0646\u0645\u0634\u063e\u25ac\n\u25d7CX10\u25d6\n\n\u25ac\u067a\u0648\u0646\u25ac\n\u25d7SAAS\u25d6",
+            "Thread": null,
+            "TimeParsed": "2024-12-03T00:25:37Z",
+            "Timestamp": 1733185537,
+            "URLs": null,
+            "UserID": "1747058199767724032",
+            "Username": "JillDavis156662",
+            "Videos": null,
+            "Views": 0,
+            "SensitiveContent": false
+        },
+        "Error": null
+    },
+    {
+        "Tweet": {
+            "ConversationID": "1863650280241340556",
+            "GIFs": null,
+            "Hashtags": null,
+            "HTML": "<a href=\"https://twitter.com/bennyjohnson\">@bennyjohnson</a> What if it was Trumps son Jill... would u support that? what if it was any criminal that has done what \"your son\" has done? \"No one is above the law\" as you clowns constantly tell everyone",
+            "ID": "1863741332927263216",
+            "InReplyToStatus": null,
+            "InReplyToStatusID": "1863650280241340556",
+            "IsQuoted": false,
+            "IsPin": false,
+            "IsReply": true,
+            "IsRetweet": false,
+            "IsSelfThread": false,
+            "Likes": 0,
+            "Name": "ittybitty\ud83c\uddec\ud83c\udde7\ud83c\udde8\ud83c\udde6\ud83d\ude9a\ud83d\ude9c",
+            "Mentions": [
+                {
+                    "ID": "15212187",
+                    "Username": "bennyjohnson",
+                    "Name": "Benny Johnson"
+                }
+            ],
+            "PermanentURL": "https://twitter.com/lilittybitty52/status/1863741332927263216",
+            "Photos": null,
+            "Place": null,
+            "QuotedStatus": null,
+            "QuotedStatusID": "",
+            "Replies": 0,
+            "Retweets": 0,
+            "RetweetedStatus": null,
+            "RetweetedStatusID": "",
+            "Text": "@bennyjohnson What if it was Trumps son Jill... would u support that? what if it was any criminal that has done what \"your son\" has done? \"No one is above the law\" as you clowns constantly tell everyone",
+            "Thread": null,
+            "TimeParsed": "2024-12-03T00:25:35Z",
+            "Timestamp": 1733185535,
+            "URLs": null,
+            "UserID": "1437173291911892993",
+            "Username": "lilittybitty52",
+            "Videos": null,
+            "Views": 1,
+            "SensitiveContent": false
+        },
+        "Error": null
+    },
+    {
+        "Tweet": {
+            "ConversationID": "1863696458811134435",
+            "GIFs": [
+                {
+                    "ID": "1863741322378547201",
+                    "Preview": "https://pbs.twimg.com/tweet_video_thumb/Gd1W27GXEAEbCxW.jpg",
+                    "URL": "https://video.twimg.com/tweet_video/Gd1W27GXEAEbCxW.mp4"
+                }
+            ],
+            "Hashtags": null,
+            "HTML": "<a href=\"https://twitter.com/greg_price11\">@greg_price11</a> <a href=\"https://twitter.com/HelloKarma2021\">@HelloKarma2021</a> Jill Biden\u2019s inspiration: <br><a href=\"https://t.co/917eBEtJPB\"><img src=\"https://pbs.twimg.com/tweet_video_thumb/Gd1W27GXEAEbCxW.jpg\"/></a>",
+            "ID": "1863741328527331627",
+            "InReplyToStatus": null,
+            "InReplyToStatusID": "1863696458811134435",
+            "IsQuoted": false,
+            "IsPin": false,
+            "IsReply": true,
+            "IsRetweet": false,
+            "IsSelfThread": false,
+            "Likes": 0,
+            "Name": "LLM",
+            "Mentions": [
+                {
+                    "ID": "896466491587080194",
+                    "Username": "greg_price11",
+                    "Name": "Greg Price"
+                },
+                {
+                    "ID": "3271255423",
+                    "Username": "HelloKarma2021",
+                    "Name": "HelloKarma 2023 #KarmaHasNoDeadline #VictimsRights"
+                }
+            ],
+            "PermanentURL": "https://twitter.com/LynniMegginson/status/1863741328527331627",
+            "Photos": null,
+            "Place": null,
+            "QuotedStatus": null,
+            "QuotedStatusID": "",
+            "Replies": 0,
+            "Retweets": 0,
+            "RetweetedStatus": null,
+            "RetweetedStatusID": "",
+            "Text": "@greg_price11 @HelloKarma2021 Jill Biden\u2019s inspiration: https://t.co/917eBEtJPB",
+            "Thread": null,
+            "TimeParsed": "2024-12-03T00:25:34Z",
+            "Timestamp": 1733185534,
+            "URLs": null,
+            "UserID": "18292099",
+            "Username": "LynniMegginson",
+            "Videos": null,
+            "Views": 0,
+            "SensitiveContent": false
+        },
+        "Error": null
+    },
+    {
+        "Tweet": {
+            "ConversationID": "1863719801891262794",
+            "GIFs": null,
+            "Hashtags": null,
+            "HTML": "<a href=\"https://twitter.com/FloraNotis_JILL\">@FloraNotis_JILL</a> \u3042\u305f\u3089\u306a\u3044\u304b\u306a",
+            "ID": "1863741318629036427",
+            "InReplyToStatus": null,
+            "InReplyToStatusID": "1863719801891262794",
+            "IsQuoted": false,
+            "IsPin": false,
+            "IsReply": true,
+            "IsRetweet": false,
+            "IsSelfThread": false,
+            "Likes": 0,
+            "Name": "mauve21",
+            "Mentions": [
+                {
+                    "ID": "1526794556934848512",
+                    "Username": "FloraNotis_JILL",
+                    "Name": "FloraNotis JILLSTUART\u516c\u5f0f"
+                }
+            ],
+            "PermanentURL": "https://twitter.com/mauve_21/status/1863741318629036427",
+            "Photos": null,
+            "Place": null,
+            "QuotedStatus": null,
+            "QuotedStatusID": "",
+            "Replies": 0,
+            "Retweets": 0,
+            "RetweetedStatus": null,
+            "RetweetedStatusID": "",
+            "Text": "@FloraNotis_JILL \u3042\u305f\u3089\u306a\u3044\u304b\u306a",
+            "Thread": null,
+            "TimeParsed": "2024-12-03T00:25:31Z",
+            "Timestamp": 1733185531,
+            "URLs": null,
+            "UserID": "1375696890",
+            "Username": "mauve_21",
+            "Videos": null,
+            "Views": 0,
+            "SensitiveContent": false
+        },
+        "Error": null
+    }
+]

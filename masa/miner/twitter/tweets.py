@@ -31,7 +31,7 @@ class TwitterTweetsRequest(MasaProtocolRequest):
                 stored_tweets = json.load(json_file)
             bt.logging.info(f"loaded {len(stored_tweets)} tweets from {file_path}...")
         except FileNotFoundError:
-            bt.logging.warning(f"no existing file for {file_path}, scraping instead...")
+            bt.logging.warning(f"no existing file for {file_path}")
             stored_tweets = []
 
         bt.logging.success(f"Sending {len(stored_tweets)} tweets to validator...")
