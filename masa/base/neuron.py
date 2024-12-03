@@ -21,6 +21,8 @@ import bittensor as bt
 import subprocess
 import requests
 from dotenv import load_dotenv
+from masa_ai.tools.validator import TrendingQueries
+
 
 # Sync calls set weights and also resyncs the metagraph.
 from masa.utils.config import check_config, add_args, config
@@ -206,3 +208,8 @@ class BaseNeuron(ABC):
             bt.logging.error(f"Subprocess error: {e}")
         except Exception as e:
             bt.logging.error(f"An unexpected error occurred: {e}")
+
+    async def scrape(self):
+        # this function needs to scrape trends from the twitter API
+        trending_queries = TrendingQueries().fetch()
+        queries = [query["query"] for query in trending_queries[:10]]

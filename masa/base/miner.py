@@ -99,6 +99,7 @@ class BaseMinerNeuron(BaseNeuron):
         self.is_running: bool = False
         self.thread: threading.Thread = None
         self.auto_update_thread: threading.Thread = None
+        self.scrape_thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
         self.neurons_permit_stake: Dict[str, int] = (
@@ -194,8 +195,20 @@ class BaseMinerNeuron(BaseNeuron):
                 bt.logging.error(f"Error running auto update: {e}")
             await asyncio.sleep(self.tempo * 12)  # note, 12 seconds per block
 
+    # note, runs every block
+    async def run_scrape(self):
+        while not self.should_exit:
+            try:
+                self.scrape()
+            except Exception as e:
+                bt.logging.error(f"Error running scrape: {e}")
+            await asyncio.sleep(12)  # note, 12 seconds per block
+
     def run_auto_update_in_loop(self):
         asyncio.run(self.run_auto_update())
+
+    def run_scrape_in_loop(self):
+        asyncio.run(self.run_scrape())
 
     def run_in_background_thread(self):
         """
@@ -209,8 +222,12 @@ class BaseMinerNeuron(BaseNeuron):
             self.auto_update_thread = threading.Thread(
                 target=self.run_auto_update_in_loop, daemon=True
             )
+            self.scrape_thread = threading.Thread(
+                target=self.run_scrape_in_loop, daemon=True
+            )
             self.thread.start()
             self.auto_update_thread.start()
+            self.scrape_thread.start()
             self.is_running = True
             bt.logging.debug("Started")
 
