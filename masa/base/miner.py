@@ -189,8 +189,7 @@ class BaseMinerNeuron(BaseNeuron):
     async def run_auto_update(self):
         while not self.should_exit:
             try:
-                if self.config.neuron.auto_update:
-                    self.auto_update()
+                self.auto_update()
             except Exception as e:
                 bt.logging.error(f"Error running auto update: {e}")
             await asyncio.sleep(self.tempo * 12)  # note, 12 seconds per block
@@ -199,7 +198,7 @@ class BaseMinerNeuron(BaseNeuron):
     async def run_scrape(self):
         while not self.should_exit:
             try:
-                self.scrape()
+                await self.scrape()
             except Exception as e:
                 bt.logging.error(f"Error running scrape: {e}")
             await asyncio.sleep(12)  # note, 12 seconds per block

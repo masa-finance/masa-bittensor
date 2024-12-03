@@ -22,7 +22,12 @@ import subprocess
 import requests
 from dotenv import load_dotenv
 from masa_ai.tools.validator import TrendingQueries
-
+from masa.miner.masa_protocol_request import MasaProtocolRequest
+from masa.types.twitter import ProtocolTwitterTweetResponse
+from masa.synapses import RecentTweetsSynapse
+from typing import List, Optional
+import random
+import json
 
 # Sync calls set weights and also resyncs the metagraph.
 from masa.utils.config import check_config, add_args, config
@@ -31,6 +36,35 @@ from masa import __spec_version__ as spec_version
 
 # Load the .env file for each neuron that tries to run the code
 load_dotenv()
+
+
+class ScrapeTwitter(MasaProtocolRequest):
+    def __init__(self):
+        super().__init__()
+
+    def get_recent_tweets(
+        self, synapse: RecentTweetsSynapse
+    ) -> Optional[List[ProtocolTwitterTweetResponse]]:
+        bt.logging.info(f"Scraping {synapse.count} recent tweets for: {synapse.query}")
+        try:
+            response = self.post(
+                "/data/twitter/tweets/recent",
+                body={
+                    "query": synapse.query,
+                    "count": synapse.count,
+                },
+                timeout=synapse.timeout,
+            )
+            if response.ok:
+                data = self.format(response)
+                bt.logging.success(f"Scraped {len(data)} tweets...")
+                return data
+            else:
+                bt.logging.error(
+                    f"Recent tweets request failed with status code: {response.status_code}"
+                )
+        except requests.exceptions.RequestException as e:
+            bt.logging.error(f"Recent tweets request failed: {e}")
 
 
 class BaseNeuron(ABC):
@@ -166,50 +200,41 @@ class BaseNeuron(ABC):
         ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"  # don't set weights if you're a miner
 
     def auto_update(self):
-        url = "https://api.github.com/repos/masa-finance/masa-bittensor/releases/latest"
-        response = requests.get(url)
-        data = response.json()
-        latest_tag = data["tag_name"]
-
-        try:
-            # Get the commit hash of the latest tag
-            latest_tag_commit = (
-                subprocess.check_output(
-                    "git rev-list -n 1 $(git describe --tags --abbrev=0)", shell=True
-                )
-                .strip()
-                .decode("utf-8")
-            )
-            # Get the current commit hash of the branch
-            current_commit = (
-                subprocess.check_output("git rev-parse HEAD", shell=True)
-                .strip()
-                .decode("utf-8")
-            )
-
-            if current_commit != latest_tag_commit:
-                bt.logging.warning(
-                    f"🟡 Local code is not up to date with latest tag, updating to {latest_tag}..."
-                )
-                # Fetch all tags from the remote repository
-                subprocess.run(["git", "fetch", "--tags"], check=True)
-                # Checkout the latest tag
-                subprocess.run(["git", "checkout", latest_tag], check=True)
-                # Install the latest packages
-                subprocess.run(["pip", "install", "-e", "."], check=True)
-                # Restart processes with PM2 should now trigger...
-                subprocess.run(["pm2", "restart", "all"], check=True)
-                bt.logging.success(
-                    f"🟢 Code updated to the latest release: {latest_tag}"
-                )
-            else:
-                bt.logging.success(f"🟢 Code matches latest release: {latest_tag}")
-        except subprocess.CalledProcessError as e:
-            bt.logging.error(f"Subprocess error: {e}")
-        except Exception as e:
-            bt.logging.error(f"An unexpected error occurred: {e}")
+        trending_queries = TrendingQueries().fetch()
+        self.queries = [query["query"] for query in trending_queries[:10]]
 
     async def scrape(self):
         # this function needs to scrape trends from the twitter API
-        trending_queries = TrendingQueries().fetch()
-        queries = [query["query"] for query in trending_queries[:10]]
+        if not self.queries:
+            self.auto_update()
+
+        query = random.choice(self.queries)
+        file_path = f"{query}.json"
+        # load stored tweets...
+        try:
+            with open(file_path, "r") as json_file:
+                stored_tweets = json.load(json_file)
+            bt.logging.info(f"loaded {len(stored_tweets)} tweets from {file_path}...")
+        except FileNotFoundError:
+            bt.logging.warning(f"no existing file for {file_path}...")
+            stored_tweets = []
+
+        synapse = RecentTweetsSynapse(
+            query=query, count=self.config.twitter.max_tweets_per_request, timeout=40
+        )
+        tweets = ScrapeTwitter().get_recent_tweets(synapse)
+        if tweets:
+            bt.logging.info(f"Scraped {len(tweets)} tweets for query: {query}")
+            # add unique tweets to stored tweets...
+            existing_ids = {tweet["Tweet"]["ID"] for tweet in stored_tweets}
+            new_tweets = [
+                tweet for tweet in tweets if tweet["Tweet"]["ID"] not in existing_ids
+            ]
+            bt.logging.info(f"adding {len(new_tweets)} new tweets to storage...")
+            stored_tweets.extend(new_tweets)
+            # save new tweets to json file...
+            with open(file_path, "w") as json_file:
+                json.dump(stored_tweets, json_file, indent=4)
+
+        else:
+            bt.logging.error(f"Failed to scrape tweets for query: {query}")
