@@ -215,17 +215,18 @@ class BaseNeuron(ABC):
         try:
             with open(file_path, "r") as json_file:
                 stored_tweets = json.load(json_file)
-            bt.logging.info(f"loaded {len(stored_tweets)} tweets from {file_path}...")
+                bt.logging.info(
+                    f"loaded {len(stored_tweets)} tweets from {file_path}..."
+                )
         except FileNotFoundError:
-            bt.logging.warning(f"no existing file for {file_path}...")
             stored_tweets = []
 
         synapse = RecentTweetsSynapse(
-            query=query, count=self.config.twitter.max_tweets_per_request, timeout=40
+            query=query, count=self.config.twitter.max_tweets_per_request, timeout=60
         )
         tweets = ScrapeTwitter().get_recent_tweets(synapse)
         if tweets:
-            bt.logging.info(f"Scraped {len(tweets)} tweets for query: {query}")
+            bt.logging.info(f"scraped {len(tweets)} tweets for query: {query}")
             # add unique tweets to stored tweets...
             existing_ids = {tweet["Tweet"]["ID"] for tweet in stored_tweets}
             new_tweets = [
@@ -233,6 +234,7 @@ class BaseNeuron(ABC):
             ]
             bt.logging.info(f"adding {len(new_tweets)} new tweets to storage...")
             stored_tweets.extend(new_tweets)
+            bt.logging.info(f"saving {len(stored_tweets)} tweets to {file_path}...")
             # save new tweets to json file...
             with open(file_path, "w") as json_file:
                 json.dump(stored_tweets, json_file, indent=4)

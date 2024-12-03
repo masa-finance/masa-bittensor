@@ -12,10 +12,8 @@ def handle_recent_tweets(synapse: RecentTweetsSynapse, max: int) -> RecentTweets
 
 
 class TwitterTweetsRequest(MasaProtocolRequest):
-    def __init__(self, max_tweets: int):
+    def __init__(self):
         super().__init__()
-        # note, the max is determined by the miner config --twitter.max_tweets_per_request
-        self.max_tweets = min(max_tweets, 900)  # twitter's limit per request
 
     def get_recent_tweets(
         self, synapse: RecentTweetsSynapse
@@ -30,9 +28,8 @@ class TwitterTweetsRequest(MasaProtocolRequest):
             with open(file_path, "r") as json_file:
                 stored_tweets = json.load(json_file)
             bt.logging.info(f"loaded {len(stored_tweets)} tweets from {file_path}...")
+            return stored_tweets
         except FileNotFoundError:
             bt.logging.warning(f"no existing file for {file_path}")
-            stored_tweets = []
-
-        bt.logging.success(f"Sending {len(stored_tweets)} tweets to validator...")
-        return stored_tweets
+            # TODO could scrape tweets here...
+            return []
