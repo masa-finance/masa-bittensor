@@ -22,7 +22,7 @@ from datetime import datetime, UTC, timedelta
 import aiohttp
 import json
 import random
-
+import asyncio
 from masa.synapses import (
     RecentTweetsSynapse,
     TwitterFollowersSynapse,
@@ -207,7 +207,6 @@ class Forwarder:
         )
 
         all_valid_tweets = []
-        tweet_validator = TweetValidator()
         for response, uid in zip(responses, miner_uids):
             valid_tweets = []
             all_responses = dict(response).get("response", [])
@@ -228,7 +227,7 @@ class Forwarder:
                     "Tweet", {}
                 )
 
-                is_valid = tweet_validator.validate_tweet(
+                is_valid = TweetValidator().validate_tweet(
                     random_tweet.get("ID"),
                     random_tweet.get("Name"),
                     random_tweet.get("Username"),
@@ -236,6 +235,8 @@ class Forwarder:
                     random_tweet.get("Timestamp"),
                     random_tweet.get("Hashtags"),
                 )
+
+                await asyncio.sleep(1)
 
                 query_words = (
                     self.normalize_whitespace(random_keyword.replace('"', ""))
@@ -290,14 +291,6 @@ class Forwarder:
                     )
                     for tweet in unique_tweets_response:
                         if tweet:
-                            # tweet_embedding = self.validator.model.encode(str(tweet))
-                            # similarity = (
-                            #     self.validator.scorer.calculate_similarity_percentage(
-                            #         self.validator.example_tweet_embedding,
-                            #         tweet_embedding,
-                            #     )
-                            # )
-                            # if similarity >= 70:  # pretty strict
                             valid_tweets.append(tweet)
                 else:
                     bt.logging.warning(f"Miner {uid} failed the spot check!")
