@@ -290,15 +290,15 @@ class Forwarder:
                     )
                     for tweet in unique_tweets_response:
                         if tweet:
-                            tweet_embedding = self.validator.model.encode(str(tweet))
-                            similarity = (
-                                self.validator.scorer.calculate_similarity_percentage(
-                                    self.validator.example_tweet_embedding,
-                                    tweet_embedding,
-                                )
-                            )
-                            if similarity >= 70:  # pretty strict
-                                valid_tweets.append(tweet)
+                            # tweet_embedding = self.validator.model.encode(str(tweet))
+                            # similarity = (
+                            #     self.validator.scorer.calculate_similarity_percentage(
+                            #         self.validator.example_tweet_embedding,
+                            #         tweet_embedding,
+                            #     )
+                            # )
+                            # if similarity >= 70:  # pretty strict
+                            valid_tweets.append(tweet)
                 else:
                     bt.logging.warning(f"Miner {uid} failed the spot check!")
 

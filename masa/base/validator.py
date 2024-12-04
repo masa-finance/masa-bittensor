@@ -413,25 +413,28 @@ class BaseValidatorNeuron(BaseNeuron):
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
     async def export_tweets(self, tweets: List[dict], query: str):
-        """Exports tweets to a spcified API."""
+        """Exports tweets to a specified API in chunks of 200."""
         api_url = self.config.validator.export_url
         if api_url:
-            payload = {
-                "Hotkey": self.wallet.hotkey.ss58_address,
-                "Query": query,
-                "Tweets": tweets,
-            }
             try:
                 async with aiohttp.ClientSession() as session:
-                    async with session.post(api_url, json=payload) as response:
-                        if response.status == 200:
-                            bt.logging.success(
-                                "Successfully sent data to the protocol API."
-                            )
-                        else:
-                            bt.logging.error(
-                                f"Failed to send data to the protocol API: {response.status}"
-                            )
+                    for i in range(0, len(tweets), 1000):
+                        tweet_chunk = tweets[i : i + 1000]
+                        payload = {
+                            "Hotkey": self.wallet.hotkey.ss58_address,
+                            "Query": query,
+                            "Tweets": tweet_chunk,
+                        }
+                        async with session.post(api_url, json=payload) as response:
+                            if response.status == 200:
+                                bt.logging.success(
+                                    f"Successfully sent data to the protocol API for chunk starting at index {i}."
+                                )
+                            else:
+                                bt.logging.error(
+                                    f"Failed to send data to the protocol API for chunk starting at index {i}: {response.status}"
+                                )
+                        await asyncio.sleep(1)  # Wait for 1 second between requests
             except Exception as e:
                 bt.logging.error(
                     f"Exception occurred while sending data to the protocol API: {e}"
