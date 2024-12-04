@@ -15,7 +15,7 @@ class TwitterTweetsRequest(MasaProtocolRequest):
     def __init__(self, max_tweets: int):
         super().__init__()
         # note, the max is determined by the miner config --twitter.max_tweets_per_request
-        self.max_tweets = min(max_tweets, 900)  # twitter's limit per request
+        self.max_tweets = max_tweets
 
     def get_recent_tweets(
         self, synapse: RecentTweetsSynapse

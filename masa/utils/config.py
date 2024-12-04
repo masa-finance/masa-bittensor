@@ -169,7 +169,7 @@ def add_miner_args(cls, parser):
         "--twitter.max_tweets_per_request",
         type=int,
         help="Defines the max number of tweets to scrape per request.",
-        default=100,
+        default=1000,
     )
 
     parser.add_argument(
