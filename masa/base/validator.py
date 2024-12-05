@@ -443,6 +443,11 @@ class BaseValidatorNeuron(BaseNeuron):
 
         bt.logging.info(f"Updated moving averages: {self.scores}")
 
+        # Limit the number of tweet IDs stored per UID to 100,000
+        for uid in uids:
+            if len(self.tweets_by_uid[uid]) > 100000:
+                self.tweets_by_uid[uid] = set(list(self.tweets_by_uid[uid])[:100000])
+
         self.save_state()
 
     def save_state(self):
@@ -468,7 +473,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # Load the state of the validator from file.
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
-            state = torch.load(state_path, map_location=torch.device("cpu"))
+            state = torch.load(state_path)
             self.step = dict(state).get("step", 0)
             self.scores = dict(state).get("scores", [])
             self.hotkeys = dict(state).get("hotkeys", [])
