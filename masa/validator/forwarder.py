@@ -300,11 +300,6 @@ class Forwarder:
             # note, score only unique tweets per miner (uid)
             uid_int = int(uid)
 
-            # comment out in production
-            if int(uid) in [23, 32] and len(valid_tweets) is 0:
-                bt.logging.success(f"Power Miner {uid_int} produced 30,000 tweets")
-                self.validator.scorer.add_volume(uid_int, 30000)
-
             if not self.validator.tweets_by_uid.get(uid_int):
                 self.validator.tweets_by_uid[uid_int] = {
                     tweet["Tweet"]["ID"] for tweet in valid_tweets
