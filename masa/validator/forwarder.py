@@ -213,6 +213,7 @@ class Forwarder:
             if not all_responses:
                 continue
 
+            # TODO lets remove all padded 0's from the response IDs
             unique_tweets_response = list(
                 {
                     resp["Tweet"]["ID"]: resp
