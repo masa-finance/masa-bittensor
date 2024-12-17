@@ -213,9 +213,16 @@ class Forwarder:
             if not all_responses:
                 continue
 
+            # also remove all padded 0's from the response IDs
             unique_tweets_response = list(
                 {
-                    resp["Tweet"]["ID"]: resp
+                    resp["Tweet"]["ID"].lstrip("0"): {
+                        **resp,
+                        "Tweet": {
+                            **resp["Tweet"],
+                            "ID": resp["Tweet"]["ID"].lstrip("0"),
+                        },
+                    }
                     for resp in all_responses
                     if "Tweet" in resp and "ID" in resp["Tweet"]
                 }.values()
