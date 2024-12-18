@@ -473,7 +473,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # Load the state of the validator from file.
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
-            state = torch.load(state_path)
+            state = torch.load(state_path, map_location=torch.device("cpu"))
             self.step = dict(state).get("step", 0)
             self.scores = dict(state).get("scores", [])
             self.hotkeys = dict(state).get("hotkeys", [])
