@@ -46,10 +46,10 @@ set-weights:
 	btcli root weights --subtensor.$(SUBTENSOR_ENVIRONMENT)
 
 run-miner:
-	python neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug --logging.logging_dir ~/.bittensor/wallets --blacklist.force_validator_permit
+	python neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug --blacklist.force_validator_permit
 
 run-validator:
-	python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug --logging.logging_dir ~/.bittensor/wallets --neuron.axon_off
+	python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_ENVIRONMENT) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.debug --logging.debug --neuron.axon_off
 
 hyperparameters:
 	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_ENVIRONMENT) --netuid $(NETUID)
