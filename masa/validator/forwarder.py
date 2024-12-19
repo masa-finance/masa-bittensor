@@ -35,6 +35,8 @@ from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
+import re
+
 
 class Forwarder:
     def __init__(self, validator):
@@ -213,14 +215,14 @@ class Forwarder:
             if not all_responses:
                 continue
 
-            # also remove all padded 0's from the response IDs
+            # Use regex to remove all leading zeros or similar characters
             unique_tweets_response = list(
                 {
-                    resp["Tweet"]["ID"].lstrip("0"): {
+                    re.sub(r"^[0೦०]+", "", resp["Tweet"]["ID"]): {
                         **resp,
                         "Tweet": {
                             **resp["Tweet"],
-                            "ID": resp["Tweet"]["ID"].lstrip("0"),
+                            "ID": re.sub(r"^[0೦०]+", "", resp["Tweet"]["ID"]),
                         },
                     }
                     for resp in all_responses
