@@ -216,11 +216,13 @@ class Forwarder:
             # also remove all padded 0's from the response IDs
             unique_tweets_response = list(
                 {
-                    resp["Tweet"]["ID"].lstrip("0"): {
+                    resp["Tweet"]["ID"]
+                    .lstrip("0")
+                    .lstrip("೦"): {
                         **resp,
                         "Tweet": {
                             **resp["Tweet"],
-                            "ID": resp["Tweet"]["ID"].lstrip("0"),
+                            "ID": resp["Tweet"]["ID"].lstrip("0").lstrip("೦"),
                         },
                     }
                     for resp in all_responses
