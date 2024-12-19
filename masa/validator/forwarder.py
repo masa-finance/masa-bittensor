@@ -218,11 +218,11 @@ class Forwarder:
             # Use regex to remove all leading zeros or similar characters
             unique_tweets_response = list(
                 {
-                    re.sub(r"^[0०]+", "", resp["Tweet"]["ID"]): {
+                    re.sub(r"^[0೦०]+", "", resp["Tweet"]["ID"]): {
                         **resp,
                         "Tweet": {
                             **resp["Tweet"],
-                            "ID": re.sub(r"^[0०]+", "", resp["Tweet"]["ID"]),
+                            "ID": re.sub(r"^[0೦०]+", "", resp["Tweet"]["ID"]),
                         },
                     }
                     for resp in all_responses
