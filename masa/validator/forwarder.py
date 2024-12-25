@@ -215,14 +215,20 @@ class Forwarder:
             if not all_responses:
                 continue
 
-            # Use .strip() to remove any leading or trailing whitespace first
+            # Updated regex to include a wider range of zero characters
             unique_tweets_response = list(
                 {
-                    re.sub(r"^[0０೦०]+", "", resp["Tweet"]["ID"].strip()): {
+                    re.sub(
+                        r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០]+", "", resp["Tweet"]["ID"].strip()
+                    ): {
                         **resp,
                         "Tweet": {
                             **resp["Tweet"],
-                            "ID": re.sub(r"^[0０೦०]+", "", resp["Tweet"]["ID"].strip()),
+                            "ID": re.sub(
+                                r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០]+",
+                                "",
+                                resp["Tweet"]["ID"].strip(),
+                            ),
                         },
                     }
                     for resp in all_responses
