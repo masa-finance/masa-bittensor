@@ -218,11 +218,11 @@ class Forwarder:
             # Use .strip() to remove any leading or trailing whitespace first
             unique_tweets_response = list(
                 {
-                    re.sub(r"^[0೦०]+", "", resp["Tweet"]["ID"].strip()): {
+                    re.sub(r"^[0０೦०]+", "", resp["Tweet"]["ID"].strip()): {
                         **resp,
                         "Tweet": {
                             **resp["Tweet"],
-                            "ID": re.sub(r"^[0೦०]+", "", resp["Tweet"]["ID"].strip()),
+                            "ID": re.sub(r"^[0０೦०]+", "", resp["Tweet"]["ID"].strip()),
                         },
                     }
                     for resp in all_responses
