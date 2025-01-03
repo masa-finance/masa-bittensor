@@ -35,7 +35,7 @@ from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
-import regex as re
+import re
 
 
 class Forwarder:
@@ -183,9 +183,6 @@ class Forwarder:
                         f"failed to fetch subnet config from GitHub: {response.status}"
                     )
 
-    def remove_leading_zeros(self, s: str) -> str:
-        return re.sub(r"^\p{Nd}+", "", s)
-
     async def get_miners_volumes(self):
         if len(self.validator.versions) == 0:
             bt.logging.info("Pinging axons to get miner versions...")
@@ -221,12 +218,16 @@ class Forwarder:
             # Updated regex to include a wider range of zero characters
             unique_tweets_response = list(
                 {
-                    self.remove_leading_zeros(resp["Tweet"]["ID"].strip()): {
+                    re.sub(
+                        r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០᠐]+", "", resp["Tweet"]["ID"].strip()
+                    ): {
                         **resp,
                         "Tweet": {
                             **resp["Tweet"],
-                            "ID": self.remove_leading_zeros(
-                                resp["Tweet"]["ID"].strip()
+                            "ID": re.sub(
+                                r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០᠐]+",
+                                "",
+                                resp["Tweet"]["ID"].strip(),
                             ),
                         },
                     }
