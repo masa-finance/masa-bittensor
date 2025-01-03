@@ -183,6 +183,9 @@ class Forwarder:
                         f"failed to fetch subnet config from GitHub: {response.status}"
                     )
 
+    def remove_leading_zeros(self, s: str) -> str:
+        return re.sub(r"^\p{Nd}+", "", s)
+
     async def get_miners_volumes(self):
         if len(self.validator.versions) == 0:
             bt.logging.info("Pinging axons to get miner versions...")
@@ -215,19 +218,14 @@ class Forwarder:
             if not all_responses:
                 continue
 
-            # Updated regex to include a wider range of zero characters
             unique_tweets_response = list(
                 {
-                    re.sub(
-                        r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០]+", "", resp["Tweet"]["ID"].strip()
-                    ): {
+                    self.remove_leading_zeros(resp["Tweet"]["ID"].strip()): {
                         **resp,
                         "Tweet": {
                             **resp["Tweet"],
-                            "ID": re.sub(
-                                r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០]+",
-                                "",
-                                resp["Tweet"]["ID"].strip(),
+                            "ID": self.remove_leading_zeros(
+                                resp["Tweet"]["ID"].strip()
                             ),
                         },
                     }
