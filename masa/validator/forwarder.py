@@ -35,7 +35,7 @@ from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
-import re
+import regex as re
 
 
 class Forwarder:
@@ -221,16 +221,12 @@ class Forwarder:
             # Updated regex to include a wider range of zero characters
             unique_tweets_response = list(
                 {
-                    re.sub(
-                        r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០᠐]+", "", resp["Tweet"]["ID"].strip()
-                    ): {
+                    self.remove_leading_zeros(resp["Tweet"]["ID"].strip()): {
                         **resp,
                         "Tweet": {
                             **resp["Tweet"],
-                            "ID": re.sub(
-                                r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០᠐]+",
-                                "",
-                                resp["Tweet"]["ID"].strip(),
+                            "ID": self.remove_leading_zeros(
+                                resp["Tweet"]["ID"].strip()
                             ),
                         },
                     }
