@@ -35,7 +35,7 @@ from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
-import re
+import regex as re
 
 
 class Forwarder:
