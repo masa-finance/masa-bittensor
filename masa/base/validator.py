@@ -150,9 +150,14 @@ class BaseValidatorNeuron(BaseNeuron):
                 blocks_since_last_check = self.block - self.last_healthcheck_block
                 blocks_to_wait = self.subnet_config.get("healthcheck").get("blocks")
                 if blocks_since_last_check >= blocks_to_wait:
-                    await self.forwarder.ping_axons()
+                    responses = await self.forwarder.ping_axons()
+                    success_count = sum(1 for r in responses if r["status_code"] == 200)
+                    total_count = len(responses)
+                    bt.logging.info(
+                        f"Pinged {total_count} miners, {success_count} responded successfully"
+                    )
             except Exception as e:
-                bt.logging.error(f"Error running miner ping: {e}")
+                bt.logging.warning(f"Error running miner ping: {e}")
             await asyncio.sleep(self.block_time)
 
     async def run_miner_volume(self):
@@ -161,9 +166,15 @@ class BaseValidatorNeuron(BaseNeuron):
                 blocks_since_last_check = self.block - self.last_volume_block
                 blocks_to_wait = self.subnet_config.get("synthetic").get("blocks")
                 if blocks_since_last_check >= blocks_to_wait:
-                    await self.forwarder.get_miners_volumes()
+                    volumes = await self.forwarder.get_miners_volumes()
+                    if volumes:
+                        success_count = sum(1 for v in volumes if v.get("response"))
+                        total_count = len(volumes)
+                        bt.logging.info(
+                            f"Retrieved volumes from {success_count}/{total_count} miners"
+                        )
             except Exception as e:
-                bt.logging.error(f"Error running miner volume: {e}")
+                bt.logging.warning(f"Error running miner volume: {e}")
             await asyncio.sleep(self.block_time)
 
     async def run_miner_scoring(self):

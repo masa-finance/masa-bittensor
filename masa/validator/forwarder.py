@@ -62,16 +62,28 @@ class Forwarder:
             return [], []
 
         dendrite = bt.dendrite(wallet=self.validator.wallet)
-        responses = await dendrite(
-            [self.validator.metagraph.axons[uid] for uid in miner_uids],
-            request,
-            deserialize=True,
-            timeout=timeout,
-        )
+        try:
+            responses = await dendrite(
+                [self.validator.metagraph.axons[uid] for uid in miner_uids],
+                request,
+                deserialize=True,
+                timeout=timeout,
+            )
+            success_count = sum(
+                1 for r in responses if r is not None and not isinstance(r, Exception)
+            )
+            if success_count < len(miner_uids):
+                bt.logging.debug(
+                    f"Received {success_count}/{len(miner_uids)} successful responses"
+                )
+        except Exception as e:
+            bt.logging.warning(f"Forward request failed: {e}")
+            return [], []
 
         formatted_responses = [
             {"uid": int(uid), "response": response}
             for uid, response in zip(miner_uids, responses)
+            if response is not None and not isinstance(response, Exception)
         ]
         return formatted_responses, miner_uids
 
@@ -126,28 +138,53 @@ class Forwarder:
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         dendrite = bt.dendrite(wallet=self.validator.wallet)
         all_responses = []
-        for i in range(0, len(self.validator.metagraph.axons), sample_size):
-            batch = self.validator.metagraph.axons[i : i + sample_size]
-            batch_responses = await dendrite(
-                batch,
-                request,
-                deserialize=False,
-                timeout=self.validator.subnet_config.get("healthcheck").get("timeout"),
-            )
-            all_responses.extend(batch_responses)
+        total_axons = len(self.validator.metagraph.axons)
 
-        self.validator.versions = [response.version for response in all_responses]
-        bt.logging.info(f"Miner Versions: {self.validator.versions}")
-        self.validator.last_healthcheck_block = self.validator.subtensor.block
-        return [
-            {
-                "status_code": response.dendrite.status_code,
-                "status_message": response.dendrite.status_message,
-                "version": response.version,
-                "uid": all_responses.index(response),
-            }
-            for response in all_responses
-        ]
+        for i in range(0, total_axons, sample_size):
+            batch = self.validator.metagraph.axons[i : i + sample_size]
+            try:
+                batch_responses = await dendrite(
+                    batch,
+                    request,
+                    deserialize=False,
+                    timeout=self.validator.subnet_config.get("healthcheck").get(
+                        "timeout"
+                    ),
+                )
+                all_responses.extend(batch_responses)
+            except Exception as e:
+                bt.logging.debug(f"Failed to ping batch {i // sample_size + 1}: {e}")
+
+        if all_responses:
+            self.validator.versions = [
+                response.version
+                for response in all_responses
+                if hasattr(response, "version")
+            ]
+            unique_versions = set(v for v in self.validator.versions if v)
+            bt.logging.info(f"Active miner versions: {list(unique_versions)}")
+            self.validator.last_healthcheck_block = self.validator.subtensor.block
+
+            return [
+                {
+                    "status_code": (
+                        response.dendrite.status_code
+                        if hasattr(response, "dendrite")
+                        else 0
+                    ),
+                    "status_message": (
+                        response.dendrite.status_message
+                        if hasattr(response, "dendrite")
+                        else str(response)
+                    ),
+                    "version": (
+                        response.version if hasattr(response, "version") else None
+                    ),
+                    "uid": all_responses.index(response),
+                }
+                for response in all_responses
+            ]
+        return []
 
     async def fetch_twitter_queries(self):
         try:
