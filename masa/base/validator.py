@@ -178,32 +178,32 @@ class BaseValidatorNeuron(BaseNeuron):
             await asyncio.sleep(self.block_time)
 
     async def run_miner_scoring(self):
-        while not self.should_exit:
-            try:
-                # Get weights_rate_limit from subnet hyperparameters
-                weights_rate_limit = self.subtensor.get_subnet_hyperparameters(
-                    self.config.netuid
-                ).weights_rate_limit
+        """Run miner scoring in a loop."""
+        try:
+            # Get weights rate limit from subnet hyperparameters
+            weights_rate_limit = self.subtensor.get_subnet_hyperparameters(
+                self.config.netuid
+            ).weights_rate_limit
+            bt.logging.info(f"Using weights_rate_limit: {weights_rate_limit} blocks")
 
-                blocks_since_last_check = self.block - self.last_scoring_block
-                if blocks_since_last_check >= weights_rate_limit:
-                    bt.logging.info(
-                        f"Running miner scoring after {blocks_since_last_check} blocks"
-                    )
-                    async with (
-                        self.lock
-                    ):  # Use lock to prevent concurrent scoring/weight setting
-                        await self.scorer.score_miner_volumes()
-                        self.last_scoring_block = self.block
-                else:
-                    bt.logging.debug(
-                        f"Waiting for scoring: {blocks_since_last_check}/{weights_rate_limit} blocks elapsed"
-                    )
-            except Exception as e:
-                bt.logging.error(f"Error running miner scoring: {e}")
+            while True:
+                try:
+                    # Score miners and set weights if needed
+                    await self.score_miners()
 
-            # Sleep for a reasonable duration (about 1/4 of the rate limit in seconds)
-            await asyncio.sleep(weights_rate_limit * 12 / 4)  # 12 seconds per block
+                    # Sleep for 1/4 of the weights rate limit (in seconds)
+                    # 12 seconds per block is the standard block time
+                    await asyncio.sleep(
+                        weights_rate_limit * 12 / 4
+                    )  # 12 seconds per block
+
+                except Exception as e:
+                    bt.logging.error(f"Error running miner scoring: {e}")
+                    await asyncio.sleep(12)  # Sleep for one block on error
+
+        except Exception as e:
+            bt.logging.error(f"Fatal error in run_miner_scoring: {e}")
+            raise
 
     async def run_auto_update(self):
         while not self.should_exit:
@@ -524,3 +524,15 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.warning(
                 f"State file not found at {state_path}. Skipping state load."
             )
+
+    async def score_miners(self):
+        """Score miners and set weights if needed."""
+        try:
+            async with (
+                self.lock
+            ):  # Use lock to prevent concurrent scoring/weight setting
+                await self.scorer.score_miner_volumes()
+
+        except Exception as e:
+            bt.logging.error(f"Error in score_miners: {e}")
+            raise
