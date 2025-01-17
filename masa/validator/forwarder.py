@@ -16,26 +16,23 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import random
+import re
+import json
+import aiohttp
 import bittensor as bt
 from typing import Any
 from datetime import datetime, UTC, timedelta
-import aiohttp
-import json
-import random
 import asyncio
 from masa.synapses import (
     RecentTweetsSynapse,
     TwitterFollowersSynapse,
     TwitterProfileSynapse,
+    PingAxonSynapse,
 )
-
-from masa.synapses import PingAxonSynapse
 from masa.base.healthcheck import get_external_ip
 from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
-
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
-
-import re
 
 
 class Forwarder:
@@ -266,163 +263,208 @@ class Forwarder:
                     )
 
     async def get_miners_volumes(self):
+        total_miners = 0
+        success_count = 0
+
         if len(self.validator.versions) == 0:
-            bt.logging.info("Pinging axons to get miner versions...")
-            return await self.ping_axons()
+            bt.logging.info("No miner versions found, pinging axons first...")
+            await self.ping_axons()
+            if len(self.validator.versions) == 0:
+                bt.logging.warning("Failed to get any miner versions after ping")
+                return []
+
         if len(self.validator.keywords) == 0 or self.check_tempo():
+            bt.logging.info("Fetching Twitter queries...")
             await self.fetch_twitter_queries()
+            if len(self.validator.keywords) == 0:
+                bt.logging.warning("No keywords available for volume check")
+                return []
+
         if len(self.validator.subnet_config) == 0 or self.check_tempo():
+            bt.logging.info("Fetching subnet config...")
             await self.fetch_subnet_config()
+            if len(self.validator.subnet_config) == 0:
+                bt.logging.warning("No subnet config available for volume check")
+                return []
 
         random_keyword = random.choice(self.validator.keywords)
         query = f'"{random_keyword.strip()}"'
         bt.logging.info(f"Volume checking for: {query}")
+
         request = RecentTweetsSynapse(
             query=query,
-            timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
-        )
-        responses, miner_uids = await self.forward_request(
-            request,
-            sample_size=self.validator.subnet_config.get("synthetic").get(
-                "sample_size"
+            timeout=self.validator.subnet_config.get("synthetic", {}).get(
+                "timeout", 12
             ),
-            timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
-            sequential=True,
         )
+
+        try:
+            responses, miner_uids = await self.forward_request(
+                request,
+                sample_size=self.validator.subnet_config.get("synthetic", {}).get(
+                    "sample_size", 8
+                ),
+                timeout=self.validator.subnet_config.get("synthetic", {}).get(
+                    "timeout", 12
+                ),
+                sequential=True,
+            )
+            total_miners = len(miner_uids)
+        except Exception as e:
+            bt.logging.warning(f"Failed to forward volume request: {str(e)}")
+            return []
 
         all_valid_tweets = []
         for response, uid in zip(responses, miner_uids):
-            valid_tweets = []
-            all_responses = dict(response).get("response", [])
-            if not all_responses:
+            try:
+                valid_tweets = []
+                all_responses = dict(response).get("response", [])
+                if not all_responses:
+                    continue
+
+                # Process tweets...
+                unique_tweets_response = list(
+                    {
+                        re.sub(
+                            r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០]+", "", resp["Tweet"]["ID"].strip()
+                        ): {
+                            **resp,
+                            "Tweet": {
+                                **resp["Tweet"],
+                                "ID": re.sub(
+                                    r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០]+",
+                                    "",
+                                    resp["Tweet"]["ID"].strip(),
+                                ),
+                            },
+                        }
+                        for resp in all_responses
+                        if "Tweet" in resp and "ID" in resp["Tweet"]
+                    }.values()
+                )
+
+                if unique_tweets_response:
+                    # First spot check this payload, ensuring a random tweet is valid
+                    random_tweet = dict(random.choice(unique_tweets_response)).get(
+                        "Tweet", {}
+                    )
+
+                    is_valid = TweetValidator().validate_tweet(
+                        random_tweet.get("ID"),
+                        random_tweet.get("Name"),
+                        random_tweet.get("Username"),
+                        random_tweet.get("Text"),
+                        random_tweet.get("Timestamp"),
+                        random_tweet.get("Hashtags"),
+                    )
+
+                    await asyncio.sleep(1)
+
+                    query_words = (
+                        self.normalize_whitespace(random_keyword.replace('"', ""))
+                        .strip()
+                        .lower()
+                        .split()
+                    )
+
+                    fields_to_check = [
+                        self.normalize_whitespace(random_tweet.get("Text", ""))
+                        .strip()
+                        .lower(),
+                        self.normalize_whitespace(random_tweet.get("Name", ""))
+                        .strip()
+                        .lower(),
+                        self.normalize_whitespace(random_tweet.get("Username", ""))
+                        .strip()
+                        .lower(),
+                        self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
+                        .strip()
+                        .lower(),
+                    ]
+
+                    query_in_tweet = all(
+                        any(word in field for field in fields_to_check)
+                        for word in query_words
+                    )
+
+                    if not query_in_tweet:
+                        bt.logging.warning(
+                            f"Query: {random_keyword} is not in the tweet: {fields_to_check}"
+                        )
+
+                    tweet_timestamp = datetime.fromtimestamp(
+                        random_tweet.get("Timestamp", 0), UTC
+                    )
+                    yesterday = datetime.now(UTC).replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    ) - timedelta(days=1)
+                    is_since_date_requested = yesterday <= tweet_timestamp
+
+                    if not is_since_date_requested:
+                        bt.logging.warning(
+                            f"Tweet timestamp {tweet_timestamp} is not since {yesterday}"
+                        )
+
+                    # They passed the spot check!
+                    if is_valid and query_in_tweet and is_since_date_requested:
+                        bt.logging.success(
+                            f"Miner {uid} passed the spot check with query: {random_keyword}"
+                        )
+                        for tweet in unique_tweets_response:
+                            if tweet:
+                                valid_tweets.append(tweet)
+                        success_count += 1
+                    else:
+                        bt.logging.warning(f"Miner {uid} failed the spot check!")
+
+                    # Score only unique tweets per miner (uid)
+                    uid_int = int(uid)
+                    if not self.validator.tweets_by_uid.get(uid_int):
+                        self.validator.tweets_by_uid[uid_int] = {
+                            tweet["Tweet"]["ID"] for tweet in valid_tweets
+                        }
+                        self.validator.scorer.add_volume(uid_int, len(valid_tweets))
+                        bt.logging.success(
+                            f"Miner {uid_int} produced {len(valid_tweets)} valid new tweets"
+                        )
+                    else:
+                        existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
+                        new_tweet_ids = {tweet["Tweet"]["ID"] for tweet in valid_tweets}
+                        updates = new_tweet_ids - existing_tweet_ids
+                        self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
+                        self.validator.scorer.add_volume(uid_int, len(updates))
+                        bt.logging.success(
+                            f"Miner {uid_int} produced {len(updates)} new tweets, with a total of {len(self.validator.tweets_by_uid[uid_int])}."
+                        )
+
+                    all_valid_tweets.extend(valid_tweets)
+
+            except Exception as e:
+                bt.logging.warning(
+                    f"Failed to process response from miner {uid}: {str(e)}"
+                )
                 continue
 
-            # Updated regex to include a wider range of zero characters
-            unique_tweets_response = list(
-                {
-                    re.sub(
-                        r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០]+", "", resp["Tweet"]["ID"].strip()
-                    ): {
-                        **resp,
-                        "Tweet": {
-                            **resp["Tweet"],
-                            "ID": re.sub(
-                                r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០]+",
-                                "",
-                                resp["Tweet"]["ID"].strip(),
-                            ),
-                        },
-                    }
-                    for resp in all_responses
-                    if "Tweet" in resp and "ID" in resp["Tweet"]
-                }.values()
-            )
-
-            if unique_tweets_response is not None:
-                # note, first spot check this payload, ensuring a random tweet is valid
-                random_tweet = dict(random.choice(unique_tweets_response)).get(
-                    "Tweet", {}
-                )
-
-                is_valid = TweetValidator().validate_tweet(
-                    random_tweet.get("ID"),
-                    random_tweet.get("Name"),
-                    random_tweet.get("Username"),
-                    random_tweet.get("Text"),
-                    random_tweet.get("Timestamp"),
-                    random_tweet.get("Hashtags"),
-                )
-
-                await asyncio.sleep(1)
-
-                query_words = (
-                    self.normalize_whitespace(random_keyword.replace('"', ""))
-                    .strip()
-                    .lower()
-                    .split()
-                )
-
-                fields_to_check = [
-                    self.normalize_whitespace(random_tweet.get("Text", ""))
-                    .strip()
-                    .lower(),
-                    self.normalize_whitespace(random_tweet.get("Name", ""))
-                    .strip()
-                    .lower(),
-                    self.normalize_whitespace(random_tweet.get("Username", ""))
-                    .strip()
-                    .lower(),
-                    self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
-                    .strip()
-                    .lower(),
-                ]
-
-                query_in_tweet = all(
-                    any(word in field for field in fields_to_check)
-                    for word in query_words
-                )
-
-                if not query_in_tweet:
-                    bt.logging.warning(
-                        f"Query: {random_keyword} is not in the tweet: {fields_to_check}"
-                    )
-
-                tweet_timestamp = datetime.fromtimestamp(
-                    random_tweet.get("Timestamp", 0), UTC
-                )
-
-                yesterday = datetime.now(UTC).replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                ) - timedelta(days=1)
-                is_since_date_requested = yesterday <= tweet_timestamp
-
-                if not is_since_date_requested:
-                    bt.logging.warning(
-                        f"Tweet timestamp {tweet_timestamp} is not since {yesterday}"
-                    )
-
-                # note, they passed the spot check!
-                if is_valid and query_in_tweet and is_since_date_requested:
-                    bt.logging.success(
-                        f"Miner {uid} passed the spot check with query: {random_keyword}"
-                    )
-                    for tweet in unique_tweets_response:
-                        if tweet:
-                            valid_tweets.append(tweet)
-                else:
-                    bt.logging.warning(f"Miner {uid} failed the spot check!")
-
-            all_valid_tweets.extend(valid_tweets)
-
-            # note, score only unique tweets per miner (uid)
-            uid_int = int(uid)
-
-            if not self.validator.tweets_by_uid.get(uid_int):
-                self.validator.tweets_by_uid[uid_int] = {
-                    tweet["Tweet"]["ID"] for tweet in valid_tweets
-                }
-                self.validator.scorer.add_volume(uid_int, len(valid_tweets))
-                bt.logging.success(
-                    f"Miner {uid_int} produced {len(valid_tweets)} valid new tweets"
-                )
-            else:
-                existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
-                new_tweet_ids = {tweet["Tweet"]["ID"] for tweet in valid_tweets}
-                updates = new_tweet_ids - existing_tweet_ids
-                self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
-                self.validator.scorer.add_volume(uid_int, len(updates))
-                bt.logging.success(
-                    f"Miner {uid_int} produced {len(updates)} new tweets, with a total of {len(self.validator.tweets_by_uid[uid_int])}."
-                )
+        bt.logging.info(f"Retrieved volumes from {success_count}/{total_miners} miners")
 
         # Send tweets to API
-        await self.validator.export_tweets(
-            list({tweet["Tweet"]["ID"]: tweet for tweet in all_valid_tweets}.values()),
-            query.strip().replace('"', ""),
-        )
+        if all_valid_tweets:
+            try:
+                await self.validator.export_tweets(
+                    list(
+                        {
+                            tweet["Tweet"]["ID"]: tweet for tweet in all_valid_tweets
+                        }.values()
+                    ),
+                    query.strip().replace('"', ""),
+                )
+            except Exception as e:
+                bt.logging.warning(f"Failed to export tweets: {str(e)}")
 
-        # note, set the last volume block to the current block
+        # Set the last volume block to the current block
         self.validator.last_volume_block = self.validator.subtensor.block
+
+        return responses
 
     def check_tempo(self) -> bool:
         if self.validator.last_tempo_block == 0:
