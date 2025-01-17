@@ -1,7 +1,6 @@
-import torch
+from typing import List
 import random
 import bittensor as bt
-from typing import List
 
 
 def check_uid_availability(metagraph: "bt.metagraph.Metagraph", uid: int) -> bool:
@@ -46,85 +45,70 @@ def remove_excluded_uids(uids: List[int], exclude: List[int] = None) -> List[int
     return [uid for uid in uids if uid not in exclude]
 
 
-async def get_random_miner_uids(
-    self, k: int, exclude: List[int] = None
-) -> torch.LongTensor:
-    """
-    Returns at most k available random uids from the metagraph.
+async def get_random_miner_uids(validator, k: int = 10) -> List[int]:
+    """Get k random miner UIDs that haven't been called yet."""
+    # Get all UIDs that are not serving
+    not_serving = []
+    for uid in range(len(validator.metagraph.uids)):
+        if (
+            validator.metagraph.axons[uid].ip == "0.0.0.0"
+            or validator.metagraph.axons[uid].port == 0
+        ):
+            not_serving.append(uid)
+            bt.logging.debug(f"UID: {uid} is not serving")
 
-    Args:
-        k (int): Number of uids to return.
-        exclude (List[int]): List of uids to exclude from the random sampling.
-    Returns:
-        uids (torch.LongTensor): Randomly sampled available uids.
-    Notes:
-        If `k` is larger than the number of available `uids`, set `k` to the number of
-        available `uids`.
-    """
-    dendrite = bt.dendrite(wallet=self.wallet)
+    # Get all available UIDs (excluding those not serving)
+    available_uids = [
+        uid for uid in range(len(validator.metagraph.uids)) if uid not in not_serving
+    ]
 
-    try:
-        # Generic sanitation
-        avail_uids = get_available_uids(self.metagraph)
-        healthy_uids = remove_excluded_uids(avail_uids, exclude)
-        weights_version = self.subtensor.get_subnet_hyperparameters(
-            self.config.netuid
-        ).weights_version
+    # Get random sample of size k
+    if len(available_uids) < k:
+        k = len(available_uids)
+    selected_uids = random.sample(available_uids, k)
 
-        version_checked_uids = [
-            uid for uid in healthy_uids if self.versions[uid] >= weights_version
-        ]
+    # Calculate remaining UIDs
+    remaining_uids = [uid for uid in available_uids if uid not in selected_uids]
 
-        k = min(k, len(version_checked_uids))
-        random_sample = random.sample(version_checked_uids, k)
-        uids = torch.tensor(random_sample)
-        return uids
-    except Exception as e:
-        bt.logging.error(f"Failed to get random miner uids: {e}")
-        return None
-    finally:
-        dendrite.close_session()
+    bt.logging.info(
+        f"Selected {len(selected_uids)} unique UIDs for calling, {len(remaining_uids)} UIDs remaining"
+    )
+
+    return selected_uids
 
 
-async def get_uncalled_miner_uids(
-    self, k: int, exclude: List[int] = None
-) -> torch.LongTensor:
-    """
-    Returns at most k available random uids from the metagraph.
+async def get_uncalled_miner_uids(validator, k: int = 10) -> List[int]:
+    """Get k miner UIDs that haven't been called yet."""
+    # Get all UIDs that are not serving
+    not_serving = []
+    for uid in range(len(validator.metagraph.uids)):
+        if (
+            validator.metagraph.axons[uid].ip == "0.0.0.0"
+            or validator.metagraph.axons[uid].port == 0
+        ):
+            not_serving.append(uid)
+            bt.logging.debug(f"UID: {uid} is not serving")
 
-    Args:
-        k (int): Number of uids to return.
-        exclude (List[int]): List of uids to exclude from the random sampling.
-    Returns:
-        uids (torch.LongTensor): Randomly sampled available uids.
-    Notes:
-        If `k` is larger than the number of available `uids`, set `k` to the number of
-        available `uids`.
-    """
-    dendrite = bt.dendrite(wallet=self.wallet)
+    # Get all available UIDs (excluding those not serving and those already called)
+    available_uids = [
+        uid
+        for uid in range(len(validator.metagraph.uids))
+        if uid not in not_serving and uid not in validator.uncalled_uids
+    ]
 
-    try:
-        if len(self.uncalled_uids) == 0:
-            # Generic sanitation
-            avail_uids = get_available_uids(self.metagraph)
-            healthy_uids = remove_excluded_uids(avail_uids, exclude)
-            weights_version = self.subtensor.get_subnet_hyperparameters(
-                self.config.netuid
-            ).weights_version
-            version_checked_uids = [
-                uid for uid in healthy_uids if self.versions[uid] >= weights_version
-            ]
-            self.uncalled_uids = set(version_checked_uids)
+    # Get first k UIDs
+    if len(available_uids) < k:
+        k = len(available_uids)
+    selected_uids = available_uids[:k]
 
-        k = min(k, len(self.uncalled_uids))
-        random_sample = random.sample(list(self.uncalled_uids), k)
-        bt.logging.info(f"Calling uids: {random_sample}")
-        self.uncalled_uids.difference_update(random_sample)
-        bt.logging.info(f"Remaining uids: {list(self.uncalled_uids)}")
-        uids = torch.tensor(random_sample)
-        return uids
-    except Exception as e:
-        bt.logging.error(f"Failed to get uncalled miner uids: {e}")
-        return None
-    finally:
-        dendrite.close_session()
+    # Update uncalled_uids set
+    validator.uncalled_uids.update(selected_uids)
+
+    # Calculate remaining uncalled UIDs
+    remaining_uncalled = [uid for uid in available_uids if uid not in selected_uids]
+
+    bt.logging.info(
+        f"Selected {len(selected_uids)} unique uncalled UIDs, {len(remaining_uncalled)} uncalled UIDs remaining"
+    )
+
+    return selected_uids
