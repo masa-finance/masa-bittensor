@@ -169,12 +169,30 @@ class BaseValidatorNeuron(BaseNeuron):
     async def run_miner_scoring(self):
         while not self.should_exit:
             try:
+                # Get weights_rate_limit from subnet hyperparameters
+                weights_rate_limit = self.subtensor.get_subnet_hyperparameters(
+                    self.config.netuid
+                ).weights_rate_limit
+
                 blocks_since_last_check = self.block - self.last_scoring_block
-                if blocks_since_last_check >= self.tempo / 50:
+                if blocks_since_last_check >= weights_rate_limit:
+                    bt.logging.info(
+                        f"Running miner scoring after {blocks_since_last_check} blocks"
+                    )
                     await self.scorer.score_miner_volumes()
+                else:
+                    bt.logging.debug(
+                        f"Waiting for scoring: {blocks_since_last_check}/{weights_rate_limit} blocks elapsed"
+                    )
             except Exception as e:
                 bt.logging.error(f"Error running miner scoring: {e}")
+<<<<<<< Updated upstream
             await asyncio.sleep(self.block_time)
+=======
+
+            # Sleep for a reasonable duration (about 1/4 of the rate limit in seconds)
+            await asyncio.sleep(weights_rate_limit * 12 / 4)  # 12 seconds per block
+>>>>>>> Stashed changes
 
     async def run_auto_update(self):
         while not self.should_exit:
