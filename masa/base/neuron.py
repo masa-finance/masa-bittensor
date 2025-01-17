@@ -104,7 +104,7 @@ class BaseNeuron(ABC):
                 f"🟡 Code is outdated based on subnet requirements!  Required: {weights_version}, Current: {self.spec_version}.  Please update your code to the latest release!"
             )
         else:
-            bt.logging.success(f"🟢 Code is up to date based on subnet requirements!")
+            bt.logging.success("🟢 Code is up to date based on subnet requirements!")
 
         # Each miner gets a unique identity (UID) in the network for differentiation.
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
@@ -123,6 +123,12 @@ class BaseNeuron(ABC):
         if self.should_sync_metagraph():
             self.resync_metagraph()
 
+        # Note: Weight setting is now handled by the validator's scoring loop
+        # This prevents concurrent weight setting attempts
+        if hasattr(self, "scorer") and self.neuron_type == "ValidatorNeuron":
+            return
+
+        # Only set weights here for non-validator neurons
         if self.should_set_weights():
             try:
                 self.set_weights()
@@ -158,9 +164,15 @@ class BaseNeuron(ABC):
         if self.config.neuron.disable_set_weights:
             return False
 
-        # Get the current block and last update block
+        # Get the current block
         current_block = self.block
-        last_update_block = self.metagraph.last_update[self.uid]
+
+        # For validators, use last_scoring_block to track updates
+        if hasattr(self, "last_scoring_block"):
+            last_update_block = self.last_scoring_block
+        else:
+            last_update_block = self.metagraph.last_update[self.uid]
+
         blocks_since_update = current_block - last_update_block
 
         # Get weights_rate_limit from subnet hyperparameters

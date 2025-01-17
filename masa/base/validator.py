@@ -179,8 +179,11 @@ class BaseValidatorNeuron(BaseNeuron):
                     bt.logging.info(
                         f"Running miner scoring after {blocks_since_last_check} blocks"
                     )
-                    await self.scorer.score_miner_volumes()
-                    self.last_scoring_block = self.block
+                    async with (
+                        self.lock
+                    ):  # Use lock to prevent concurrent scoring/weight setting
+                        await self.scorer.score_miner_volumes()
+                        self.last_scoring_block = self.block
                 else:
                     bt.logging.debug(
                         f"Waiting for scoring: {blocks_since_last_check}/{weights_rate_limit} blocks elapsed"
@@ -291,52 +294,59 @@ class BaseValidatorNeuron(BaseNeuron):
 
     def set_weights(self):
         """
-        Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
+        Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners.
         """
-        # Check if self.scores contains any NaN values and log a warning if it does.
-        if torch.isnan(self.scores).any():
-            bt.logging.warning(
-                "Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
+        try:
+            # Check if self.scores contains any NaN values and log a warning if it does.
+            if torch.isnan(self.scores).any():
+                bt.logging.warning(
+                    "Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
+                )
+
+            # Calculate the average reward for each uid across non-zero values.
+            raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
+
+            (
+                processed_weight_uids,
+                processed_weights,
+            ) = process_weights_for_netuid(
+                uids=self.metagraph.uids,
+                weights=raw_weights.to("cpu").numpy(),
+                netuid=self.config.netuid,
+                subtensor=self.subtensor,
+                metagraph=self.metagraph,
             )
 
-        # Calculate the average reward for each uid across non-zero values.
-        raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
+            (
+                uint_uids,
+                uint_weights,
+            ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
+                uids=processed_weight_uids, weights=processed_weights
+            )
 
-        (
-            processed_weight_uids,
-            processed_weights,
-        ) = process_weights_for_netuid(
-            uids=self.metagraph.uids,
-            weights=raw_weights.to("cpu").numpy(),
-            netuid=self.config.netuid,
-            subtensor=self.subtensor,
-            metagraph=self.metagraph,
-        )
+            bt.logging.info(f"Setting weights: {uint_weights} for uids: {uint_uids}")
 
-        (
-            uint_uids,
-            uint_weights,
-        ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
-            uids=processed_weight_uids, weights=processed_weights
-        )
+            # Set the weights on chain via our subtensor connection.
+            result, msg = self.subtensor.set_weights(
+                wallet=self.wallet,
+                netuid=self.config.netuid,
+                uids=uint_uids,
+                weights=uint_weights,
+                wait_for_finalization=True,  # Wait for finalization to prevent ancient block issues
+                wait_for_inclusion=True,
+                version_key=self.spec_version,
+            )
 
-        bt.logging.info(f"Setting weights: {uint_weights} for uids: {uint_uids}")
+            if result is True:
+                bt.logging.success("set_weights on chain successfully!")
+                return True
+            else:
+                bt.logging.error("set_weights failed", msg)
+                return False
 
-        # Set the weights on chain via our subtensor connection.
-        result, msg = self.subtensor.set_weights(
-            wallet=self.wallet,
-            netuid=self.config.netuid,
-            uids=uint_uids,
-            weights=uint_weights,
-            wait_for_finalization=False,
-            wait_for_inclusion=False,
-            version_key=self.spec_version,
-        )
-
-        if result is True:
-            bt.logging.success("set_weights on chain successfully!")
-        else:
-            bt.logging.error("set_weights failed", msg)
+        except Exception as e:
+            bt.logging.error(f"Error in set_weights: {e}")
+            return False
 
     def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
