@@ -62,20 +62,41 @@ class Forwarder:
             return [], []
 
         dendrite = bt.dendrite(wallet=self.validator.wallet)
+
+        # Collect error statistics
+        error_counts = {"timeout": 0, "connection": 0, "other": 0}
+
         try:
+            axons = [self.validator.metagraph.axons[uid] for uid in miner_uids]
             responses = await dendrite(
-                [self.validator.metagraph.axons[uid] for uid in miner_uids],
+                axons,
                 request,
                 deserialize=True,
                 timeout=timeout,
             )
-            success_count = sum(
-                1 for r in responses if r is not None and not isinstance(r, Exception)
-            )
+
+            # Count successful and failed responses
+            success_count = 0
+            for r in responses:
+                if r is not None and not isinstance(r, Exception):
+                    success_count += 1
+                elif isinstance(r, Exception):
+                    if "TimeoutError" in str(r):
+                        error_counts["timeout"] += 1
+                    elif "ClientConnectorError" in str(r):
+                        error_counts["connection"] += 1
+                    else:
+                        error_counts["other"] += 1
+
+            # Log summary instead of individual errors
             if success_count < len(miner_uids):
                 bt.logging.debug(
-                    f"Received {success_count}/{len(miner_uids)} successful responses"
+                    f"Request summary: {success_count}/{len(miner_uids)} successful responses. "
+                    f"Errors: {error_counts['timeout']} timeouts, "
+                    f"{error_counts['connection']} connection failures, "
+                    f"{error_counts['other']} other errors"
                 )
+
         except Exception as e:
             bt.logging.warning(f"Forward request failed: {e}")
             return [], []
@@ -140,6 +161,9 @@ class Forwarder:
         all_responses = []
         total_axons = len(self.validator.metagraph.axons)
 
+        # Collect error statistics
+        error_counts = {"timeout": 0, "connection": 0, "other": 0}
+
         for i in range(0, total_axons, sample_size):
             batch = self.validator.metagraph.axons[i : i + sample_size]
             try:
@@ -151,39 +175,60 @@ class Forwarder:
                         "timeout"
                     ),
                 )
-                all_responses.extend(batch_responses)
+
+                # Count errors in batch responses
+                for r in batch_responses:
+                    if isinstance(r, Exception):
+                        if "TimeoutError" in str(r):
+                            error_counts["timeout"] += 1
+                        elif "ClientConnectorError" in str(r):
+                            error_counts["connection"] += 1
+                        else:
+                            error_counts["other"] += 1
+                    else:
+                        all_responses.append(r)
+
             except Exception as e:
                 bt.logging.debug(f"Failed to ping batch {i // sample_size + 1}: {e}")
 
-        if all_responses:
-            self.validator.versions = [
-                response.version
-                for response in all_responses
-                if hasattr(response, "version")
-            ]
-            unique_versions = set(v for v in self.validator.versions if v)
-            bt.logging.info(f"Active miner versions: {list(unique_versions)}")
-            self.validator.last_healthcheck_block = self.validator.subtensor.block
+        if all_responses or any(error_counts.values()):
+            success_count = len(all_responses)
+            bt.logging.info(
+                f"Ping summary: {success_count}/{total_axons} successful responses. "
+                f"Errors: {error_counts['timeout']} timeouts, "
+                f"{error_counts['connection']} connection failures, "
+                f"{error_counts['other']} other errors"
+            )
 
-            return [
-                {
-                    "status_code": (
-                        response.dendrite.status_code
-                        if hasattr(response, "dendrite")
-                        else 0
-                    ),
-                    "status_message": (
-                        response.dendrite.status_message
-                        if hasattr(response, "dendrite")
-                        else str(response)
-                    ),
-                    "version": (
-                        response.version if hasattr(response, "version") else None
-                    ),
-                    "uid": all_responses.index(response),
-                }
-                for response in all_responses
-            ]
+            if all_responses:
+                self.validator.versions = [
+                    response.version
+                    for response in all_responses
+                    if hasattr(response, "version")
+                ]
+                unique_versions = set(v for v in self.validator.versions if v)
+                bt.logging.info(f"Active miner versions: {list(unique_versions)}")
+                self.validator.last_healthcheck_block = self.validator.subtensor.block
+
+                return [
+                    {
+                        "status_code": (
+                            response.dendrite.status_code
+                            if hasattr(response, "dendrite")
+                            else 0
+                        ),
+                        "status_message": (
+                            response.dendrite.status_message
+                            if hasattr(response, "dendrite")
+                            else str(response)
+                        ),
+                        "version": (
+                            response.version if hasattr(response, "version") else None
+                        ),
+                        "uid": all_responses.index(response),
+                    }
+                    for response in all_responses
+                ]
         return []
 
     async def fetch_twitter_queries(self):
