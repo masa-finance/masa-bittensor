@@ -410,12 +410,12 @@ class BaseValidatorNeuron(BaseNeuron):
                                     f"Successfully sent data to the protocol API for chunk starting at index {i}."
                                 )
                             else:
-                                bt.logging.error(
+                                bt.logging.warning(
                                     f"Failed to send data to the protocol API for chunk starting at index {i}: {response.status}"
                                 )
                         await asyncio.sleep(1)  # Wait for 1 second between requests
             except Exception as e:
-                bt.logging.error(
+                bt.logging.warning(
                     f"Exception occurred while sending data to the protocol API: {e}"
                 )
         else:

@@ -158,7 +158,7 @@ class Forwarder:
             bt.logging.info(f"Trending queries: {self.validator.keywords}")
         except Exception as e:
             # handle failed fetch - default to popular keywords
-            bt.logging.error(f"Error fetching trending queries: {e}")
+            bt.logging.warning(f"Failed to fetch trending queries, using defaults: {e}")
             self.validator.keywords = ["crypto", "btc", "eth"]
 
     async def fetch_subnet_config(self):
@@ -179,8 +179,8 @@ class Forwarder:
                     )
                     self.validator.subnet_config = subnet_config
                 else:
-                    bt.logging.error(
-                        f"failed to fetch subnet config from GitHub: {response.status}"
+                    bt.logging.warning(
+                        f"Failed to fetch subnet config from GitHub, using defaults: {response.status}"
                     )
 
     async def get_miners_volumes(self):
