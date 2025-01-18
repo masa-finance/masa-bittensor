@@ -1,0 +1,113 @@
+#!/bin/bash
+set -e
+# Get IMDSv2 token
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+
+# Function to retrieve metadata
+get_metadata() {
+    local metadata_key=$1
+    curl -s -f -H "X-aws-ec2-metadata-token: $TOKEN" "http://169.254.169.254/latest/meta-data/$metadata_key"
+}
+
+# Function to retrieve tags
+get_tag() {
+    local tag_name=$1
+    aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=$tag_name" --region $REGION --query 'Tags[0].Value' --output text
+}
+
+# Function to install/update btcli
+install_btcli() {
+    echo "Installing/updating btcli..."
+    
+    # Ensure pipx is installed
+    if ! command -v pipx &> /dev/null; then
+        echo "Installing pipx..."
+        sudo apt-get update
+        sudo apt-get install -y pipx
+        pipx ensurepath
+    fi
+    
+    # Install/update btcli using pipx
+    echo "Installing/updating btcli with pipx..."
+    pipx install --force git+https://github.com/opentensor/btcli.git || {
+        echo "Failed to install btcli with pipx"
+        return 1
+    }
+    
+    echo "btcli installation/update completed"
+    return 0
+}
+
+# Set environment variables
+REGION=$(get_metadata "placement/region")
+INSTANCE_ID=$(get_metadata "instance-id")
+
+# Install/update btcli
+if install_btcli; then
+    echo "btcli installation/update completed successfully"
+else
+    echo "btcli installation/update failed"
+    exit 1
+fi
+
+# Update masa-bittensor repository
+cd /home/ubuntu/masa-bittensor
+
+# Store current commit hash
+current_commit=$(git rev-parse HEAD)
+
+# Get desired version from metadata
+desired_version=$(get_tag "MASA_BITTENSOR_VERSION")
+if [ -z "$desired_version" ] || [ "$desired_version" == "None" ]; then
+    desired_version="latest"
+fi
+
+echo "Desired version: $desired_version"
+
+# Fetch all updates from remote
+git fetch origin --tags --force
+
+if [ "$desired_version" == "latest" ]; then
+    target_ref="origin/main"
+    target_commit=$(git rev-parse origin/main)
+    echo "Using latest version from main branch"
+else
+    # Check if the version exists as a branch or tag
+    if git rev-parse --verify "origin/$desired_version" >/dev/null 2>&1; then
+        target_ref="origin/$desired_version"
+        target_commit=$(git rev-parse "origin/$desired_version")
+        echo "Using branch: $desired_version"
+    elif git rev-parse --verify "refs/tags/$desired_version" >/dev/null 2>&1; then
+        target_ref="refs/tags/$desired_version"
+        target_commit=$(git rev-parse "refs/tags/$desired_version")
+        echo "Using tag: $desired_version"
+    else
+        echo "Error: Version '$desired_version' not found as branch or tag"
+        exit 1
+    fi
+fi
+
+# If we're already at the target commit, no update needed
+if [ "$current_commit" == "$target_commit" ]; then
+    echo "Already at desired version: ${current_commit:0:8}"
+    exit 0
+fi
+
+echo "Updates found. Current: ${current_commit:0:8}, Target: ${target_commit:0:8}"
+
+# Reset any local changes and checkout target
+git reset --hard "$target_ref"
+git clean -fd
+
+# Update dependencies
+source venv/bin/activate
+pip install -e .
+
+# Restart the validator service
+echo "Restarting masa-validator service..."
+sudo systemctl restart masa-validator
+
+# Update version file with new commit hash
+echo "$target_commit" > /home/ubuntu/.masa-bittensor-version
+
+echo "Update completed successfully to version: $desired_version (${target_commit:0:8})"
