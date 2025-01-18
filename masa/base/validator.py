@@ -463,11 +463,9 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Compute forward pass rewards, assumes uids are mutually exclusive.
         # shape: [ metagraph.n ]
-        scattered_rewards: torch.FloatTensor = (
-            torch.zeros_like(self.scores)
-            .scatter(0, uids_tensor, rewards)
-            .to(self.device)
-        )
+        scattered_rewards: torch.FloatTensor = self.scores.scatter(
+            0, uids_tensor, rewards
+        ).to(self.device)
 
         bt.logging.info(f"Scattered rewards: {rewards}")
 
