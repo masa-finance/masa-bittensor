@@ -104,7 +104,7 @@ class BaseNeuron(ABC):
                 f"🟡 Code is outdated based on subnet requirements!  Required: {weights_version}, Current: {self.spec_version}.  Please update your code to the latest release!"
             )
         else:
-            bt.logging.success(f"🟢 Code is up to date based on subnet requirements!")
+            bt.logging.success("🟢 Code is up to date based on subnet requirements!")
 
         # Each miner gets a unique identity (UID) in the network for differentiation.
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
@@ -123,6 +123,12 @@ class BaseNeuron(ABC):
         if self.should_sync_metagraph():
             self.resync_metagraph()
 
+        # Note: Weight setting is now handled by the validator's scoring loop
+        # This prevents concurrent weight setting attempts
+        if hasattr(self, "scorer") and self.neuron_type == "ValidatorNeuron":
+            return
+
+        # Only set weights here for non-validator neurons
         if self.should_set_weights():
             try:
                 self.set_weights()
@@ -154,14 +160,42 @@ class BaseNeuron(ABC):
         if self.step == 0:
             return False
 
-        # Check if enough epoch blocks have elapsed since the last epoch.
+        # Check if weights are disabled
         if self.config.neuron.disable_set_weights:
             return False
 
-        # Define appropriate logic for when set weights.
-        return (
-            self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"  # don't set weights if you're a miner
+        # Get the current block
+        current_block = self.block
+
+        # For validators, use last_scoring_block to track updates
+        if hasattr(self, "last_scoring_block"):
+            last_update_block = self.last_scoring_block
+        else:
+            last_update_block = self.metagraph.last_update[self.uid]
+
+        blocks_since_update = current_block - last_update_block
+
+        # Get weights_rate_limit from subnet hyperparameters
+        weights_rate_limit = self.subtensor.get_subnet_hyperparameters(
+            self.config.netuid
+        ).weights_rate_limit
+
+        # Check if enough blocks have elapsed and this is not a miner
+        should_set = (
+            blocks_since_update >= weights_rate_limit
+            and self.neuron_type != "MinerNeuron"
+        )
+
+        if should_set:
+            bt.logging.info(
+                f"Should set weights: {blocks_since_update} blocks since last update (limit: {weights_rate_limit})"
+            )
+        else:
+            bt.logging.debug(
+                f"Not setting weights yet: {blocks_since_update}/{weights_rate_limit} blocks since last update"
+            )
+
+        return should_set
 
     def auto_update(self):
         url = "https://api.github.com/repos/masa-finance/masa-bittensor/releases/latest"

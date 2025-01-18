@@ -37,8 +37,8 @@ class TwitterTweetsRequest(MasaProtocolRequest):
                 bt.logging.success(f"Sending {len(data)} tweets to validator...")
                 return data
             else:
-                bt.logging.error(
+                bt.logging.warning(
                     f"Recent tweets request failed with status code: {response.status_code}"
                 )
         except requests.exceptions.RequestException as e:
-            bt.logging.error(f"Recent tweets request failed: {e}")
+            bt.logging.warning(f"Recent tweets request failed: {e}")
