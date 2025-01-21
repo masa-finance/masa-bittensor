@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  process-weights:
+    build: .
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_PROFILE=masa-opentensor-main
+    volumes:
+      - ~/.aws:/root/.aws
+      - /var/log/syslog:/var/log/syslog:ro
+      - /home/ubuntu/.bittensor:/home/ubuntu/.bittensor:ro
+    command: python monitor_weights.py 
