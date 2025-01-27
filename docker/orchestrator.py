@@ -54,7 +54,8 @@ class NodeOrchestrator:
             prev_level = bt_logger.level
             bt_logger.setLevel(logging.ERROR)
 
-            self.wallet = bt.wallet(name=self.wallet_name, hotkey=container_name)
+            # Initialize wallet with default hotkey first
+            self.wallet = bt.wallet(name=self.wallet_name)
 
             # Check if hotkey exists
             hotkey_path = os.path.join(
@@ -72,10 +73,8 @@ class NodeOrchestrator:
                 logger.info(f"Successfully created hotkey: {container_name}")
             else:
                 logger.info(f"Using existing hotkey: {container_name}")
-                # Load the existing hotkey file
-                self.wallet.hotkey = bt.Keypair(
-                    ss58_address=self.wallet.get_hotkey(container_name).ss58_address
-                )
+                # Set the wallet to use our container's hotkey
+                self.wallet.set_hotkey(container_name)
 
             # Restore previous log level
             bt_logger.setLevel(prev_level)
@@ -102,15 +101,20 @@ class NodeOrchestrator:
                 logger.error("COLDKEY_MNEMONIC not set")
                 return
 
-            # Temporarily increase log level during wallet operations
-            prev_level = bt_logger.level
-            bt_logger.setLevel(logging.ERROR)
+            # Check if coldkey exists
+            coldkey_path = os.path.join(self.wallet_dir, self.wallet_name, "coldkey")
+            if not os.path.exists(coldkey_path):
+                # Temporarily increase log level during wallet operations
+                prev_level = bt_logger.level
+                bt_logger.setLevel(logging.ERROR)
 
-            # Regenerate coldkey from mnemonic
-            self.wallet.regenerate_coldkey(coldkey_mnemonic)
+                # Regenerate coldkey from mnemonic only if it doesn't exist
+                self.wallet.regenerate_coldkey(coldkey_mnemonic)
 
-            # Restore previous log level
-            bt_logger.setLevel(prev_level)
+                # Restore previous log level
+                bt_logger.setLevel(prev_level)
+            else:
+                logger.info("Using existing coldkey")
 
             # Start role-specific process
             if self.role == "validator":
