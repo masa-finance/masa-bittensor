@@ -1,0 +1,137 @@
+name: 'build container images'
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - '*'
+concurrency:
+  group: ci-image-${{ github.head_ref || github.ref }}-${{ github.repository }}
+  cancel-in-progress: true
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare
+        id: prep
+        run: |
+          BASE_IMAGE=masaengineering/bittensor
+          VALIDATOR_IMAGE=masaengineering/bittensor-sn249-validator
+          MINER_IMAGE=masaengineering/bittensor-sn249-miner
+          # Use branch name as default
+          VERSION=${GITHUB_REF#refs/heads/}
+          BINARY_VERSION=$(git describe --always --tags --dirty)
+          SHORTREF=${GITHUB_SHA::8}
+          # If this is git tag, use the tag name as a docker tag
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          # Set output parameters.
+          echo ::set-output name=binary_version::${BINARY_VERSION}
+          echo ::set-output name=version::${VERSION}
+          echo ::set-output name=shortref::${SHORTREF}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
+        with:
+          platforms: all
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      - name: Login to DockerHub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata for base image
+        id: meta_base
+        uses: docker/metadata-action@2a4836ac76fe8f5d0ee3a0d89aa12a80cc552ad3
+        with:
+          images: masaengineering/bittensor
+          tags: |
+            type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            type=semver,pattern={{raw}}
+            type=sha,suffix=-{{date 'YYYYMMDDHHmmss'}}
+          flavor: |
+            latest=auto
+            prefix=
+            suffix=
+
+      - name: Build and push base image
+        uses: docker/build-push-action@v6
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          build-args: |
+            VERSION=${{ steps.prep.outputs.binary_version }}
+          context: ./docker
+          file: ./docker/Dockerfile
+          target: base
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta_base.outputs.tags }}
+          labels: ${{ steps.meta_base.outputs.labels }}
+
+      - name: Extract metadata for validator image
+        id: meta_validator
+        uses: docker/metadata-action@2a4836ac76fe8f5d0ee3a0d89aa12a80cc552ad3
+        with:
+          images: masaengineering/bittensor-sn249-validator
+          tags: |
+            type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            type=semver,pattern={{raw}}
+            type=sha,suffix=-{{date 'YYYYMMDDHHmmss'}}
+          flavor: |
+            latest=auto
+            prefix=
+            suffix=
+
+      - name: Build and push validator image  
+        uses: docker/build-push-action@v6
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          build-args: |
+            VERSION=${{ steps.prep.outputs.binary_version }}
+            NODE_TYPE=validator
+          context: ./docker
+          file: ./docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta_validator.outputs.tags }}
+          labels: ${{ steps.meta_validator.outputs.labels }}
+
+      - name: Extract metadata for miner image
+        id: meta_miner
+        uses: docker/metadata-action@2a4836ac76fe8f5d0ee3a0d89aa12a80cc552ad3
+        with:
+          images: masaengineering/bittensor-sn249-miner
+          tags: |
+            type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            type=semver,pattern={{raw}}
+            type=sha,suffix=-{{date 'YYYYMMDDHHmmss'}}
+          flavor: |
+            latest=auto
+            prefix=
+            suffix=
+
+      - name: Build and push miner image
+        uses: docker/build-push-action@v6
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          build-args: |
+            VERSION=${{ steps.prep.outputs.binary_version }}
+            NODE_TYPE=miner
+          context: ./docker
+          file: ./docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta_miner.outputs.tags }}
+          labels: ${{ steps.meta_miner.outputs.labels }} 
