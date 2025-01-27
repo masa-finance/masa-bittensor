@@ -1,56 +1,55 @@
 services:
-  # prometheus:
-  #   image: prom/prometheus:latest
-  #   ports:
-  #     - "9090:9090"
-  #   volumes:
-  #     - ./prometheus:/etc/prometheus
-  #     - prometheus_data:/prometheus
-  #   command:
-  #     - '--config.file=/etc/prometheus/prometheus.yml'
-  #     - '--storage.tsdb.path=/prometheus'
-  #   restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
 
-  # grafana:
-  #   image: grafana/grafana:latest
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - grafana_data:/var/lib/grafana
-  #     - ./grafana/provisioning:/etc/grafana/provisioning
-  #   environment:
-  #     - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
-  #     - GF_USERS_ALLOW_SIGN_UP=false
-  #   depends_on:
-  #     - prometheus
-  #   restart: unless-stopped
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    restart: unless-stopped
 
-  # node-exporter:
-  #   image: prom/node-exporter:latest
-  #   volumes:
-  #     - /proc:/host/proc:ro
-  #     - /sys:/host/sys:ro
-  #     - /:/rootfs:ro
-  #   command:
-  #     - '--path.procfs=/host/proc'
-  #     - '--path.sysfs=/host/sys'
-  #     - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-  #   restart: unless-stopped
+  node-exporter:
+    image: prom/node-exporter:latest
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
 
-  # portainer:
-  #   image: portainer/portainer-ce:latest
-  #   ports:
-  #     - "9000:9000"
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #     - portainer_data:/data
-  #   restart: unless-stopped
+  portainer:
+    image: portainer/portainer-ce:latest
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    restart: unless-stopped
 
-  validator_1:
-    container_name: validator_1
+  validator:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
       args:
         NODE_TYPE: validator
     environment:
@@ -59,14 +58,20 @@ services:
       - NETUID=${NETUID:-249}
       - CONFIG_PATH=${CONFIG_PATH:-subnet-config.json}
       - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
+      # Port ranges:
+      # API: 8091-8347 (256 ports starting at 8091)
+      # Metrics: 9100-9356 (256 ports starting at 9100)
+      - PORT=${PORT:-8091}
+      - METRICS_PORT=${METRICS_PORT:-9100}
     volumes:
-      - ./.bittensor:/root/.bittensor
-      - .:/app
+      - ../.bittensor:/root/.bittensor
+      - ..:/app
     ports:
-      - "8091:8091"  # API port
-      - "9100:9100"  # Metrics port
+      - "${PORT:-8091}:${PORT:-8091}"  # API port (8091-8347)
+      - "${METRICS_PORT:-9100}:${METRICS_PORT:-9100}"  # Metrics port (9100-9356)
     deploy:
-      replicas: 1
+      mode: replicated
+      replicas: ${VALIDATOR_COUNT:-1}
       labels:
         - "neuron.type=validator"
     tty: true
@@ -74,11 +79,10 @@ services:
     entrypoint: ["python"]
     command: ["-u", "orchestrator.py"]
 
-  miner_1:
-    container_name: miner_1
+  miner:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
       args:
         NODE_TYPE: miner
     environment:
@@ -87,70 +91,20 @@ services:
       - NETUID=${NETUID:-249}
       - CONFIG_PATH=${CONFIG_PATH:-subnet-config.json}
       - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
+      # Port ranges:
+      # API: 8348-8604 (256 ports starting at 8348)
+      # Metrics: 9357-9613 (256 ports starting at 9357)
+      - PORT=${PORT:-8348}
+      - METRICS_PORT=${METRICS_PORT:-9357}
     volumes:
-      - ./.bittensor:/root/.bittensor
-      - .:/app
+      - ../.bittensor:/root/.bittensor
+      - ..:/app
     ports:
-      - "8094:8094"  # API port
-      - "9103:9103"  # Metrics port
+      - "${PORT:-8348}:${PORT:-8348}"  # API port (8348-8604)
+      - "${METRICS_PORT:-9357}:${METRICS_PORT:-9357}"  # Metrics port (9357-9613)
     deploy:
-      replicas: 1
-      labels:
-        - "neuron.type=miner"
-    tty: true
-    stdin_open: true
-    entrypoint: ["python"]
-    command: ["-u", "orchestrator.py"]
-
-  miner_2:
-    container_name: miner_2
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        NODE_TYPE: miner
-    environment:
-      - ROLE=miner
-      - NETWORK=${NETWORK:-test}
-      - NETUID=${NETUID:-249}
-      - CONFIG_PATH=${CONFIG_PATH:-subnet-config.json}
-      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
-    volumes:
-      - ./.bittensor:/root/.bittensor
-      - .:/app
-    ports:
-      - "8095:8095"  # API port
-      - "9104:9104"  # Metrics port
-    deploy:
-      replicas: 1
-      labels:
-        - "neuron.type=miner"
-    tty: true
-    stdin_open: true
-    entrypoint: ["python"]
-    command: ["-u", "orchestrator.py"]
-
-  miner_3:
-    container_name: miner_3
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        NODE_TYPE: miner
-    environment:
-      - ROLE=miner
-      - NETWORK=${NETWORK:-test}
-      - NETUID=${NETUID:-249}
-      - CONFIG_PATH=${CONFIG_PATH:-subnet-config.json}
-      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
-    volumes:
-      - ./.bittensor:/root/.bittensor
-      - .:/app
-    ports:
-      - "8096:8096"  # API port
-      - "9105:9105"  # Metrics port
-    deploy:
-      replicas: 1
+      mode: replicated
+      replicas: ${MINER_COUNT:-1}
       labels:
         - "neuron.type=miner"
     tty: true

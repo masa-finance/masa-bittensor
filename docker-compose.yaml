@@ -1,0 +1,87 @@
+services:
+  subtensor:
+    image: ghcr.io/masa-finance/masa-bittensor/subtensor:${BRANCH_NAME:-latest}
+    platform: linux/amd64
+    build:
+      context: ./docker/subtensor
+      dockerfile: Dockerfile
+    container_name: subtensor_machine
+    ports:
+      - "9945:9945"
+      - "9946:9946"
+      - "30334:30334"
+      - "30335:30335"
+    networks:
+      - subtensor_network
+
+  subnet:
+    image: ghcr.io/masa-finance/masa-bittensor/subnet:${BRANCH_NAME:-latest}
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./docker/subnet/Dockerfile
+    container_name: subnet_machine
+    depends_on:
+      - subtensor
+    networks:
+      - subtensor_network
+    environment:
+      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
+      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
+
+  miner:
+    image: ghcr.io/masa-finance/masa-bittensor/miner:${BRANCH_NAME:-latest}
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./docker/miner/Dockerfile
+    container_name: miner_machine
+    ports:
+      - "8093:8093"
+    depends_on:
+      - subnet
+    networks:
+      - subtensor_network
+    environment:
+      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
+      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
+
+  validator:
+    image: ghcr.io/masa-finance/masa-bittensor/validator:${BRANCH_NAME:-latest}
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./docker/validator/Dockerfile
+    container_name: validator_machine
+    ports:
+      - "8000:8000"
+      - "8092:8092"
+    depends_on:
+      - subnet
+    networks:
+      - subtensor_network
+    environment:
+      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
+      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
+
+  protocol:
+    image: ghcr.io/masa-finance/masa-bittensor/protocol:${BRANCH_NAME:-latest}
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./docker/protocol/Dockerfile
+    container_name: protocol_machine 
+    ports:
+      - "8081:8081"
+      - "4001:4001"
+    depends_on:
+      - subnet
+    networks:
+      - subtensor_network
+    environment:
+      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
+      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
+
+networks:
+  subtensor_network:
+    driver: bridge
