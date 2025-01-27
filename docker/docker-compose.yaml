@@ -1,0 +1,91 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  protocol:
+    image: masa-protocol:latest
+    ports:
+      - "8081:8081"
+      - "4001:4001"
+    volumes:
+      - ~/.bittensor/wallets:/root/.bittensor/wallets
+      - .:/app
+    environment:
+      - NETWORK=${NETWORK:-test}
+      - NETUID=${NETUID:-249}
+      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
+    deploy:
+      replicas: 1
+      labels:
+        - "neuron.type=protocol"
+    restart: unless-stopped
+
+  validator:
+    image: masa-validator:latest
+    ports:
+      - "8092-8094:8092"  # Range for multiple validators
+      - "9100-9102:9100"  # Metrics ports
+    volumes:
+      - ~/.bittensor/wallets:/root/.bittensor/wallets
+      - .:/app
+    environment:
+      - NETWORK=${NETWORK:-test}
+      - NETUID=${NETUID:-249}
+      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
+      - CONFIG_PATH=${CONFIG_PATH:-subnet-config.json}
+    deploy:
+      replicas: ${VALIDATOR_COUNT:-3}
+      labels:
+        - "neuron.type=validator"
+    command: sh -c "python -u orchestrator.py --role validator --network ${NETWORK:-test} --netuid ${NETUID:-249} --config-path ${CONFIG_PATH:-subnet-config.json} --service-index $$(hostname)"
+
+  miner:
+    image: masa-miner:latest
+    ports:
+      - "8095-8100:8093"  # Range for multiple miners
+      - "9103-9108:9103"  # Metrics ports
+    volumes:
+      - ~/.bittensor/wallets:/root/.bittensor/wallets
+      - .:/app
+    environment:
+      - NETWORK=${NETWORK:-test}
+      - NETUID=${NETUID:-249}
+      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
+      - CONFIG_PATH=${CONFIG_PATH:-subnet-config.json}
+    deploy:
+      replicas: ${MINER_COUNT:-6}
+      labels:
+        - "neuron.type=miner"
+    command: sh -c "python -u orchestrator.py --role miner --network ${NETWORK:-test} --netuid ${NETUID:-249} --config-path ${CONFIG_PATH:-subnet-config.json} --service-index $$(hostname)"
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    driver: overlay
+    attachable: true
