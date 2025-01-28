@@ -6,85 +6,34 @@ on:
     types: [published]
 
 jobs:
-  check-and-build:
+  build-base:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      matrix:
-        image: [subtensor, subnet, miner, validator, protocol]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Cache last successful build info
-        uses: actions/cache@v3
-        with:
-          path: last_successful_build_${{ matrix.image }}.txt
-          key: ${{ runner.os }}-last-build-${{ matrix.image }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-last-build-${{ matrix.image }}-
-
-      - name: Check for changes
-        id: check_changes
-        run: |
-          if [ -f last_successful_build_${{ matrix.image }}.txt ]; then
-            LAST_SUCCESSFUL_SHA=$(cat last_successful_build_${{ matrix.image }}.txt)
-            if [ "${{ matrix.image }}" == "subtensor" ]; then
-              CHANGED=$(git diff --name-only $LAST_SUCCESSFUL_SHA HEAD -- docker/subtensor)
-            else
-              CHANGED=$(git diff --name-only $LAST_SUCCESSFUL_SHA HEAD -- docker/${{ matrix.image }} **/*.py)
-            fi
-          
-            if [ -n "$CHANGED" ]; then
-              echo "Changes detected for ${{ matrix.image }}. Building image."
-              echo "changed=true" >> $GITHUB_OUTPUT
-            else
-              echo "No changes detected for ${{ matrix.image }}. Skipping build."
-              echo "changed=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "No previous successful build found for ${{ matrix.image }}. Building image."
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Log in to GitHub Container Registry
-        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'release'
+        
+      - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push image
-        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'release'
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          
+      - name: Build and push base image
         run: |
-          if [ "${{ matrix.image }}" == "subtensor" ]; then
-            CONTEXT="./docker/subtensor"
-          else
-            CONTEXT="."
+          TAG=${{ github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
+          docker build -t masaengineering/bittensor-base:$TAG -f docker/Dockerfile .
+          docker push masaengineering/bittensor-base:$TAG
+          
+          if [ "${{ github.event_name }}" == "release" ]; then
+            docker tag masaengineering/bittensor-base:$TAG masaengineering/bittensor-base:latest
+            docker push masaengineering/bittensor-base:latest
           fi
-          TAG=${{ github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
-          docker build -t ghcr.io/masa-finance/masa-bittensor/${{ matrix.image }}:$TAG -f docker/${{ matrix.image }}/Dockerfile $CONTEXT
-          docker push ghcr.io/masa-finance/masa-bittensor/${{ matrix.image }}:$TAG
 
-      - name: Mark successful build
-        if: steps.check_changes.outputs.changed == 'true' || github.event_name == 'release'
-        run: echo ${{ github.sha }} > last_successful_build_${{ matrix.image }}.txt
-
-  display-tags:
-    needs: check-and-build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Display image tags
+      - name: Display tags
         run: |
           TAG=${{ github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
-          echo "The following images may have been built and pushed:"
-          echo "ghcr.io/masa-finance/masa-bittensor/subtensor:$TAG"
-          echo "ghcr.io/masa-finance/masa-bittensor/subnet:$TAG"
-          echo "ghcr.io/masa-finance/masa-bittensor/miner:$TAG"
-          echo "ghcr.io/masa-finance/masa-bittensor/validator:$TAG"
-          echo "ghcr.io/masa-finance/masa-bittensor/protocol:$TAG"
+          echo "Base image built and pushed:"
+          echo "masaengineering/bittensor-base:$TAG"
+          if [ "${{ github.event_name }}" == "release" ]; then
+            echo "masaengineering/bittensor-base:latest"
+          fi

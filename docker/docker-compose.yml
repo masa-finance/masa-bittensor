@@ -1,6 +1,25 @@
+version: '3.8'
+
 services:
+  validator_1:
+    image: masaengineering/bittensor-base:latest
+    container_name: validator_1
+    volumes:
+      - ./wallet:/root/.bittensor/wallets
+    environment:
+      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
+      - DEVICE=cpu
+      - PORT=8091
+      - METRICS_PORT=9100
+    ports:
+      - "8091:8091"
+      - "9100:9100"
+    restart: unless-stopped
+
+  # Optional monitoring services
   prometheus:
     image: prom/prometheus:latest
+    profiles: ["monitoring"]
     ports:
       - "9090:9090"
     volumes:
@@ -13,6 +32,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    profiles: ["monitoring"]
     ports:
       - "3000:3000"
     volumes:
@@ -21,12 +41,14 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_LOG_LEVEL=warn
     depends_on:
       - prometheus
     restart: unless-stopped
 
   node-exporter:
     image: prom/node-exporter:latest
+    profiles: ["monitoring"]
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -39,78 +61,13 @@ services:
 
   portainer:
     image: portainer/portainer-ce:latest
+    profiles: ["monitoring"]
     ports:
       - "9000:9000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
     restart: unless-stopped
-
-  validator:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      args:
-        NODE_TYPE: validator
-    environment:
-      - ROLE=validator
-      - NETWORK=${NETWORK:-test}
-      - NETUID=${NETUID:-249}
-      - CONFIG_PATH=${CONFIG_PATH:-subnet-config.json}
-      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
-      # Port ranges:
-      # API: 8091-8347 (256 ports starting at 8091)
-      # Metrics: 9100-9356 (256 ports starting at 9100)
-      - PORT=${PORT:-8091}
-      - METRICS_PORT=${METRICS_PORT:-9100}
-    volumes:
-      - ../.bittensor:/root/.bittensor
-      - ..:/app
-    ports:
-      - "${PORT:-8091}:${PORT:-8091}"  # API port (8091-8347)
-      - "${METRICS_PORT:-9100}:${METRICS_PORT:-9100}"  # Metrics port (9100-9356)
-    deploy:
-      mode: replicated
-      replicas: ${VALIDATOR_COUNT:-1}
-      labels:
-        - "neuron.type=validator"
-    tty: true
-    stdin_open: true
-    entrypoint: ["python"]
-    command: ["-u", "orchestrator.py"]
-
-  miner:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      args:
-        NODE_TYPE: miner
-    environment:
-      - ROLE=miner
-      - NETWORK=${NETWORK:-test}
-      - NETUID=${NETUID:-249}
-      - CONFIG_PATH=${CONFIG_PATH:-subnet-config.json}
-      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
-      # Port ranges:
-      # API: 8348-8604 (256 ports starting at 8348)
-      # Metrics: 9357-9613 (256 ports starting at 9357)
-      - PORT=${PORT:-8348}
-      - METRICS_PORT=${METRICS_PORT:-9357}
-    volumes:
-      - ../.bittensor:/root/.bittensor
-      - ..:/app
-    ports:
-      - "${PORT:-8348}:${PORT:-8348}"  # API port (8348-8604)
-      - "${METRICS_PORT:-9357}:${METRICS_PORT:-9357}"  # Metrics port (9357-9613)
-    deploy:
-      mode: replicated
-      replicas: ${MINER_COUNT:-1}
-      labels:
-        - "neuron.type=miner"
-    tty: true
-    stdin_open: true
-    entrypoint: ["python"]
-    command: ["-u", "orchestrator.py"]
 
 volumes:
   prometheus_data:
