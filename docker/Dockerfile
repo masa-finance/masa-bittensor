@@ -9,12 +9,10 @@ RUN apt-get update && \
         pkg-config \
         libssl-dev
 
-# Install Rust
+# Install Rust and Python packages
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-    . $HOME/.cargo/env
-
-# Install Python packages
-RUN pip install --no-cache-dir --upgrade pip && \
+    . $HOME/.cargo/env && \
+    pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
         bittensor \
         torch \
