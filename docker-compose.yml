@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: masa_validator
     volumes:
-      - ./wallet:/root/.bittensor/wallets
+      - ./.bittensor/wallets:/root/.bittensor/wallets
     environment:
       - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
       - DEVICE=cpu
@@ -37,7 +37,7 @@ services:
       dockerfile: Dockerfile
     container_name: masa_miner
     volumes:
-      - ./wallet:/root/.bittensor/wallets
+      - ./.bittensor/wallets:/root/.bittensor/wallets
     environment:
       - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
       - DEVICE=cpu
