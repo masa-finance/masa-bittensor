@@ -20,7 +20,7 @@ jobs:
       - name: Prepare
         id: prep
         run: |
-          DOCKER_IMAGE=masaengineering/bittensor
+          DOCKER_IMAGE=masaengineering/masa-validator
           # Use branch name as default
           VERSION=${GITHUB_REF#refs/heads/}
           BINARY_VERSION=$(git describe --always --tags --dirty)
@@ -61,7 +61,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@2a4836ac76fe8f5d0ee3a0d89aa12a80cc552ad3
         with:
-          images: masaengineering/bittensor
+          images: masaengineering/masa-validator
           tags: |
             type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
             type=semver,pattern={{raw}}
@@ -77,8 +77,8 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           build-args: |
             VERSION=${{ steps.prep.outputs.binary_version }}
-          context: ./docker
-          file: ./docker/Dockerfile
+          context: .
+          file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
