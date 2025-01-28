@@ -40,4 +40,4 @@ COPY . .
 RUN pip install -e .
 
 ENTRYPOINT ["python"]
-CMD ["-u", "docker/orchestrator.py"] 
+CMD ["-u", "orchestrator.py"] 
