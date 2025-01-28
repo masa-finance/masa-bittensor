@@ -1,28 +1,11 @@
 version: '3.8'
 
 services:
-  masa_protocol:
-    profiles: ["protocol"]
-    image: masaengineering/masa-protocol:latest
-    container_name: masa_protocol
-    environment:
-      - NODE_ENV=production
-      # Add other protocol-specific env vars as needed
-    ports:
-      - "8080:8080"  # Protocol API port
-    volumes:
-      - protocol_data:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-
-  validator_1:
-    profiles: ["validator"]
-    image: masaengineering/masa-validator:latest
-    container_name: masa_validator_1
+  validator:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: masa_validator
     volumes:
       - ./wallet:/root/.bittensor/wallets
     environment:
@@ -32,7 +15,6 @@ services:
       - METRICS_PORT=9100
       - ROLE=validator
       - PYTHONUNBUFFERED=1
-      - PROTOCOL_URL=http://masa_protocol:8080
       - NETWORK=${NETWORK:-test}
       - NETUID=${NETUID:-249}
       - LOGGING_DEBUG=${LOGGING_DEBUG:-true}
@@ -41,9 +23,6 @@ services:
     ports:
       - "8091:8091"  # Validator API port
       - "9100:9100"  # Metrics port
-    depends_on:
-      masa_protocol:
-        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8091/healthcheck"]
@@ -52,43 +31,11 @@ services:
       retries: 3
       start_period: 40s
 
-  validator_2:
-    profiles: ["validator"]
-    build:
+  miner:
+    build: 
       context: .
       dockerfile: Dockerfile
-    container_name: masa_validator_2
-    volumes:
-      - ./wallet:/root/.bittensor/wallets
-    environment:
-      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
-      - DEVICE=cpu
-      - PORT=8092
-      - METRICS_PORT=9101
-      - ROLE=validator
-      - PYTHONUNBUFFERED=1
-      - NETWORK=${NETWORK:-test}
-      - NETUID=${NETUID:-249}
-      - LOGGING_DEBUG=${LOGGING_DEBUG:-true}
-      - WALLET_NAME=${WALLET_NAME:-default}
-      - WALLET_HOTKEY=${WALLET_HOTKEY:-default}
-    ports:
-      - "8092:8092"
-      - "9101:9101"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8092/healthcheck"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  miner_1:
-    profiles: ["miner"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: masa_miner_1
+    container_name: masa_miner
     volumes:
       - ./wallet:/root/.bittensor/wallets
     environment:
@@ -98,7 +45,6 @@ services:
       - METRICS_PORT=9357
       - ROLE=miner
       - PYTHONUNBUFFERED=1
-      - PROTOCOL_URL=http://masa_protocol:8080
       - NETWORK=${NETWORK:-test}
       - NETUID=${NETUID:-249}
       - LOGGING_DEBUG=${LOGGING_DEBUG:-true}
@@ -107,9 +53,6 @@ services:
     ports:
       - "8348:8348"  # Miner API port
       - "9357:9357"  # Metrics port
-    depends_on:
-      masa_protocol:
-        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8348/healthcheck"]
@@ -118,32 +61,6 @@ services:
       retries: 3
       start_period: 40s
 
-  miner_2:
-    profiles: ["miner"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: masa_miner_2
-    volumes:
-      - ./wallet:/root/.bittensor/wallets
-    environment:
-      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
-      - DEVICE=cpu
-      - PORT=8349
-      - METRICS_PORT=9358
-      - ROLE=miner
-      - PYTHONUNBUFFERED=1
-      - NETWORK=${NETWORK:-test}
-      - NETUID=${NETUID:-249}
-      - LOGGING_DEBUG=${LOGGING_DEBUG:-true}
-      - WALLET_NAME=${WALLET_NAME:-default}
-      - WALLET_HOTKEY=${WALLET_HOTKEY:-default}
-    ports:
-      - "8349:8349"
-      - "9358:9358"
-    restart: unless-stopped
-
-  # Optional monitoring services
   prometheus:
     image: prom/prometheus:latest
     profiles: ["monitoring"]
@@ -157,8 +74,7 @@ services:
       - "9090:9090"
     restart: unless-stopped
     depends_on:
-      - validator_1
-      - miner_1
+      - validator
 
   grafana:
     image: grafana/grafana:latest
@@ -210,5 +126,4 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
-  protocol_data:
   portainer_data:
