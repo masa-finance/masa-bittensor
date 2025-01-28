@@ -1,0 +1,23 @@
+{
+  "logging": {
+    "debug": true,
+    "logging_dir": "logs",
+    "file_logging": false
+  },
+  "wallet": {
+    "name": "default",
+    "hotkey": "default"
+  },
+  "subtensor": {
+    "network": "test",
+    "netuid": 249
+  },
+  "neurons": {
+    "validator_1": {
+      "type": "validator",
+      "device": "cpu",
+      "port": 8091,
+      "metrics_port": 9100
+    }
+  }
+} 

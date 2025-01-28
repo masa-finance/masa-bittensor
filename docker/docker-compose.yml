@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  validator_1:
+    image: masaengineering/bittensor-base:latest
+    container_name: validator_1
+    volumes:
+      - ./wallet:/root/.bittensor/wallets
+    environment:
+      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
+      - DEVICE=cpu
+      - PORT=8091
+      - METRICS_PORT=9100
+    ports:
+      - "8091:8091"
+      - "9100:9100"
+    restart: unless-stopped
+
+  # Optional monitoring services
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: ["monitoring"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    profiles: ["monitoring"]
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_LOG_LEVEL=warn
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    profiles: ["monitoring"]
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    profiles: ["monitoring"]
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  portainer_data:

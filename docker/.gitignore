@@ -1,0 +1,15 @@
+# Sensitive files
+.env
+wallet/
+.masa-keys/
+.bittensor/
+
+# Generated files
+__pycache__/
+*.pyc
+
+# Monitoring
+config/
+prometheus_data/
+grafana_data/
+portainer_data/ 
