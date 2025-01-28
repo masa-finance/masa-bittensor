@@ -1,8 +1,8 @@
-version: '3.8'
-
 services:
   validator_1:
-    image: masaengineering/bittensor-base:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: validator_1
     volumes:
       - ./wallet:/root/.bittensor/wallets
