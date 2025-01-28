@@ -13,3 +13,5 @@ config/
 prometheus_data/
 grafana_data/
 portainer_data/ 
+# IDE configs
+prompt.cursorrules
