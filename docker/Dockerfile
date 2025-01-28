@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS base
+FROM python:3.12-slim AS builder
 
 # Install system dependencies and Python packages
 RUN apt-get update && \
@@ -7,10 +7,14 @@ RUN apt-get update && \
         git \
         curl \
         pkg-config \
-        libssl-dev && \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-    . $HOME/.cargo/env && \
-    pip install --no-cache-dir --upgrade pip && \
+        libssl-dev
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    . $HOME/.cargo/env
+
+# Install Python packages
+RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
         bittensor \
         torch \
@@ -22,16 +26,11 @@ RUN apt-get update && \
         aiohttp \
         prometheus_client
 
-# Cleanup
-RUN apt-get remove -y build-essential && \
-    apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
+# Final stage
 FROM python:3.12-slim
 
-# Copy dependencies from base
-COPY --from=base /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+# Copy only the built packages from builder
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
 # Set up workspace
 WORKDIR /app
