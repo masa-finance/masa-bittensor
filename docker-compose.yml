@@ -1,29 +1,34 @@
+version: '3.8'
+
 services:
   validator:
     image: masa-bittensor:latest
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
       platforms:
         - linux/amd64
     deploy:
-      replicas: ${VALIDATOR_COUNT}
+      replicas: 0
     volumes:
-      - subnet_249_wallets:/root/.bittensor/wallets
+      - ~/.bittensor/wallets:/root/.bittensor/wallets
+      - ~/.bt-masa/states:/root/.bt-masa/states
       - ./entrypoint.py:/app/entrypoint.py
     user: root
     environment:
-      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
+      - WALLET_NAME=${WALLET_NAME:-default}
+      - HOTKEY_NAME=${HOTKEY_NAME:-default}
+      - NETUID=249
+      - NETWORK=test
+      - REPLICA=${REPLICA:-1}
       - DEVICE=cpu
-      - PORT=8091
+      - PORT=${PORT:-8091}
       - METRICS_PORT=9100
       - ROLE=validator
       - PYTHONUNBUFFERED=1
-      - NETWORK=test
-      - NETUID=249
       - LOGGING_DEBUG=${LOGGING_DEBUG}
     ports:
-      - "8091-8099:8091"
+      - ${PORT:-8091}:${PORT:-8091}
       - "9100-9109:9100"
     restart: unless-stopped
     healthcheck:
@@ -36,12 +41,15 @@ services:
   miner:
     image: masa-bittensor:latest
     deploy:
-      replicas: ${MINER_COUNT}
+      replicas: 1
     volumes:
-      - subnet_249_wallets:/root/.bittensor/wallets:ro
+      - ~/.bittensor/wallets:/root/.bittensor/wallets
+      - ~/.bt-masa/states:/root/.bt-masa/states
       - ./entrypoint.py:/app/entrypoint.py
     user: root
     environment:
+      - WALLET_NAME=${WALLET_NAME:-default}
+      - HOTKEY_NAME=${HOTKEY_NAME:-default}
       - DEVICE=cpu
       - PORT=8348
       - METRICS_PORT=9357
@@ -114,7 +122,7 @@ services:
       - portainer_data:/data
     ports:
       - "9000:9000"
-      - "8000:8000"  # Required for edge compute features
+      - "8000:8000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/api/system/status"]

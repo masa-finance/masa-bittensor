@@ -41,9 +41,11 @@ class Orchestrator:
             config.subtensor = bt.subtensor.config()
             # Strip any comments from network value (everything after #)
             network = os.environ["NETWORK"].split("#")[0].strip()
+            # Strip any comments from netuid value
+            netuid = os.environ["NETUID"].split("#")[0].strip()
             config.subtensor.network = network
-            config.subtensor.netuid = int(os.environ["NETUID"])
-            config.netuid = int(os.environ["NETUID"])  # Set netuid in both places
+            config.subtensor.netuid = int(netuid)
+            config.netuid = int(netuid)  # Set netuid in both places
             config.network = network  # Set network in top level config
             config.no_prompt = True
 
@@ -324,13 +326,14 @@ class Orchestrator:
             if role == "validator":
                 # Run validator process
                 wallet_path = os.path.expanduser("~/.bittensor/wallets/")
-                # Store state under .bt-masa directory
+                # Set up state directory for validator
                 state_path = os.path.expanduser(
-                    f"~/.bt-masa/subnet_{netuid}/validator_{replica}/state"
+                    f"~/.bt-masa/states/{self.wallet_hotkey}"
                 )
                 os.makedirs(state_path, mode=0o700, exist_ok=True)
 
-                cmd = [
+                # Build validator command
+                validator_command = [
                     "python",
                     "neurons/validator.py",
                     f"--netuid={netuid}",
@@ -338,23 +341,20 @@ class Orchestrator:
                     f"--wallet.name={self.wallet_name}",
                     f"--wallet.hotkey={self.wallet_hotkey}",
                     f"--wallet.path={wallet_path}",
+                    f"--full_path={state_path}",  # Set state directory path
                     f"--axon.port={port}",
-                    "--neuron.debug",
                     "--logging.debug",
-                    f"--config.netuid={netuid}",
-                    f"--config.wallet.netuid={netuid}",
-                    f"--full_path={state_path}",  # Use full_path instead of neuron.full_path
                 ]
 
                 # Execute validator
-                logging.info(f"Executing command: {' '.join(cmd)}")
-                os.execvp(cmd[0], cmd)
+                logging.info(f"Executing command: {' '.join(validator_command)}")
+                os.execvp(validator_command[0], validator_command)
             else:
                 # Run miner process
                 wallet_path = os.path.expanduser("~/.bittensor/wallets/")
-                # Store state under .bt-masa directory
+                # Set up state directory for miner
                 state_path = os.path.expanduser(
-                    f"~/.bt-masa/subnet_{netuid}/miner_{replica}/state"
+                    f"~/.bt-masa/states/{self.wallet_hotkey}"
                 )
                 os.makedirs(state_path, mode=0o700, exist_ok=True)
 
