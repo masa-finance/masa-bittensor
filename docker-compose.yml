@@ -1,13 +1,17 @@
-version: '3.8'
-
 services:
   validator:
+    image: masa-bittensor:latest
     build: 
       context: .
       dockerfile: Dockerfile
-    container_name: masa_validator
+      platforms:
+        - linux/amd64
+    deploy:
+      replicas: ${VALIDATOR_COUNT}
     volumes:
-      - ./.bittensor/wallets:/root/.bittensor/wallets
+      - subnet_249_wallets:/root/.bittensor/wallets
+      - ./entrypoint.py:/app/entrypoint.py
+    user: root
     environment:
       - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
       - DEVICE=cpu
@@ -15,14 +19,12 @@ services:
       - METRICS_PORT=9100
       - ROLE=validator
       - PYTHONUNBUFFERED=1
-      - NETWORK=${NETWORK:-test}
-      - NETUID=${NETUID:-249}
-      - LOGGING_DEBUG=${LOGGING_DEBUG:-true}
-      - WALLET_NAME=${WALLET_NAME:-default}
-      - WALLET_HOTKEY=${WALLET_HOTKEY:-default}
+      - NETWORK=test
+      - NETUID=249
+      - LOGGING_DEBUG=${LOGGING_DEBUG}
     ports:
-      - "8091:8091"  # Validator API port
-      - "9100:9100"  # Metrics port
+      - "8091-8099:8091"
+      - "9100-9109:9100"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8091/healthcheck"]
@@ -32,27 +34,25 @@ services:
       start_period: 40s
 
   miner:
-    build: 
-      context: .
-      dockerfile: Dockerfile
-    container_name: masa_miner
+    image: masa-bittensor:latest
+    deploy:
+      replicas: ${MINER_COUNT}
     volumes:
-      - ./.bittensor/wallets:/root/.bittensor/wallets
+      - subnet_249_wallets:/root/.bittensor/wallets:ro
+      - ./entrypoint.py:/app/entrypoint.py
+    user: root
     environment:
-      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
       - DEVICE=cpu
       - PORT=8348
       - METRICS_PORT=9357
       - ROLE=miner
       - PYTHONUNBUFFERED=1
-      - NETWORK=${NETWORK:-test}
-      - NETUID=${NETUID:-249}
-      - LOGGING_DEBUG=${LOGGING_DEBUG:-true}
-      - WALLET_NAME=${WALLET_NAME:-default}
-      - WALLET_HOTKEY=${WALLET_HOTKEY:-default}
+      - NETWORK=test
+      - NETUID=249
+      - LOGGING_DEBUG=${LOGGING_DEBUG}
     ports:
-      - "8348:8348"  # Miner API port
-      - "9357:9357"  # Metrics port
+      - "8348-8357:8348"
+      - "9357-9366:9357"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8348/healthcheck"]
@@ -83,7 +83,7 @@ services:
       - grafana_data:/var/lib/grafana
       - ./config/grafana/provisioning:/etc/grafana/provisioning
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_LOG_LEVEL=warn
     ports:
@@ -124,6 +124,7 @@ services:
       start_period: 40s
 
 volumes:
+  subnet_249_wallets:
   prometheus_data:
   grafana_data:
   portainer_data:
