@@ -3,8 +3,8 @@ name: 'build container images'
 on:
   push:
     branches:
-      - master
       - main
+      - feature-docker-compose
     tags:
       - '*'
 concurrency:
