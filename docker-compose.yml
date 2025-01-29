@@ -12,6 +12,9 @@ services:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
       - ~/.bt-masa:/root/.bt-masa
       - ./startup:/app/startup
+      - ./masa:/app/masa
+      - ./neurons:/app/neurons
+      - ./pyproject.toml:/app/pyproject.toml
     user: root
     environment:
       - BT_LOGGING_LOGGING_DIR=/root/.bt-masa
@@ -47,6 +50,9 @@ services:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
       - ~/.bt-masa:/root/.bt-masa
       - ./startup:/app/startup
+      - ./masa:/app/masa
+      - ./neurons:/app/neurons
+      - ./pyproject.toml:/app/pyproject.toml
     user: root
     environment:
       - BT_LOGGING_LOGGING_DIR=/root/.bt-masa

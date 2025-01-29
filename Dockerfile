@@ -28,18 +28,17 @@ RUN pip install \
     "pytest-asyncio==0.21.0" \
     "requests==2.32.3"
 
-# Set up workspace for our application
+# Set up workspace
 WORKDIR /app
-COPY . .
-
-# Install our package
-RUN pip install -e .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV CONFIG_PATH=/app/subnet-config.json
 ENV ROLE=validator
 
-# Use startup/entrypoint.py as the container entry point
-ENTRYPOINT ["python", "-u"]
-CMD ["startup/entrypoint.py"]
+# Create entrypoint script
+RUN echo '#!/bin/bash\npip install -e .\npython -u startup/entrypoint.py' > /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+# Use the entrypoint script
+ENTRYPOINT ["/entrypoint.sh"]
