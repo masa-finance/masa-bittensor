@@ -9,27 +9,29 @@ services:
       platforms:
         - linux/amd64
     deploy:
-      replicas: 0
+      replicas: ${VALIDATOR_COUNT:-1}
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
-      - ~/.bt-masa/states:/root/.bt-masa/states
+      - ~/.bt-masa:/root/.bt-masa
       - ./entrypoint.py:/app/entrypoint.py
     user: root
     environment:
+      - BT_LOGGING_LOGGING_DIR=/root/.bt-masa
+      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
       - WALLET_NAME=${WALLET_NAME:-default}
       - HOTKEY_NAME=${HOTKEY_NAME:-default}
       - NETUID=249
       - NETWORK=test
-      - REPLICA=${REPLICA:-1}
       - DEVICE=cpu
-      - PORT=${PORT:-8091}
-      - METRICS_PORT=9100
+      - VALIDATOR_PORT=8091
+      - VALIDATOR_METRICS_PORT=9100
       - ROLE=validator
       - PYTHONUNBUFFERED=1
       - LOGGING_DEBUG=${LOGGING_DEBUG}
+      - REPLICA_NUM={{ .Task.Slot }}
     ports:
-      - ${PORT:-8091}:${PORT:-8091}
-      - "9100-9109:9100"
+      - "8091-8154:8091"
+      - "9100-9163:9100"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8091/healthcheck"]
@@ -40,30 +42,33 @@ services:
 
   miner:
     image: masa-bittensor:latest
+    build: .
     deploy:
-      replicas: 1
+      replicas: ${MINER_COUNT:-1}
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
-      - ~/.bt-masa/states:/root/.bt-masa/states
+      - ~/.bt-masa:/root/.bt-masa
       - ./entrypoint.py:/app/entrypoint.py
     user: root
     environment:
+      - BT_LOGGING_LOGGING_DIR=/root/.bt-masa
       - WALLET_NAME=${WALLET_NAME:-default}
       - HOTKEY_NAME=${HOTKEY_NAME:-default}
       - DEVICE=cpu
-      - PORT=8348
-      - METRICS_PORT=9357
+      - MINER_PORT=8155
+      - MINER_METRICS_PORT=9164
       - ROLE=miner
       - PYTHONUNBUFFERED=1
       - NETWORK=test
       - NETUID=249
       - LOGGING_DEBUG=${LOGGING_DEBUG}
+      - REPLICA_NUM={{ .Task.Slot }}
     ports:
-      - "8348-8357:8348"
-      - "9357-9366:9357"
+      - "8155-8409:8155"
+      - "9164-9418:9164"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8348/healthcheck"]
+      test: ["CMD", "curl", "-f", "http://localhost:8155/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
