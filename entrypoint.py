@@ -1,9 +1,11 @@
 import os
 import logging
 import asyncio
+import json
 import bittensor as bt
 from neurons.validator import Validator
 from contextlib import redirect_stdout
+import subprocess
 
 # Remove prometheus imports
 # from prometheus_client import start_http_server, Gauge, Counter
@@ -24,13 +26,35 @@ class Orchestrator:
         replica = (
             hostname.split("-")[1] if hostname and len(hostname.split("-")) > 2 else "1"
         )
+        self.replica_num = int(replica)
         self.wallet_hotkey = f"{role}_{replica}"
         self.validator = None
+
+        # Calculate ports based on role and replica number
+        if role == "validator":
+            base_port = int(os.environ.get("VALIDATOR_PORT", "8091"))
+            base_metrics_port = int(os.environ.get("VALIDATOR_METRICS_PORT", "9100"))
+            # Ensure replica number is within validator range (max 64 replicas)
+            if self.replica_num > 64:
+                raise ValueError("Validator replica number cannot exceed 64")
+            self.port = base_port + (self.replica_num - 1)
+            self.metrics_port = base_metrics_port + (self.replica_num - 1)
+        else:  # miner
+            base_port = int(os.environ.get("MINER_PORT", "8155"))
+            base_metrics_port = int(os.environ.get("MINER_METRICS_PORT", "9164"))
+            # Ensure replica number is within miner range (max 255 replicas)
+            if self.replica_num > 255:
+                raise ValueError("Miner replica number cannot exceed 255")
+            self.port = base_port + (self.replica_num - 1)
+            self.metrics_port = base_metrics_port + (self.replica_num - 1)
+
         logging.info(
-            "Initializing %s with wallet %s/%s",
+            "Initializing %s with wallet %s/%s on port %d with metrics on port %d",
             role,
             self.wallet_name,
             self.wallet_hotkey,
+            self.port,
+            self.metrics_port,
         )
 
     async def setup_repo(self):
@@ -105,7 +129,6 @@ class Orchestrator:
                 {
                     "network": subtensor.network,
                     "chain_endpoint": subtensor.chain_endpoint or "default",
-                    "network": config.subtensor.network,
                 },
             )
 
@@ -146,6 +169,35 @@ class Orchestrator:
                 )
                 logging.info("Hotkey is registered with UID %s", uid)
 
+                # Update hotkey mappings file
+                mappings_file = os.path.expanduser("~/.bt-masa/hotkey_mappings.json")
+                os.makedirs(os.path.dirname(mappings_file), mode=0o700, exist_ok=True)
+
+                # Load existing mappings
+                mappings = {}
+                if os.path.exists(mappings_file):
+                    try:
+                        with open(mappings_file, "r") as f:
+                            mappings = json.load(f)
+                    except json.JSONDecodeError:
+                        logging.warning(
+                            "Could not parse existing mappings file, starting fresh"
+                        )
+
+                # Update mappings with current hotkey info
+                mappings[wallet.hotkey.ss58_address] = {
+                    "uid": uid,
+                    "role": os.environ.get("ROLE", "validator"),
+                    "netuid": config.subtensor.netuid,
+                    "wallet_name": self.wallet_name,
+                    "hotkey_name": self.wallet_hotkey,
+                }
+
+                # Save updated mappings
+                with open(mappings_file, "w") as f:
+                    json.dump(mappings, f, indent=2)
+                logging.info("Updated hotkey mappings in %s", mappings_file)
+
                 # Add more detailed registration checks
                 logging.info("Double checking registration status:")
                 logging.info(f"Checking netuid {config.subtensor.netuid}")
@@ -170,7 +222,7 @@ class Orchestrator:
                 if os.environ.get("ROLE") == "validator":
                     # For validators, use burned registration
                     logging.info(
-                        "Starting burned registration process for validator hotkey..."
+                        "Starting burned registration process for validator hotkey"
                     )
 
                     # Check current balance
@@ -190,9 +242,7 @@ class Orchestrator:
                     logging.info(
                         f"This process will burn {cost} TAO from your balance of {balance} TAO"
                     )
-                    logging.info(
-                        "Starting registration (this may take a few minutes)..."
-                    )
+                    logging.info("Starting registration (this may take a few minutes)")
 
                     # First check if registration is still needed
                     if subtensor.is_hotkey_registered(
@@ -245,15 +295,69 @@ class Orchestrator:
                 else:
                     # For miners, attempt registration
                     logging.info("Attempting to register miner hotkey...")
-                    # TODO: Implement registration logic here
-                    # This will require:
-                    # 1. Checking if registration is open
-                    # 2. Having enough TAO for registration
-                    # 3. Performing POW for registration
-                    # 4. Submitting registration transaction
-                    raise Exception(
-                        "Miner registration not yet implemented. Please register the hotkey first."
+                    # Check current balance
+                    balance = subtensor.get_balance(wallet.coldkeypub.ss58_address)
+                    logging.info(f"Current balance: {balance} TAO")
+
+                    # Get registration cost
+                    cost = subtensor.recycle(config.subtensor.netuid)
+                    logging.info(f"Registration cost: {cost} TAO")
+
+                    if balance < cost:
+                        raise Exception(
+                            f"Insufficient balance ({balance} TAO) for registration. Need {cost} TAO"
+                        )
+
+                    logging.info("Balance sufficient for registration, proceeding...")
+                    logging.info(
+                        f"This process will burn {cost} TAO from your balance of {balance} TAO"
                     )
+                    logging.info("Starting registration (this may take a few minutes)")
+
+                    # First check if registration is still needed
+                    if subtensor.is_hotkey_registered(
+                        netuid=config.subtensor.netuid,
+                        hotkey_ss58=wallet.hotkey.ss58_address,
+                    ):
+                        logging.info(
+                            "Hotkey was registered by another process, continuing..."
+                        )
+                        success = True
+                    else:
+                        logging.info("Calling burned_register...")
+                        success = subtensor.burned_register(
+                            wallet=wallet,
+                            netuid=config.subtensor.netuid,
+                            wait_for_inclusion=True,
+                            wait_for_finalization=True,
+                        )
+                        logging.info("burned_register call completed")
+
+                    if not success:
+                        raise Exception(
+                            "Failed to register miner hotkey - check subnet and balance"
+                        )
+
+                    # Verify registration
+                    is_registered = subtensor.is_hotkey_registered(
+                        netuid=config.subtensor.netuid,
+                        hotkey_ss58=wallet.hotkey.ss58_address,
+                    )
+
+                    if is_registered:
+                        new_balance = subtensor.get_balance(
+                            wallet.coldkeypub.ss58_address
+                        )
+                        uid = subtensor.get_uid_for_hotkey_on_subnet(
+                            hotkey_ss58=wallet.hotkey.ss58_address,
+                            netuid=config.subtensor.netuid,
+                        )
+                        logging.info(
+                            f"Successfully registered miner hotkey with UID {uid}"
+                        )
+                        logging.info(
+                            f"New balance after registration: {new_balance} TAO (burned {balance - new_balance} TAO)"
+                        )
 
             # Initialize the validator with our config (only for validators)
             if os.environ.get("ROLE") == "validator":
@@ -310,26 +414,19 @@ class Orchestrator:
             # Clean network value
             network = os.environ["NETWORK"].split("#")[0].strip()
 
-            # Calculate port based on replica number to avoid conflicts
-            # Extract replica number from hostname (validator-1, validator-2, etc)
-            hostname = os.environ.get("HOSTNAME", "")
-            replica = (
-                int(hostname.split("-")[1])
-                if hostname and len(hostname.split("-")) > 1
-                else 1
+            logging.info(
+                "Starting %s process (replica %d) on port %d with metrics on port %d",
+                role,
+                self.replica_num,
+                self.port,
+                self.metrics_port,
             )
-            base_port = 8091 if role == "miner" else 8092
-            port = base_port + replica - 1
-
-            logging.info(f"Starting {role} process on port {port}")
 
             if role == "validator":
                 # Run validator process
                 wallet_path = os.path.expanduser("~/.bittensor/wallets/")
                 # Set up state directory for validator
-                state_path = os.path.expanduser(
-                    f"~/.bt-masa/states/{self.wallet_hotkey}"
-                )
+                state_path = os.path.expanduser(f"~/.bittensor/states")
                 os.makedirs(state_path, mode=0o700, exist_ok=True)
 
                 # Build validator command
@@ -341,8 +438,9 @@ class Orchestrator:
                     f"--wallet.name={self.wallet_name}",
                     f"--wallet.hotkey={self.wallet_hotkey}",
                     f"--wallet.path={wallet_path}",
-                    f"--full_path={state_path}",  # Set state directory path
-                    f"--axon.port={port}",
+                    f"--logging.logging_dir={state_path}",
+                    f"--axon.port={self.port}",
+                    f"--prometheus.port={self.metrics_port}",
                     "--logging.debug",
                 ]
 
@@ -353,12 +451,11 @@ class Orchestrator:
                 # Run miner process
                 wallet_path = os.path.expanduser("~/.bittensor/wallets/")
                 # Set up state directory for miner
-                state_path = os.path.expanduser(
-                    f"~/.bt-masa/states/{self.wallet_hotkey}"
-                )
+                state_path = os.path.expanduser(f"~/.bittensor/states")
                 os.makedirs(state_path, mode=0o700, exist_ok=True)
 
-                cmd = [
+                # Build miner command
+                miner_command = [
                     "python",
                     "neurons/miner.py",
                     f"--netuid={netuid}",
@@ -366,18 +463,16 @@ class Orchestrator:
                     f"--wallet.name={self.wallet_name}",
                     f"--wallet.hotkey={self.wallet_hotkey}",
                     f"--wallet.path={wallet_path}",
-                    f"--axon.port={port}",
-                    "--neuron.debug",
+                    f"--logging.logging_dir={state_path}",
+                    f"--axon.port={self.port}",
+                    f"--prometheus.port={self.metrics_port}",
                     "--logging.debug",
                     "--blacklist.force_validator_permit",
-                    f"--config.netuid={netuid}",
-                    f"--config.wallet.netuid={netuid}",
-                    f"--full_path={state_path}",  # Use full_path instead of neuron.full_path
                 ]
 
                 # Execute miner
-                logging.info(f"Executing command: {' '.join(cmd)}")
-                os.execvp(cmd[0], cmd)
+                logging.info(f"Executing miner command: {' '.join(miner_command)}")
+                subprocess.run(miner_command)
 
         except Exception as e:
             logging.error(f"Error running {role}: {e}")
