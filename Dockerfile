@@ -11,6 +11,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Rust and Python packages
+ENV PATH="/root/.cargo/bin:${PATH}"
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
     . $HOME/.cargo/env && \
     pip install --upgrade pip
@@ -20,14 +21,13 @@ WORKDIR /app
 COPY . .
 
 # Install Python packages
-RUN pip install masa-ai==0.2.7 && \
-    pip install -e .
+RUN pip install -e .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV CONFIG_PATH=/app/subnet-config.json
 ENV ROLE=validator
 
-# Use entrypoint.py as the container entry point
+# Use startup/entrypoint.py as the container entry point
 ENTRYPOINT ["python", "-u"]
-CMD ["entrypoint.py"]
+CMD ["startup/entrypoint.py"]
