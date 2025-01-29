@@ -10,17 +10,29 @@ RUN apt-get update && \
         libssl-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Rust and Python packages
+# Install Rust and base Python setup
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
     . $HOME/.cargo/env && \
     pip install --upgrade pip
 
-# Set up workspace
+# Install all dependencies from pyproject.toml
+RUN pip install \
+    "bittensor>=8.2.0" \
+    "loguru==0.7.2" \
+    "python-dotenv==0.21.0" \
+    "torch==2.3.0" \
+    "scikit-learn==1.5.1" \
+    "masa-ai>=0.2.5" \
+    "pytest==7.2.2" \
+    "pytest-asyncio==0.21.0" \
+    "requests==2.32.3"
+
+# Set up workspace for our application
 WORKDIR /app
 COPY . .
 
-# Install Python packages
+# Install our package
 RUN pip install -e .
 
 # Set environment variables
