@@ -24,6 +24,7 @@ RUN pip install \
     "python-dotenv==0.21.0" \
     "torch==2.3.0" \
     "scikit-learn==1.5.1" \
+    "scipy==1.12.0" \
     "masa-ai>=0.2.5" \
     "pytest==7.2.2" \
     "pytest-asyncio==0.21.0" \
