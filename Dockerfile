@@ -45,6 +45,7 @@ RUN pip install --no-cache-dir \
 # Install minimal bittensor components
 RUN pip install --no-cache-dir \
     "bittensor>=8.2.0" \
+    "bittensor_wallet>=3.0.0" \
     "masa-ai>=0.2.5" \
     --no-deps && \
     pip install --no-cache-dir \
