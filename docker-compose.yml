@@ -1,11 +1,12 @@
 services:
   validator:
-    image: masa-bittensor:latest
+    image: ${DOCKER_IMAGE:-masaengineering/masa-bittensor:latest}
     build:
       context: .
       dockerfile: Dockerfile
       platforms:
         - linux/amd64
+      target: runtime
     deploy:
       replicas: ${VALIDATOR_COUNT:-0}
     volumes:
@@ -42,12 +43,13 @@ services:
       start_period: 40s
 
   miner:
-    image: masa-bittensor:latest
+    image: ${DOCKER_IMAGE:-masaengineering/masa-bittensor:latest}
     build:
       context: .
       dockerfile: Dockerfile
       platforms:
         - linux/amd64
+      target: runtime
     deploy:
       replicas: ${MINER_COUNT:-1}
     volumes:
