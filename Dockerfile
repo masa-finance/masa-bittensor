@@ -25,10 +25,10 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --pr
 
 # Install core dependencies first
 RUN pip install --no-cache-dir \
-    "loguru==0.7.2" \
-    "python-dotenv==0.21.0" \
-    "requests==2.32.3" \
-    "munch==2.5.0" \
+    "loguru>=0.7.0" \
+    "python-dotenv>=0.21.0" \
+    "requests>=2.32.0" \
+    "munch>=2.5.0" \
     "pyyaml>=6.0.1" \
     "prometheus-client>=0.17.1" \
     "numpy<2.0.0"
@@ -38,18 +38,19 @@ RUN pip install --no-cache-dir torch==2.2.0 --index-url https://download.pytorch
 
 # Install scientific packages with minimal dependencies
 RUN pip install --no-cache-dir \
-    "scikit-learn==1.5.1" \
+    "scikit-learn>=1.5.0" \
     --only-binary=:all:
 
-# Install minimal bittensor components
-RUN pip install --no-cache-dir \
-    "bittensor-wallet>=2.0.2" \
-    "bittensor-cli>=8.4.2" \
-    "bt-decode>=0.4.0" \
-    "substrate-interface>=1.7.9" \
-    "masa-ai==0.2.5" \
-    "pytest==7.2.2" \
-    "pytest-asyncio==0.21.0"
+# Install minimal bittensor components with pre-built wheels where possible
+RUN pip install --no-cache-dir --only-binary=:all: \
+        "bittensor-wallet>=2.0.0" \
+        "bittensor-cli>=8.4.0" \
+        "bt-decode>=0.4.0" \
+        "substrate-interface>=1.7.0" \
+    && pip install --no-cache-dir \
+        "masa-ai>=0.2.5" \
+        "pytest>=7.2.0" \
+        "pytest-asyncio>=0.21.0"
 
 # Set up workspace
 WORKDIR /app
