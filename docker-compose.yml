@@ -1,11 +1,6 @@
 services:
   validator:
     image: ${DOCKER_IMAGE:-masaengineering/masa-bittensor:latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
-      platforms:
-        - linux/amd64
     deploy:
       replicas: ${VALIDATOR_COUNT:-0}
     volumes:
@@ -28,7 +23,7 @@ services:
       - VALIDATOR_METRICS_PORT=9100
       - ROLE=validator
       - PYTHONUNBUFFERED=1
-      - LOGGING_DEBUG=${LOGGING_DEBUG}
+      - LOGGING_DEBUG=${LOGGING_DEBUG:-false}
       - SERVICE_NAME=validator
     ports:
       - "8091-8100:8091"
@@ -43,11 +38,6 @@ services:
 
   miner:
     image: ${DOCKER_IMAGE:-masaengineering/masa-bittensor:latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
-      platforms:
-        - linux/amd64
     deploy:
       replicas: ${MINER_COUNT:-1}
     volumes:
@@ -67,7 +57,7 @@ services:
       - MINER_METRICS_PORT=9164
       - ROLE=miner
       - PYTHONUNBUFFERED=1
-      - LOGGING_DEBUG=${LOGGING_DEBUG}
+      - LOGGING_DEBUG=${LOGGING_DEBUG:-false}
       - SERVICE_NAME=miner
       - REPLICA_NUM={{.Task.Slot}}
     ports:

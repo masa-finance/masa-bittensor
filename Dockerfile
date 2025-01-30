@@ -25,14 +25,18 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --pr
 
 # Install core dependencies first
 RUN pip install --no-cache-dir \
-    "loguru==0.7.2" \
-    "python-dotenv==0.21.0" \
-    "requests==2.32.3"
+    "loguru>=0.7.0" \
+    "python-dotenv>=0.21.0" \
+    "requests>=2.32.0" \
+    "munch>=2.5.0" \
+    "pyyaml>=6.0.1" \
+    "prometheus-client>=0.17.1" \
+    "numpy<2.0.0"
 
 # Install scientific packages with minimal dependencies
 RUN pip install --no-cache-dir \
-    "scipy==1.12.0" \
-    "scikit-learn==1.5.1" \
+    "scipy>=1.12.0" \
+    "scikit-learn>=1.5.1" \
     --only-binary=:all:
 
 # Install minimal bittensor components
