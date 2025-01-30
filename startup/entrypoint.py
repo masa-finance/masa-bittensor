@@ -5,6 +5,13 @@ import bittensor as bt
 from startup.wallet_manager import WalletManager
 from startup.registration_manager import RegistrationManager
 from startup.process_manager import ProcessManager
+from startup.config import get_chain_endpoint, get_mainnet_netuid
+
+# Print all environment variables at startup
+print("=== PYTHON ENVIRONMENT VARIABLES ===")
+for key, value in sorted(os.environ.items()):
+    print(f"{key}={value}")
+print("==================================")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,18 +27,36 @@ class Orchestrator:
         self.network = os.environ["NETWORK"].split("#")[0].strip()
         self.role = os.environ.get("ROLE", "validator")
 
+        # Map network and subnet IDs
+        self.chain_endpoint = get_chain_endpoint(self.network)
+        if not self.chain_endpoint:
+            raise ValueError(f"Invalid network: {self.network}")
+
         # Set up wallet names
         self.wallet_name = f"subnet_{self.netuid}"
-        hostname = os.environ.get("HOSTNAME", "")
-        replica = (
-            hostname.split("-")[1] if hostname and len(hostname.split("-")) > 2 else "1"
-        )
-        self.replica_num = int(replica)
-        self.wallet_hotkey = f"{self.role}_{replica}"
+
+        # Get service name and replica number from Docker environment
+        service_name = os.environ.get("SERVICE_NAME", "")
+        replica_num = os.environ.get("REPLICA_NUM", "")
+
+        try:
+            self.replica_num = int(replica_num) if replica_num else 1
+        except ValueError:
+            print(f"Warning: Invalid replica number: {replica_num}")
+            self.replica_num = 1
+
+        print(f"Service: {service_name}, Replica: {self.replica_num}")  # Debug print
+        self.wallet_hotkey = f"{self.role}_{self.replica_num}"
 
         # Calculate ports
         self.port, self.metrics_port = self._calculate_ports()
 
+        # Log configuration
+        mainnet_id = (
+            get_mainnet_netuid(str(self.netuid))
+            if self.network == "test"
+            else str(self.netuid)
+        )
         logger.info(
             "Initializing %s with wallet %s/%s on port %d with metrics on port %d",
             self.role,
@@ -39,6 +64,13 @@ class Orchestrator:
             self.wallet_hotkey,
             self.port,
             self.metrics_port,
+        )
+        logger.info(
+            "Network: %s (endpoint: %s), Subnet: %s (maps to mainnet: %s)",
+            self.network,
+            self.chain_endpoint,
+            self.netuid,
+            mainnet_id,
         )
 
     def _calculate_ports(self) -> tuple[int, int]:
@@ -78,11 +110,14 @@ class Orchestrator:
 
             # Set up subtensor connection
             config = bt.config()
-            config.subtensor.network = self.network
-            config.subtensor.netuid = self.netuid
             config.netuid = self.netuid
-            config.network = self.network
             config.no_prompt = True
+
+            # Only set network-specific config for test network
+            if self.network == "test":
+                config.subtensor = bt.subtensor.config()
+                config.subtensor.network = "test"
+                config.subtensor.chain_endpoint = self.chain_endpoint
 
             subtensor = bt.subtensor(config=config)
             registration_manager = RegistrationManager(subtensor)

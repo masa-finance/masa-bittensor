@@ -35,10 +35,14 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 ENV CONFIG_PATH=/app/subnet-config.json
 ENV ROLE=validator
+ENV NETWORK=test
+ENV NETUID=165
 
-# Create entrypoint script
-RUN echo '#!/bin/bash\npip install -e .\npython -u startup/entrypoint.py' > /entrypoint.sh && \
-    chmod +x /entrypoint.sh
+# Copy startup directory
+COPY startup /app/startup
 
-# Use the entrypoint script
-ENTRYPOINT ["/entrypoint.sh"]
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Use Python script directly as entrypoint
+ENTRYPOINT ["python", "-u", "/app/startup/entrypoint.py"]

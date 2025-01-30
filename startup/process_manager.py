@@ -26,27 +26,18 @@ class ProcessManager:
         axon_port: int,
         prometheus_port: int,
     ) -> List[str]:
-        """Build the validator command with all necessary arguments.
-
-        Args:
-            netuid: Network UID
-            network: Network name
-            wallet_name: Name of the wallet
-            wallet_hotkey: Hotkey name
-            axon_port: Port for the validator's axon
-            prometheus_port: Port for Prometheus metrics
-
-        Returns:
-            list: Command as a list of arguments
-        """
+        """Build the validator command with all necessary arguments."""
         wallet_path = os.path.expanduser("~/.bittensor/wallets/")
         state_path = self.prepare_directories()
 
-        return [
+        chain_endpoint = (
+            "wss://test.finney.opentensor.ai:443" if network == "test" else None
+        )
+
+        command = [
             "python",
             "neurons/validator.py",
             f"--netuid={netuid}",
-            f"--subtensor.network={network}",
             f"--wallet.name={wallet_name}",
             f"--wallet.hotkey={wallet_hotkey}",
             f"--wallet.path={wallet_path}",
@@ -55,6 +46,16 @@ class ProcessManager:
             f"--prometheus.port={prometheus_port}",
             "--logging.debug",
         ]
+
+        if network == "test":
+            command.extend(
+                [
+                    "--subtensor.network=test",
+                    f"--subtensor.chain_endpoint={chain_endpoint}",
+                ]
+            )
+
+        return command
 
     def build_miner_command(
         self,
@@ -65,27 +66,18 @@ class ProcessManager:
         axon_port: int,
         prometheus_port: int,
     ) -> List[str]:
-        """Build the miner command with all necessary arguments.
-
-        Args:
-            netuid: Network UID
-            network: Network name
-            wallet_name: Name of the wallet
-            wallet_hotkey: Hotkey name
-            axon_port: Port for the miner's axon
-            prometheus_port: Port for Prometheus metrics
-
-        Returns:
-            list: Command as a list of arguments
-        """
+        """Build the miner command with all necessary arguments."""
         wallet_path = os.path.expanduser("~/.bittensor/wallets/")
         state_path = self.prepare_directories()
 
-        return [
+        chain_endpoint = (
+            "wss://test.finney.opentensor.ai:443" if network == "test" else None
+        )
+
+        command = [
             "python",
             "neurons/miner.py",
             f"--netuid={netuid}",
-            f"--subtensor.network={network}",
             f"--wallet.name={wallet_name}",
             f"--wallet.hotkey={wallet_hotkey}",
             f"--wallet.path={wallet_path}",
@@ -95,6 +87,16 @@ class ProcessManager:
             "--logging.debug",
             "--blacklist.force_validator_permit",
         ]
+
+        if network == "test":
+            command.extend(
+                [
+                    "--subtensor.network=test",
+                    f"--subtensor.chain_endpoint={chain_endpoint}",
+                ]
+            )
+
+        return command
 
     def execute_validator(self, command: List[str]):
         """Execute the validator process.

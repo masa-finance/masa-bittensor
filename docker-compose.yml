@@ -7,7 +7,7 @@ services:
       platforms:
         - linux/amd64
     deploy:
-      replicas: ${VALIDATOR_COUNT:-1}
+      replicas: ${VALIDATOR_COUNT:-2}
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
       - ~/.bt-masa:/root/.bt-masa
@@ -15,24 +15,24 @@ services:
       - ./masa:/app/masa
       - ./neurons:/app/neurons
       - ./pyproject.toml:/app/pyproject.toml
+      - ./config.json:/app/config.json
     user: root
     environment:
       - BT_LOGGING_LOGGING_DIR=/root/.bt-masa
       - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
       - WALLET_NAME=${WALLET_NAME:-default}
-      - HOTKEY_NAME=${HOTKEY_NAME:-default}
-      - NETUID=249
-      - NETWORK=test
+      - REPLICA_NUM={{.Task.Slot}}
+      - NETWORK=${NETWORK}
       - DEVICE=cpu
       - VALIDATOR_PORT=8091
       - VALIDATOR_METRICS_PORT=9100
       - ROLE=validator
       - PYTHONUNBUFFERED=1
       - LOGGING_DEBUG=${LOGGING_DEBUG}
-      - REPLICA_NUM={{ .Task.Slot }}
+      - SERVICE_NAME=validator
     ports:
-      - "8091-8154:8091"
-      - "9100-9163:9100"
+      - "8091-8100:8091"
+      - "9100-9109:9100"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8091/healthcheck"]
@@ -43,9 +43,13 @@ services:
 
   miner:
     image: masa-bittensor:latest
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
     deploy:
-      replicas: ${MINER_COUNT:-1}
+      replicas: ${MINER_COUNT:-3}
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
       - ~/.bt-masa:/root/.bt-masa
@@ -57,19 +61,18 @@ services:
     environment:
       - BT_LOGGING_LOGGING_DIR=/root/.bt-masa
       - WALLET_NAME=${WALLET_NAME:-default}
-      - HOTKEY_NAME=${HOTKEY_NAME:-default}
+      - NETWORK=${NETWORK}
       - DEVICE=cpu
       - MINER_PORT=8155
       - MINER_METRICS_PORT=9164
       - ROLE=miner
       - PYTHONUNBUFFERED=1
-      - NETWORK=test
-      - NETUID=249
       - LOGGING_DEBUG=${LOGGING_DEBUG}
-      - REPLICA_NUM={{ .Task.Slot }}
+      - SERVICE_NAME=miner
+      - REPLICA_NUM={{.Task.Slot}}
     ports:
-      - "8155-8409:8155"
-      - "9164-9418:9164"
+      - "8155-8165:8155"
+      - "9164-9174:9164"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8155/healthcheck"]
@@ -80,7 +83,6 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
-    profiles: ["monitoring"]
     volumes:
       - ./config/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
@@ -95,7 +97,6 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    profiles: ["monitoring"]
     volumes:
       - grafana_data:/var/lib/grafana
       - ./config/grafana/provisioning:/etc/grafana/provisioning
@@ -111,7 +112,6 @@ services:
 
   node-exporter:
     image: prom/node-exporter:latest
-    profiles: ["monitoring"]
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -124,7 +124,6 @@ services:
 
   portainer:
     image: portainer/portainer-ce:latest
-    profiles: ["monitoring"]
     container_name: masa_portainer
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -141,7 +140,7 @@ services:
       start_period: 40s
 
 volumes:
-  subnet_249_wallets:
+  subnet_wallets:
   prometheus_data:
   grafana_data:
   portainer_data:

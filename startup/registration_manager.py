@@ -1,5 +1,6 @@
 import logging
 import bittensor as bt
+import time
 
 
 class RegistrationManager:
@@ -70,23 +71,48 @@ class RegistrationManager:
                 f"Insufficient balance ({balance} TAO) for registration. Need {cost} TAO"
             )
 
-        self.logger.info(f"Balance sufficient for registration, proceeding...")
+        self.logger.info("Balance sufficient for registration, proceeding...")
         self.logger.info(
             f"This process will burn {cost} TAO from your balance of {balance} TAO"
         )
 
-        # Perform registration
-        success = self.subtensor.burned_register(
-            wallet=wallet,
-            netuid=netuid,
-            wait_for_inclusion=True,
-            wait_for_finalization=True,
-        )
+        # Perform registration with retries
+        max_retries = 10
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                success = self.subtensor.burned_register(
+                    wallet=wallet,
+                    netuid=netuid,
+                    wait_for_inclusion=True,
+                    wait_for_finalization=True,
+                )
 
-        if not success:
+                if success:
+                    break
+                else:
+                    retry_count += 1
+                    self.logger.warning(
+                        f"Registration attempt {retry_count} failed, retrying in 10 seconds..."
+                    )
+                    time.sleep(10)
+
+            except Exception as e:
+                error_str = str(e)
+                if "Priority is too low" in error_str:
+                    retry_count += 1
+                    self.logger.warning(
+                        f"Got priority error on attempt {retry_count}, retrying in 10 seconds..."
+                    )
+                    time.sleep(10)
+                else:
+                    role = "validator" if is_validator else "miner"
+                    raise Exception(f"Failed to register {role} hotkey - {str(e)}")
+
+        if retry_count >= max_retries:
             role = "validator" if is_validator else "miner"
             raise Exception(
-                f"Failed to register {role} hotkey - check subnet and balance"
+                f"Failed to register {role} hotkey after {max_retries} attempts"
             )
 
         # Verify registration and get UID
