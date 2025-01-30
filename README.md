@@ -1,69 +1,11 @@
-# Masa Bittensor Docker Setup
+# Masa Bittensor Subnet
 
-Run Masa Bittensor nodes with a simple Docker-based setup.
+Welcome to the Masa Bittensor Subnet! Follow our [documentation](https://developers.masa.ai/docs/masa-subnet/welcome) to get started as a miner or validator. We are subnet #42 on mainnet and #165 on testnet. See you in the metagraph.
 
-## Quick Start
+## Contributing
 
-1. Initialize Docker Swarm:
-   ```bash
-   docker swarm init
-   ```
+For development workflows and contribution guidelines, please see `CONTRIBUTING.md`.
 
-2. Configure your settings:
-   - Copy `.env.example` to `.env`
-   - Edit `.env` file:
-     ```
-     # Required: Your Wallet's Coldkey Mnemonic
-     COLDKEY_MNEMONIC="your twelve word mnemonic phrase here"
-     
-     # How Many Nodes to Run (defaults: 0 validators, 1 miner)
-     VALIDATOR_COUNT=0
-     MINER_COUNT=1
-     
-     # Network (use 'finney' for mainnet)
-     NETWORK=test
-     ```
+## License
 
-3. Start everything:
-   ```bash
-   docker stack deploy -c docker-compose.yml masa
-   ```
-
-You'll see a startup report showing:
-- Registration status for each node
-- UIDs on the network
-- Running status
-- Port assignments
-- Hotkey addresses
-
-4. Stop everything:
-   ```bash
-   docker stack rm masa
-   ```
-
-## Wallet Setup
-
-Your wallet will be automatically:
-- Created if using a mnemonic in `.env`
-- Used if existing in `~/.bittensor/wallets`
-
-## Troubleshooting
-
-View detailed logs:
-```bash
-# Find container IDs
-docker ps | grep masa
-
-# View logs from specific container
-docker logs -f CONTAINER_ID
-```
-
-Common Issues:
-- Port conflicts: Ensure ports are available
-- Service not starting: Check container logs
-- Registration failed: Verify your mnemonic and network settings
-
-## Support
-
-- Issues: [GitHub Issues](https://github.com/masa-finance/masa-bittensor/issues)
-- Discord: [Masa Finance](https://discord.gg/masafinance) 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
