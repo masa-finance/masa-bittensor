@@ -17,6 +17,7 @@ TIMEOUT=${TIMEOUT:-600}
 # Default service counts if not set
 MINER_COUNT=${MINER_COUNT:-1}
 VALIDATOR_COUNT=${VALIDATOR_COUNT:-0}
+LOGGING_DEBUG=${LOGGING_DEBUG:-false}
 
 # Determine network details early
 NETWORK=${NETWORK:-test}
@@ -64,10 +65,28 @@ check_service_health() {
     return 0
 }
 
+# Always pull latest image before starting services
+pull_latest_image() {
+    echo -e "${BLUE}Pulling latest image from Docker Hub...${NC}"
+    docker pull masaengineering/masa-bittensor:latest || {
+        echo -e "${RED}Failed to pull latest image${NC}"
+        return 1
+    }
+    echo -e "${GREEN}Successfully pulled latest image${NC}"
+}
+
 # Function to get service initialization status from logs
 get_service_status() {
     local service=$1
     local logs=$(docker service logs $service --tail 100 2>/dev/null)
+    
+    # Check for container restarts first
+    local restart_count=$(docker service ps $service --format "{{.Name}}: {{.CurrentState}}" 2>/dev/null | grep -c "Running\|Restarting")
+    if [ "$restart_count" -gt 1 ]; then
+        echo -e "${RED}Container restarting - Last error:${NC}"
+        docker service logs $service --tail 20 2>/dev/null | grep -B2 -A5 "Error\|Exception\|Traceback" | head -n 8
+        return
+    fi
     
     # If no logs yet, check if containers are being created
     if [ -z "$logs" ]; then
@@ -85,9 +104,9 @@ get_service_status() {
     fi
     
     # Check for common error conditions first
-    if echo "$logs" | grep -q "Error: "; then
-        local error=$(echo "$logs" | grep "Error: " | tail -n1)
-        echo "Error: ${error##*Error: }"
+    if echo "$logs" | grep -q "Error: \|Exception\|Traceback"; then
+        echo -e "${RED}Error detected:${NC}"
+        docker service logs $service --tail 20 2>/dev/null | grep -B2 -A5 "Error\|Exception\|Traceback" | head -n 8
         return
     fi
     
@@ -215,31 +234,19 @@ cleanup() {
 
 # Main deployment section
 main() {
-    echo -e "\n${BLUE}=== 🚀 Starting MASA Bittensor Stack ===${NC}\n"
-
-    # Check if running on main network
-    if [ "$NETWORK" = "finney" ]; then
-        echo -e "\n${RED}⚠️  WARNING: You are connecting to the MAIN NETWORK${NC}"
-        echo -e "${RED}    This will use real TAO. Are you sure? (y/N)${NC}"
-        read -r response
-        if [[ ! "$response" =~ ^[Yy]$ ]]; then
-            echo -e "${YELLOW}Aborting. Set NETWORK=test in .env to use the test network${NC}"
-            exit 1
-        fi
-    fi
+    echo -e "${BOLD}Starting Masa Bittensor Subnet Services${NC}"
+    echo -e "Network: $NETWORK_DISPLAY"
+    echo -e "Subnet ID: ${YELLOW}$NETUID${NC}"
+    echo -e "Deploying: ${GREEN}$VALIDATOR_COUNT validators${NC}, ${GREEN}$MINER_COUNT miners${NC}"
+    echo
 
     # Validate environment
-    if ! validate_env; then
-        exit 1
-    fi
+    validate_env || exit 1
 
-    echo -e "${BLUE}Configuration:${NC}"
-    echo -e "• Network: ${NETWORK_DISPLAY}"
-    echo -e "• Subnet: ${GREEN}${NETUID}${NC}"
-    echo -e "• Miners: ${GREEN}${MINER_COUNT}${NC}"
-    echo -e "• Validators: ${GREEN}${VALIDATOR_COUNT}${NC}"
+    # Pull latest image
+    pull_latest_image || exit 1
 
-    # Initialize swarm if needed
+    # Initialize Docker swarm if not already done
     if ! docker node ls > /dev/null 2>&1; then
         echo -e "\n${YELLOW}Initializing Docker Swarm...${NC}"
         docker swarm init > /dev/null 2>&1 || {
@@ -251,39 +258,18 @@ main() {
         echo -e "\n${GREEN}✓${NC} Swarm already initialized"
     fi
 
-    # Set up image
-    if [ -n "$DOCKER_IMAGE" ]; then
-        IMAGE_TO_USE=$DOCKER_IMAGE
-    else
-        IMAGE_TO_USE="masaengineering/masa-bittensor:latest"
-    fi
+    # Set up image name
+    IMAGE_TO_USE=${DOCKER_IMAGE:-masaengineering/masa-bittensor:latest}
     echo -e "\nUsing image: ${GREEN}${IMAGE_TO_USE}${NC}"
-
-    # Try to pull the image
-    echo -e "\n${BLUE}Pulling image...${NC}"
-    if ! docker pull $IMAGE_TO_USE; then
-        echo -e "${YELLOW}⚠️  Could not pull image. Trying to build locally...${NC}"
-        if ! docker compose build; then
-            echo -e "${RED}Error: Failed to pull or build image${NC}"
-            exit 1
-        fi
-        echo -e "${GREEN}✓${NC} Local build successful"
-        IMAGE_TO_USE="masa-bittensor:latest"
-    else
-        echo -e "${GREEN}✓${NC} Image pulled successfully"
-    fi
-
-    # Remove any existing stack
-    if docker stack ls | grep -q "masa"; then
-        echo -e "${YELLOW}Removing existing stack...${NC}"
-        docker stack rm masa
-        while docker stack ls | grep -q "masa"; do
-            sleep 2
-        done
-    fi
 
     # Deploy stack
     echo -e "\n${BLUE}Deploying stack...${NC}"
+    
+    # Remove any existing stack
+    docker stack rm masa >/dev/null 2>&1 || true
+    sleep 2
+    
+    # Deploy new stack
     DOCKER_IMAGE=$IMAGE_TO_USE docker stack deploy -c docker-compose.yml masa || {
         echo -e "${RED}Failed to deploy stack${NC}"
         exit 1
@@ -298,13 +284,17 @@ main() {
     # Monitor deployment
     local start_time=$(date +%s)
     local last_status=""
+    local error_count=0
     
     while true; do
         local current_time=$(date +%s)
         local elapsed=$((current_time - start_time))
         
         if [ $elapsed -gt $TIMEOUT ]; then
-            echo -e "${RED}❌ Timeout waiting for services to start${NC}"
+            echo -e "\n${RED}❌ Timeout waiting for services to start${NC}"
+            echo -e "\nLast errors from services:"
+            docker service logs masa_miner --tail 50 2>/dev/null | grep -B2 -A5 "Error\|Exception\|Traceback"
+            docker service logs masa_validator --tail 50 2>/dev/null | grep -B2 -A5 "Error\|Exception\|Traceback"
             exit 1
         fi
 
@@ -313,6 +303,24 @@ main() {
         local validator_count=$(docker service ls --filter name=masa_validator --format "{{.Replicas}}" | grep -o "[0-9]*/[0-9]*" | cut -d "/" -f 1)
         local miner_init_status=$(get_service_status masa_miner)
         local validator_init_status=$(get_service_status masa_validator)
+        
+        # Check for errors in status
+        if echo "$miner_init_status$validator_init_status" | grep -q "Error\|Exception\|Traceback"; then
+            error_count=$((error_count + 1))
+            if [ $error_count -ge 3 ]; then
+                echo -e "\n${RED}❌ Services are failing to start properly${NC}"
+                echo -e "\nMiner Status:"
+                docker service ps masa_miner
+                echo -e "\nValidator Status:"
+                docker service ps masa_validator
+                echo -e "\nUse these commands for more details:"
+                echo -e "${YELLOW}docker service logs masa_miner${NC}"
+                echo -e "${YELLOW}docker service logs masa_validator${NC}"
+                exit 1
+            fi
+        else
+            error_count=0
+        fi
         
         # Create status message
         local status="[${elapsed}s] Current Status:"
