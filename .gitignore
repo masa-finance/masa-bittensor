@@ -21,3 +21,7 @@ config/prompt.cursorrules
 
 # Reference code
 references/
+
+# Codeconv
+.coverage
+coverage.xml
