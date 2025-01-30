@@ -34,7 +34,8 @@ RUN pip install --no-cache-dir \
     "numpy~=2.0.1" \
     "nest-asyncio>=1.5.0" \
     "aiohttp>=3.9.0" \
-    "scalecodec>=1.2.5"
+    "scalecodec>=1.2.5" \
+    "substrate-interface>=1.7.4"
 
 # Install scientific packages with minimal dependencies
 RUN pip install --no-cache-dir \
