@@ -43,10 +43,10 @@ RUN pip install --no-cache-dir \
 
 # Install minimal bittensor components
 RUN pip install --no-cache-dir \
-    "bittensor-wallet==3.0.0" \
-    "bittensor-cli==8.4.3" \
-    "bittensor-core==8.2.0" \
-    "bittensor-utils==8.2.0" \
+    "bittensor-wallet>=2.0.2" \
+    "bittensor-cli>=8.4.2" \
+    "bt-decode>=0.4.0" \
+    "substrate-interface>=1.7.9" \
     "masa-ai==0.2.5" \
     "pytest==7.2.2" \
     "pytest-asyncio==0.21.0"

@@ -17,9 +17,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 import pytest
+import asyncio
 from neurons.validator import Validator
 from masa.base.validator import BaseValidatorNeuron
-import bittensor as bt
 
 
 class TestValidator:
@@ -30,11 +30,10 @@ class TestValidator:
         config.netuid = 165
         config.subtensor.network = "test"
         config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
-        config.wallet.name = "subnet_165"
-        config.wallet.hotkey = "validator_1"
+        config.wallet.name = "validator"
+        config.wallet.hotkey = "default"
         config.axon.port = 8092
         config.neuron.dont_save_events = True
-        config.neuron.test_mode = True  # Enable test mode to skip registration check
         validator_instance = Validator(config=config)
         return validator_instance
 
@@ -49,29 +48,13 @@ class TestValidator:
         validator_instance = await validator
         ping_axons_response = await validator_instance.forwarder.ping_axons()
         m_axons = len(validator_instance.metagraph.axons)
-
-        # Add logging for debugging
-        bt.logging.info(f"Number of axons in metagraph: {m_axons}")
-        bt.logging.info(f"Ping response length: {len(ping_axons_response)}")
-
-        # First assert - check if we have any axons to work with
-        assert m_axons > 0, "No axons found in metagraph"
-        assert len(ping_axons_response) > 0, "No responses from ping_axons"
-        assert m_axons == len(ping_axons_response), "axons length mismatch"
-
-        # Get Twitter profile responses
         response = await validator_instance.forwarder.get_twitter_profile()
-        bt.logging.info(f"Twitter profile response length: {len(response)}")
 
-        # Check responses - allow for some miners to fail
-        assert (
-            len(response) > 0
-        ), f"No responses from miners. Metagraph has {m_axons} axons, ping received {len(ping_axons_response)} responses"
-
-        # Validate response structure for successful responses
+        assert m_axons == len(ping_axons_response), "axons length mismatch"
+        assert len(response) > 0, "no response from miners"
         for item in response:
-            assert "uid" in item, f"'uid' missing from response item: {item}"
-            assert "response" in item, f"'response' missing from response item: {item}"
+            assert "uid" in item, "property missing"
+            assert "response" in item, "property missing"
 
     @pytest.mark.asyncio
     async def test_validator_get_miners_volumes(self, validator):
