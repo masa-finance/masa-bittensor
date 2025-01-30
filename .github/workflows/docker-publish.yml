@@ -5,10 +5,8 @@ on:
     branches:
       - feature-docker-compose
     tags:
-      - '*'
-concurrency:
-  group: ci-image-${{ github.head_ref || github.ref }}-${{ github.repository }}
-  cancel-in-progress: true
+      - 'v*'  # Only trigger on version tags
+
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -17,95 +15,69 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Rust cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Set up pip cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Prepare
-        id: prep
-        run: |
-          DOCKER_IMAGE=masaengineering/masa-bittensor
-          VERSION=${GITHUB_REF#refs/heads/}
-          BINARY_VERSION=$(git describe --always --tags --dirty)
-          SHORTREF=${GITHUB_SHA::8}
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-          fi
-          TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:${SHORTREF}"
-          if [[ $VERSION =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-            TAGS="$TAGS,${DOCKER_IMAGE}:latest"
-          fi
-          echo "binary_version=${BINARY_VERSION}" >> $GITHUB_OUTPUT
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "docker_image=${DOCKER_IMAGE}" >> $GITHUB_OUTPUT
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
           platforms: linux/amd64,linux/arm64
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:v0.12.0
-            network=host
-
-      - name: Login to DockerHub
-        if: github.event_name != 'pull_request'
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract metadata (tags, labels) for Docker
+      # Tag generation with latest and release handling
+      - name: Generate Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: masaengineering/masa-bittensor
           tags: |
+            # Always push latest
+            type=raw,value=latest
+            # Branch builds with timestamp
             type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
-            type=semver,pattern={{raw}}
-            type=sha,suffix=-{{date 'YYYYMMDDHHmmss'}}
-          flavor: |
-            latest=auto
-            prefix=
-            suffix=
+            # SHA with timestamp
+            type=sha,format=short,prefix=sha-,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            # Version tags (v1.2.3 -> 1.2.3, latest)
+            type=semver,pattern={{version}},value=${{ github.ref_name }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }}
+            type=semver,pattern={{major}},value=${{ github.ref_name }}
+
+      # Debug step to see what tags will be used
+      - name: Debug Docker Tags
+        run: |
+          echo "Tags to be used:"
+          echo "${{ steps.meta.outputs.tags }}"
+          echo "Is this a release? ${{ startsWith(github.ref, 'refs/tags/v') }}"
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          builder: ${{ steps.buildx.outputs.name }}
-          build-args: |
-            VERSION=${{ steps.prep.outputs.binary_version }}
-            BUILDKIT_STEP_LOG_MAX_SIZE=10485760
-            CARGO_NET_GIT_FETCH_WITH_CLI=true
-            RUST_BACKTRACE=1
-          context: ./
+          context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: |
-            type=gha,scope=${{ github.ref_name }}-${{ github.workflow }}
-            type=gha,scope=master-${{ github.workflow }}
-          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-${{ github.workflow }}
-          outputs: type=registry
-          provenance: false
-          ulimit: nofile=65535:65535
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Verify the push was successful
+      - name: Verify Push
+        run: |
+          echo "Verifying pushed images..."
+          for tag in $(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' '); do
+            echo "Checking tag: $tag"
+            docker pull $tag
+          done
+
+      # Announce the release in the logs
+      - name: Announce Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "🎉 Released version ${GITHUB_REF#refs/tags/v}"
+          echo "Published tags:"
+          echo "${{ steps.meta.outputs.tags }}"
