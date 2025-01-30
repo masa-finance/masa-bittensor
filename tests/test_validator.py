@@ -17,10 +17,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 import pytest
-import asyncio
 from neurons.validator import Validator
 from masa.base.validator import BaseValidatorNeuron
-import bt
+import bittensor as bt
 
 
 class TestValidator:
@@ -31,10 +30,11 @@ class TestValidator:
         config.netuid = 165
         config.subtensor.network = "test"
         config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
-        config.wallet.name = "validator"
-        config.wallet.hotkey = "default"
+        config.wallet.name = "subnet_165"
+        config.wallet.hotkey = "validator_1"
         config.axon.port = 8092
         config.neuron.dont_save_events = True
+        config.neuron.test_mode = True  # Enable test mode to skip registration check
         validator_instance = Validator(config=config)
         return validator_instance
 
