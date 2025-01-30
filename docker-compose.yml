@@ -7,7 +7,7 @@ services:
       platforms:
         - linux/amd64
     deploy:
-      replicas: ${VALIDATOR_COUNT:-2}
+      replicas: ${VALIDATOR_COUNT:-0}
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
       - ~/.bt-masa:/root/.bt-masa
@@ -35,7 +35,7 @@ services:
       - "9100-9109:9100"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8091/healthcheck"]
+      test: ["CMD", "nc", "-z", "localhost", "8091"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -49,7 +49,7 @@ services:
       platforms:
         - linux/amd64
     deploy:
-      replicas: ${MINER_COUNT:-3}
+      replicas: ${MINER_COUNT:-1}
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
       - ~/.bt-masa:/root/.bt-masa
@@ -75,65 +75,7 @@ services:
       - "9164-9174:9164"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8155/healthcheck"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./config/prometheus:/etc/prometheus
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-    ports:
-      - "9090:9090"
-    restart: unless-stopped
-    depends_on:
-      - validator
-
-  grafana:
-    image: grafana/grafana:latest
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./config/grafana/provisioning:/etc/grafana/provisioning
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_LOG_LEVEL=warn
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
-    restart: unless-stopped
-
-  node-exporter:
-    image: prom/node-exporter:latest
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    restart: unless-stopped
-
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: masa_portainer
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
-    ports:
-      - "9000:9000"
-      - "8000:8000"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/api/system/status"]
+      test: ["CMD", "nc", "-z", "localhost", "8155"]
       interval: 30s
       timeout: 10s
       retries: 3

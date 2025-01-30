@@ -6,6 +6,7 @@ RUN apt-get update && \
         build-essential \
         git \
         curl \
+        netcat-openbsd \
         pkg-config \
         libssl-dev && \
     rm -rf /var/lib/apt/lists/*
