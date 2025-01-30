@@ -70,8 +70,7 @@ RUN pip install --no-cache-dir \
     --no-deps && \
     pip install --no-cache-dir \
     "bittensor_wallet==1.0.0" \
-    --only-binary=:all: \
-    --no-deps && \
+    --only-binary=:all: && \
     pip install --no-cache-dir \
     "masa-ai>=0.2.5" \
     --no-deps && \
