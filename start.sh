@@ -250,116 +250,82 @@ main() {
     # Pull latest image
     pull_latest_image || exit 1
 
-    # Initialize Docker swarm if not already done
-    if ! docker node ls > /dev/null 2>&1; then
-        echo -e "\n${YELLOW}Initializing Docker Swarm...${NC}"
-        docker swarm init > /dev/null 2>&1 || {
-            echo -e "${RED}Failed to initialize Docker Swarm${NC}"
-            exit 1
-        }
-        echo -e "${GREEN}✓${NC} Swarm initialized"
-    else
-        echo -e "\n${GREEN}✓${NC} Swarm already initialized"
-    fi
-
-    # Set up image name
-    IMAGE_TO_USE=${DOCKER_IMAGE:-masaengineering/masa-bittensor:latest}
-    echo -e "\nUsing image: ${GREEN}${IMAGE_TO_USE}${NC}"
-
-    # Deploy stack
     echo -e "\n${BLUE}Deploying stack...${NC}"
-    
-    # Remove any existing stack
-    docker stack rm masa >/dev/null 2>&1 || true
-    sleep 2
-    
-    # Deploy new stack
-    DOCKER_IMAGE=$IMAGE_TO_USE docker stack deploy --detach=false -c docker-compose.yml masa || {
+    if ! docker stack deploy -c docker-compose.yml masa; then
         echo -e "${RED}Failed to deploy stack${NC}"
         exit 1
-    }
+    fi
 
-    echo -e "\n${YELLOW}Services are starting up - this process includes:${NC}"
-    echo -e "1. Container creation"
-    echo -e "2. Loading or generating wallet keys"
-    echo -e "3. Registering with subnet $NETUID"
-    echo -e "4. Starting mining/validation processes\n"
+    # Wait a moment for services to be created
+    sleep 5
 
-    # Monitor deployment
-    local start_time=$(date +%s)
-    local last_status=""
-    local error_count=0
-    
-    while true; do
-        local current_time=$(date +%s)
-        local elapsed=$((current_time - start_time))
-        
-        if [ $elapsed -gt $TIMEOUT ]; then
-            echo -e "\n${RED}❌ Timeout waiting for services to start${NC}"
-            echo -e "\nLast errors from services:"
-            docker service logs masa_miner --tail 50 2>/dev/null | grep -B2 -A5 "Error\|Exception\|Traceback"
-            docker service logs masa_validator --tail 50 2>/dev/null | grep -B2 -A5 "Error\|Exception\|Traceback"
+    # Check for immediate failures
+    for service in masa_validator masa_miner; do
+        if docker service ps $service --format "{{.Error}}" 2>/dev/null | grep -q .; then
+            echo -e "${RED}Service $service failed to start. Logs:${NC}"
+            docker service ps $service --no-trunc --format "{{.Error}}" | grep -v "^$"
+            echo -e "\n${YELLOW}Container logs:${NC}"
+            docker service logs $service 2>&1 || true
+            cleanup
             exit 1
         fi
-
-        # Get current counts and status
-        local miner_count=$(docker service ls --filter name=masa_miner --format "{{.Replicas}}" | grep -o "[0-9]*/[0-9]*" | cut -d "/" -f 1)
-        local validator_count=$(docker service ls --filter name=masa_validator --format "{{.Replicas}}" | grep -o "[0-9]*/[0-9]*" | cut -d "/" -f 1)
-        local miner_init_status=$(get_service_status masa_miner)
-        local validator_init_status=$(get_service_status masa_validator)
-        
-        # Check for errors in status
-        if echo "$miner_init_status$validator_init_status" | grep -q "Error\|Exception\|Traceback"; then
-            error_count=$((error_count + 1))
-            if [ $error_count -ge 3 ]; then
-                echo -e "\n${RED}❌ Services are failing to start properly${NC}"
-                echo -e "\nMiner Status:"
-                docker service ps masa_miner
-                echo -e "\nValidator Status:"
-                docker service ps masa_validator
-                echo -e "\nUse these commands for more details:"
-                echo -e "${YELLOW}docker service logs masa_miner${NC}"
-                echo -e "${YELLOW}docker service logs masa_validator${NC}"
-                exit 1
-            fi
-        else
-            error_count=0
-        fi
-        
-        # Create status message
-        local status="[${elapsed}s] Current Status:"
-        status+="\n   📦 Miners ($miner_count/$MINER_COUNT): ${YELLOW}$miner_init_status${NC}"
-        status+="\n   🔍 Validators ($validator_count/$VALIDATOR_COUNT): ${YELLOW}$validator_init_status${NC}"
-        
-        # Update status if changed
-        if [ "$status" != "$last_status" ]; then
-            echo -e "$status"
-            last_status="$status"
-        fi
-        
-        # Check if services are ready
-        if [ "$miner_count" -eq "$MINER_COUNT" ] && [ "$validator_count" -eq "$VALIDATOR_COUNT" ]; then
-            if echo "$miner_init_status" | grep -q "Starting mining" && \
-               ([ "$VALIDATOR_COUNT" -eq 0 ] || echo "$validator_init_status" | grep -q "Starting validation"); then
-                echo -e "\n${GREEN}✅ All services are running and initialized!${NC}"
-                break
-            fi
-        fi
-        
-        sleep 5
     done
 
-    # Monitor registration
-    if monitor_registration; then
-        echo -e "\n${GREEN}🎉 Setup Complete!${NC}"
-        echo -e "\nTo monitor your nodes:"
-        echo -e "• View logs: ${YELLOW}docker service logs masa_miner -f${NC}"
-        echo -e "• Check status: ${YELLOW}python startup/report.py${NC}"
-    else
-        echo -e "\n${YELLOW}⚠️  Setup completed but some services may still be initializing${NC}"
-        echo -e "Run ${YELLOW}python startup/report.py${NC} later to check the status"
-        echo -e "View logs with: ${YELLOW}docker service logs masa_miner -f${NC}"
+    # Monitor deployment
+    echo -e "\n${BLUE}Monitoring deployment...${NC}"
+    local start_time=$(date +%s)
+    local elapsed=0
+
+    while [ $elapsed -lt $TIMEOUT ]; do
+        # Check if services are running
+        local all_running=true
+        for service in masa_validator masa_miner; do
+            if ! check_service_health $service; then
+                all_running=false
+                # Check for errors
+                if docker service ps $service --format "{{.Error}}" 2>/dev/null | grep -q .; then
+                    echo -e "${RED}Service $service failed. Logs:${NC}"
+                    docker service ps $service --no-trunc --format "{{.Error}}" | grep -v "^$"
+                    echo -e "\n${YELLOW}Container logs:${NC}"
+                    docker service logs $service 2>&1 || true
+                    cleanup
+                    exit 1
+                fi
+            fi
+        done
+
+        if $all_running; then
+            echo -e "${GREEN}All services are running${NC}"
+            break
+        fi
+
+        # Update elapsed time
+        elapsed=$(($(date +%s) - start_time))
+        
+        # Show current status
+        for service in masa_validator masa_miner; do
+            echo -e "\n${BLUE}Status for $service:${NC}"
+            get_service_status $service
+        done
+
+        sleep 10
+    done
+
+    if [ $elapsed -ge $TIMEOUT ]; then
+        echo -e "${RED}Deployment timed out after ${TIMEOUT} seconds${NC}"
+        cleanup
+        exit 1
     fi
+
+    # Continue with registration monitoring if deployment succeeded
+    if ! monitor_registration; then
+        echo -e "${RED}Registration monitoring failed or timed out${NC}"
+        cleanup
+        exit 1
+    fi
+
+    echo -e "\n${GREEN}Deployment completed successfully!${NC}"
+    return 0
 }
 
 # Set up cleanup trap
