@@ -21,17 +21,17 @@ ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 # Install minimal Rust toolchain for crypto compilation
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable && \
     . $HOME/.cargo/env && \
-    pip install --no-cache-dir --upgrade pip setuptools wheel
+    pip install --no-cache-dir "setuptools~=70.0.0" wheel
 
 # Install core dependencies first
 RUN pip install --no-cache-dir \
     "loguru>=0.7.0" \
     "python-dotenv>=0.21.0" \
     "requests>=2.32.0" \
-    "munch>=2.5.0" \
+    "munch~=2.5.0" \
     "pyyaml>=6.0.1" \
     "prometheus-client>=0.17.1" \
-    "numpy<2.0.0" \
+    "numpy~=2.0.1" \
     "nest-asyncio>=1.5.0" \
     "aiohttp>=3.9.0" \
     "scalecodec>=1.2.5"
@@ -47,7 +47,7 @@ RUN pip install --no-cache-dir \
     "bittensor>=8.2.0" \
     --no-deps && \
     pip install --no-cache-dir \
-    "bittensor_wallet>=3.0.0" \
+    "bittensor_wallet==1.0.0" \
     --only-binary=:all: \
     --no-deps && \
     pip install --no-cache-dir \
