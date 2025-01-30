@@ -33,9 +33,28 @@ RUN pip install --no-cache-dir \
     "prometheus-client>=0.17.1" \
     "numpy~=2.0.1" \
     "nest-asyncio>=1.5.0" \
-    "aiohttp>=3.9.0" \
-    "scalecodec>=1.2.5" \
-    "substrate-interface>=1.7.4"
+    "aiohttp~=3.9" \
+    "scalecodec==1.2.11" \
+    "substrate-interface~=1.7.9" \
+    "termcolor>=2.4.0" \
+    "fastapi~=0.110.1" \
+    "uvicorn>=0.25.0" \
+    "pydantic>=2.3,<3" \
+    "colorama~=0.4.6" \
+    "msgpack-numpy-opentensor~=0.5.0" \
+    "netaddr>=1.3.0" \
+    "python-statemachine~=2.1" \
+    "retry>=0.9.2" \
+    "rich>=13.9.0" \
+    "python-Levenshtein>=0.26.1" \
+    "websockets>=14.1" \
+    "cryptography~=43.0.1" \
+    "base58>=2.0.1" \
+    "eth-utils<2.3.0" \
+    "password-strength>=0.0.3.post2" \
+    "py-bip39-bindings==0.1.11" \
+    "py-sr25519-bindings<1,>=0.2.0" \
+    "py-ed25519-zebra-bindings<2,>=1.0"
 
 # Install scientific packages with minimal dependencies
 RUN pip install --no-cache-dir \
