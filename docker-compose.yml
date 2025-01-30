@@ -28,7 +28,6 @@ services:
     ports:
       - "8091-8100:8091"
       - "9100-9109:9100"
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8091"]
       interval: 30s
@@ -63,7 +62,6 @@ services:
     ports:
       - "8155-8165:8155"
       - "9164-9174:9164"
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8155"]
       interval: 30s
