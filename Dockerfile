@@ -1,12 +1,11 @@
 FROM python:3.12-slim
 
-# Install system dependencies
+# Install minimal system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         git \
         curl \
-        netcat-openbsd \
         pkg-config \
         libssl-dev && \
     rm -rf /var/lib/apt/lists/*
@@ -19,33 +18,31 @@ ENV RUSTFLAGS="-C target-cpu=native"
 ENV CARGO_PROFILE_RELEASE_LTO=true
 ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 
-# Install Rust with optimized settings
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+# Install minimal Rust toolchain for crypto compilation
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable && \
     . $HOME/.cargo/env && \
-    pip install --upgrade pip setuptools wheel
+    pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install Python packages in stages to better utilize caching
-# Stage 1: Install packages without complex build requirements
-RUN pip install \
+# Install core dependencies first
+RUN pip install --no-cache-dir \
     "loguru==0.7.2" \
     "python-dotenv==0.21.0" \
-    "pytest==7.2.2" \
-    "pytest-asyncio==0.21.0" \
     "requests==2.32.3"
 
-# Stage 2: Install scientific computing packages
-RUN pip install \
-    "torch==2.3.0" \
+# Install scientific packages with minimal dependencies
+RUN pip install --no-cache-dir \
+    "scipy==1.12.0" \
     "scikit-learn==1.5.1" \
-    "scipy==1.12.0"
+    --only-binary=:all:
 
-# Stage 3: Install bittensor and related packages with optimized build settings
-RUN pip install \
+# Install bittensor and related packages with minimal dependencies
+RUN pip install --no-cache-dir \
     "masa-ai>=0.2.5" \
     "bittensor>=8.2.0" \
-    --no-build-isolation \
-    --no-deps \
-    --no-cache-dir
+    --no-deps && \
+    pip install --no-cache-dir \
+    "pytest==7.2.2" \
+    "pytest-asyncio==0.21.0"
 
 # Set up workspace
 WORKDIR /app
