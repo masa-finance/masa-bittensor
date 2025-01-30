@@ -21,34 +21,27 @@ jobs:
         id: prep
         run: |
           DOCKER_IMAGE=masaengineering/masa-bittensor
-          # Use branch name as default
           VERSION=${GITHUB_REF#refs/heads/}
           BINARY_VERSION=$(git describe --always --tags --dirty)
           SHORTREF=${GITHUB_SHA::8}
-          # If this is git tag, use the tag name as a docker tag
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
           fi
           TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:${SHORTREF}"
-          # If the VERSION looks like a version number, assume that
-          # this is the most recent version of the image and also
-          # tag it 'latest'.
           if [[ $VERSION =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
             TAGS="$TAGS,${DOCKER_IMAGE}:latest"
           fi
-          # Set output parameters.
-          echo ::set-output name=binary_version::${BINARY_VERSION}
-          echo ::set-output name=tags::${TAGS}
-          echo ::set-output name=docker_image::${DOCKER_IMAGE}
+          echo "binary_version=${BINARY_VERSION}" >> $GITHUB_OUTPUT
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "docker_image=${DOCKER_IMAGE}" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@master
+        uses: docker/setup-qemu-action@v3
         with:
-          platforms: all
+          platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@master
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to DockerHub
         if: github.event_name != 'pull_request'
@@ -59,7 +52,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@2a4836ac76fe8f5d0ee3a0d89aa12a80cc552ad3
+        uses: docker/metadata-action@v5
         with:
           images: masaengineering/masa-bittensor
           tags: |
@@ -72,7 +65,7 @@ jobs:
             suffix=
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v5
         with:
           builder: ${{ steps.buildx.outputs.name }}
           build-args: |
@@ -83,5 +76,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max 
+          cache-from: |
+            type=gha,scope=${{ github.ref_name }}-${{ github.workflow }}
+            type=gha,scope=master-${{ github.workflow }}
+          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-${{ github.workflow }}
