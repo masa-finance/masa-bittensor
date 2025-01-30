@@ -66,7 +66,7 @@ RUN pip install --no-cache-dir \
 
 # Install minimal bittensor components
 RUN pip install --no-cache-dir \
-    "bittensor>=8.2.0" \
+    "bittensor==8.5.2" \
     --no-deps && \
     pip install --no-cache-dir \
     "bittensor_wallet==1.0.0" \

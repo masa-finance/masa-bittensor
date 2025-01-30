@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "bittensor==8.2.0",
+    "bittensor==8.5.2",
     "loguru==0.7.2",
     "python-dotenv==0.21.0",
     "torch==2.3.0",
