@@ -38,14 +38,16 @@ RUN pip install --no-cache-dir torch==2.2.0 --index-url https://download.pytorch
 
 # Install scientific packages with minimal dependencies
 RUN pip install --no-cache-dir \
-    "scipy==1.12.0" \
     "scikit-learn==1.5.1" \
     --only-binary=:all:
 
-# Install bittensor and related packages with minimal dependencies
+# Install minimal bittensor components
 RUN pip install --no-cache-dir \
-    "masa-ai>=0.2.5" \
-    "bittensor==8.2.0" \
+    "bittensor-wallet==3.0.0" \
+    "bittensor-cli==8.4.3" \
+    "bittensor-core==8.2.0" \
+    "bittensor-utils==8.2.0" \
+    "masa-ai==0.2.5" \
     "pytest==7.2.2" \
     "pytest-asyncio==0.21.0"
 
