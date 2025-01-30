@@ -24,22 +24,32 @@ NETWORK=finney        # Network to connect to (finney/test)
 LOGGING_DEBUG=INFO    # Logging level (DEBUG/INFO/WARNING/ERROR)
 ```
 
-4. Initialize Docker Swarm (if not already initialized):
+4. Make the start script executable and run it:
 ```bash
-docker swarm init
+chmod +x start.sh
+./start.sh
 ```
 
-5. Deploy the stack:
-```bash
-# Pull latest published image and deploy
-docker stack deploy -c docker-compose.yml masa
-
-# OR build locally first if needed
-docker compose build
-DOCKER_IMAGE=masa-bittensor:latest docker stack deploy -c docker-compose.yml masa
-```
+The script will:
+- Initialize Docker Swarm if needed
+- Deploy your miners and validators
+- Monitor the startup process
+- Show you when your nodes are registered
+- Display UIDs and status information
 
 That's it! Your miners and validators will start automatically.
+
+## 🔍 Checking Status
+
+After startup, you can check your nodes' status anytime:
+```bash
+# Get a quick status report
+python startup/report.py
+
+# Monitor logs in real-time
+docker service logs -f masa_miner
+docker service logs -f masa_validator
+```
 
 ## 📦 Image Handling
 
