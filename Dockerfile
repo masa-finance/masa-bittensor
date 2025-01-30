@@ -25,29 +25,24 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --pr
 
 # Install core dependencies first
 RUN pip install --no-cache-dir \
-    "loguru>=0.7.0" \
-    "python-dotenv>=0.21.0" \
-    "requests>=2.32.0" \
-    "munch>=2.5.0" \
-    "pyyaml>=6.0.1" \
-    "prometheus-client>=0.17.1" \
-    "numpy<2.0.0"
-
-# Install PyTorch CPU version
-RUN pip install --no-cache-dir torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu
+    "loguru==0.7.2" \
+    "python-dotenv==0.21.0" \
+    "requests==2.32.3"
 
 # Install scientific packages with minimal dependencies
 RUN pip install --no-cache-dir \
-    "scikit-learn>=1.5.0" \
+    "scipy==1.12.0" \
+    "scikit-learn==1.5.1" \
     --only-binary=:all:
 
 # Install minimal bittensor components
 RUN pip install --no-cache-dir \
-        "bittensor-wallet==3.0.0" \
-        "bittensor-cli==8.4.2" \
-        "masa-ai==0.2.5" \
-        "pytest>=7.2.0" \
-        "pytest-asyncio>=0.21.0"
+    "bittensor>=8.2.0" \
+    "masa-ai>=0.2.5" \
+    --no-deps && \
+    pip install --no-cache-dir \
+    "pytest>=7.2.0" \
+    "pytest-asyncio>=0.21.0"
 
 # Set up workspace
 WORKDIR /app
