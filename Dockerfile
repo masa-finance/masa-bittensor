@@ -55,7 +55,8 @@ RUN pip install --no-cache-dir \
     "py-bip39-bindings==0.1.11" \
     "py-sr25519-bindings<1,>=0.2.0" \
     "py-ed25519-zebra-bindings<2,>=1.0" \
-    "ansible>=9.3.0"
+    "ansible>=9.3.0" \
+    "ansible-vault>=2.1.0"
 
 # Install scientific packages with minimal dependencies
 RUN pip install --no-cache-dir \
