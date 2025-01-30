@@ -3,6 +3,9 @@ services:
     image: ${DOCKER_IMAGE:-masaengineering/masa-bittensor:latest}
     deploy:
       replicas: ${VALIDATOR_COUNT:-0}
+      update_config:
+        failure_action: rollback
+        max_attempts: 1
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
       - ~/.bt-masa:/root/.bt-masa
@@ -39,6 +42,9 @@ services:
     image: ${DOCKER_IMAGE:-masaengineering/masa-bittensor:latest}
     deploy:
       replicas: ${MINER_COUNT:-1}
+      update_config:
+        failure_action: rollback
+        max_attempts: 1
     volumes:
       - ~/.bittensor/wallets:/root/.bittensor/wallets
       - ~/.bt-masa:/root/.bt-masa

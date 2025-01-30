@@ -32,7 +32,8 @@ RUN pip install --no-cache-dir \
     "pyyaml>=6.0.1" \
     "prometheus-client>=0.17.1" \
     "numpy<2.0.0" \
-    "nest-asyncio>=1.5.0"
+    "nest-asyncio>=1.5.0" \
+    "aiohttp>=3.9.0"
 
 # Install scientific packages with minimal dependencies
 RUN pip install --no-cache-dir \
