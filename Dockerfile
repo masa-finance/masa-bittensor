@@ -43,12 +43,10 @@ RUN pip install --no-cache-dir \
 
 # Install minimal bittensor components with pre-built wheels where possible
 RUN pip install --no-cache-dir --only-binary=:all: \
-        "bittensor-wallet>=2.0.0" \
-        "bittensor-cli>=8.4.0" \
-        "bt-decode>=0.4.0" \
-        "substrate-interface>=1.7.0" \
+        "bittensor-wallet==3.0.0" \
+        "bittensor-cli==8.4.2" \
     && pip install --no-cache-dir \
-        "masa-ai>=0.2.5" \
+        "masa-ai==0.2.5" \
         "pytest>=7.2.0" \
         "pytest-asyncio>=0.21.0"
 
