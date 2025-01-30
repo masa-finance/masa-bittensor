@@ -1,4 +1,4 @@
-name: 'build container images'
+name: 'Build and Publish Images to Docker Hub'
 
 on:
   push:
@@ -12,9 +12,29 @@ concurrency:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    timeout-minutes: 240  # Increased timeout for ARM64 builds
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Rust cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Set up pip cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Prepare
         id: prep
@@ -41,6 +61,10 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:v0.12.0
+            network=host
 
       - name: Login to DockerHub
         if: github.event_name != 'pull_request'
@@ -69,6 +93,9 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           build-args: |
             VERSION=${{ steps.prep.outputs.binary_version }}
+            BUILDKIT_STEP_LOG_MAX_SIZE=10485760
+            CARGO_NET_GIT_FETCH_WITH_CLI=true
+            RUST_BACKTRACE=1
           context: ./
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
@@ -79,3 +106,6 @@ jobs:
             type=gha,scope=${{ github.ref_name }}-${{ github.workflow }}
             type=gha,scope=master-${{ github.workflow }}
           cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-${{ github.workflow }}
+          outputs: type=registry
+          provenance: false
+          ulimit: nofile=65535:65535
