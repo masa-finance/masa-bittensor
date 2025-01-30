@@ -81,9 +81,13 @@ get_service_status() {
     local logs=$(docker service logs $service --tail 100 2>/dev/null)
     
     # Check for container restarts first
-    local restart_count=$(docker service ps $service --format "{{.Name}}: {{.CurrentState}}" 2>/dev/null | grep -c "Running\|Restarting")
+    local restart_info=$(docker service ps $service --format "{{.Name}} {{.CurrentState}} {{.Error}}" 2>/dev/null)
+    local restart_count=$(echo "$restart_info" | grep -c "Running\|Restarting")
+    
     if [ "$restart_count" -gt 1 ]; then
-        echo -e "${RED}Container restarting - Last error:${NC}"
+        echo -e "${RED}Container restarting - History:${NC}"
+        docker service ps $service --no-trunc --format "{{.Error}}" | grep -v "^$" | head -n 3
+        echo -e "${RED}Last error from logs:${NC}"
         docker service logs $service --tail 20 2>/dev/null | grep -B2 -A5 "Error\|Exception\|Traceback" | head -n 8
         return
     fi
@@ -270,7 +274,7 @@ main() {
     sleep 2
     
     # Deploy new stack
-    DOCKER_IMAGE=$IMAGE_TO_USE docker stack deploy -c docker-compose.yml masa || {
+    DOCKER_IMAGE=$IMAGE_TO_USE docker stack deploy --detach=false -c docker-compose.yml masa || {
         echo -e "${RED}Failed to deploy stack${NC}"
         exit 1
     }

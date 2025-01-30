@@ -31,7 +31,8 @@ RUN pip install --no-cache-dir \
     "munch>=2.5.0" \
     "pyyaml>=6.0.1" \
     "prometheus-client>=0.17.1" \
-    "numpy<2.0.0"
+    "numpy<2.0.0" \
+    "nest-asyncio>=1.5.0"
 
 # Install scientific packages with minimal dependencies
 RUN pip install --no-cache-dir \
