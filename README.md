@@ -2,6 +2,18 @@
 
 Run MASA Bittensor miners and validators easily using Docker Swarm. Scale from 1 to 255 miners with a simple configuration!
 
+## 🌐 Networks
+
+- **TEST Network** (Default)
+  - Subnet: 165
+  - Uses test TAO
+  - Perfect for learning and testing
+  
+- **MAIN Network** (Finney)
+  - Subnet: 42
+  - Uses real TAO
+  - For production use only
+
 ## 🚀 Quick Start
 
 1. Clone this repository:
@@ -20,9 +32,11 @@ cp .env.sample .env
 MINER_COUNT=1          # Number of miners to run (1-255)
 VALIDATOR_COUNT=1      # Number of validators to run (0-255)
 COLDKEY_MNEMONIC=""    # Your coldkey mnemonic phrase
-NETWORK=finney        # Network to connect to (finney/test)
+NETWORK=test          # Network to connect to (test/finney)
 LOGGING_DEBUG=INFO    # Logging level (DEBUG/INFO/WARNING/ERROR)
 ```
+
+> **Note**: We recommend starting with the `test` network (subnet 165) to get familiar with the system. Once you're ready for production, you can switch to the `finney` network (subnet 42) by setting `NETWORK=finney` in your `.env` file. The script will ask for confirmation before connecting to the main network.
 
 4. Make the start script executable and run it:
 ```bash

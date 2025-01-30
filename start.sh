@@ -166,6 +166,28 @@ monitor_registration() {
     return 0
 }
 
+# Function to get service initialization status from logs
+get_service_status() {
+    local service=$1
+    local logs=$(docker service logs $service --tail 50 2>/dev/null)
+    
+    if echo "$logs" | grep -q "Loading coldkey"; then
+        echo "Loading wallet keys"
+    elif echo "$logs" | grep -q "Generating new coldkey"; then
+        echo "Generating new wallet"
+    elif echo "$logs" | grep -q "Registering wallet"; then
+        echo "Registering with subnet $NETUID"
+    elif echo "$logs" | grep -q "Waiting for registration"; then
+        echo "Waiting for registration confirmation"
+    elif echo "$logs" | grep -q "Starting mining"; then
+        echo "Starting mining process"
+    elif echo "$logs" | grep -q "Starting validation"; then
+        echo "Starting validation process"
+    else
+        echo "Initializing"
+    fi
+}
+
 # Deploy the stack
 echo -e "\n${BLUE}Deploying stack...${NC}"
 
@@ -196,7 +218,55 @@ fi
 DOCKER_IMAGE=$IMAGE_TO_USE docker stack deploy -c docker-compose.yml masa
 
 # Wait for services to start
-wait_for_services
+echo -e "\n${BLUE}Deploying stack with image: $IMAGE_TO_USE${NC}"
+echo -e "${BLUE}Target configuration: $MINER_COUNT miners, $VALIDATOR_COUNT validators on ${NETWORK_DISPLAY} (subnet $NETUID)${NC}"
+echo -e "\n${YELLOW}Services are starting up - this process includes:${NC}"
+echo -e "1. Container creation"
+echo -e "2. Loading or generating wallet keys"
+echo -e "3. Registering with subnet $NETUID"
+echo -e "4. Starting mining/validation processes\n"
+
+start_time=$(date +%s)
+last_status=""
+while true; do
+    current_time=$(date +%s)
+    elapsed=$((current_time - start_time))
+    
+    if [ $elapsed -gt $TIMEOUT ]; then
+        echo -e "${RED}❌ Timeout waiting for services to start${NC}"
+        exit 1
+    fi
+
+    # Get current counts and detailed status
+    miner_count=$(docker service ls --filter name=masa_miner --format "{{.Replicas}}" | grep -o "[0-9]*/[0-9]*" | cut -d "/" -f 1)
+    validator_count=$(docker service ls --filter name=masa_validator --format "{{.Replicas}}" | grep -o "[0-9]*/[0-9]*" | cut -d "/" -f 1)
+    
+    # Get initialization status from logs
+    miner_init_status=$(get_service_status masa_miner)
+    validator_init_status=$(get_service_status masa_validator)
+    
+    # Create status message
+    status="[${elapsed}s] Current Status:"
+    status+="\n   📦 Miners ($miner_count/$MINER_COUNT): ${YELLOW}$miner_init_status${NC}"
+    status+="\n   🔍 Validators ($validator_count/$VALIDATOR_COUNT): ${YELLOW}$validator_init_status${NC}"
+    
+    # Only print if status changed
+    if [ "$status" != "$last_status" ]; then
+        echo -e "$status"
+        last_status="$status"
+    fi
+    
+    # Check if all services are running
+    if [ "$miner_count" -eq "$MINER_COUNT" ] && [ "$validator_count" -eq "$VALIDATOR_COUNT" ]; then
+        if echo "$miner_init_status" | grep -q "Starting mining" && \
+           echo "$validator_init_status" | grep -q "Starting validation"; then
+            echo -e "\n${GREEN}✅ All services are running and initialized!${NC}"
+            break
+        fi
+    fi
+    
+    sleep 5
+done
 
 # Monitor registration
 monitor_registration

@@ -6,7 +6,6 @@ services:
       dockerfile: Dockerfile
       platforms:
         - linux/amd64
-      target: runtime
     deploy:
       replicas: ${VALIDATOR_COUNT:-0}
     volumes:
@@ -49,7 +48,6 @@ services:
       dockerfile: Dockerfile
       platforms:
         - linux/amd64
-      target: runtime
     deploy:
       replicas: ${MINER_COUNT:-1}
     volumes:
