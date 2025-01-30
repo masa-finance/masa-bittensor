@@ -27,7 +27,14 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --pr
 RUN pip install --no-cache-dir \
     "loguru==0.7.2" \
     "python-dotenv==0.21.0" \
-    "requests==2.32.3"
+    "requests==2.32.3" \
+    "munch==2.5.0" \
+    "pyyaml>=6.0.1" \
+    "prometheus-client>=0.17.1" \
+    "numpy<2.0.0"
+
+# Install PyTorch CPU version
+RUN pip install --no-cache-dir torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Install scientific packages with minimal dependencies
 RUN pip install --no-cache-dir \
@@ -38,9 +45,7 @@ RUN pip install --no-cache-dir \
 # Install bittensor and related packages with minimal dependencies
 RUN pip install --no-cache-dir \
     "masa-ai>=0.2.5" \
-    "bittensor>=8.2.0" \
-    --no-deps && \
-    pip install --no-cache-dir \
+    "bittensor==8.2.0" \
     "pytest==7.2.2" \
     "pytest-asyncio==0.21.0"
 
