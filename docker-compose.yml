@@ -23,11 +23,8 @@ services:
 
   # Validator for Subnet 42
   validator:
-    image: ghcr.io/masa-finance/masa-bittensor/validator:${TAG:-latest}
+    image: masaengineering/masa-bittensor:${TAG:-latest}
     platform: linux/amd64
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: masa_validator
     depends_on:
       protocol:
@@ -49,11 +46,8 @@ services:
 
   # Miner for Subnet 42
   miner:
-    image: ghcr.io/masa-finance/masa-bittensor/miner:${TAG:-latest}
+    image: masaengineering/masa-bittensor:${TAG:-latest}
     platform: linux/amd64
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: masa_miner
     depends_on:
       protocol:
