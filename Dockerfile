@@ -1,11 +1,12 @@
 # Build stage for Rust components
-FROM rust:1.74-slim-bullseye as builder
+FROM --platform=$TARGETPLATFORM rust:1.74-bullseye as builder
 
 # Install build dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        python3-dev \
+        python3 \
         python3-pip \
+        python3-dev \
         pkg-config \
         libssl-dev \
         libffi-dev \
@@ -27,7 +28,7 @@ RUN pip3 install maturin==1.4.0
 RUN pip3 install "bittensor-wallet==2.1.3" --target /wheels
 
 # Final stage
-FROM python:3.12-slim-bullseye
+FROM --platform=$TARGETPLATFORM python:3.12-bullseye
 
 # Install system dependencies
 RUN apt-get update && \
