@@ -1,80 +1,83 @@
-services:
-  validator:
-    image: ${DOCKER_IMAGE:-masaengineering/masa-bittensor:latest}
-    deploy:
-      replicas: ${VALIDATOR_COUNT:-0}
-      restart_policy:
-        condition: none
-    volumes:
-      - ~/.bittensor/wallets:/root/.bittensor/wallets
-      - ~/.bt-masa:/root/.bt-masa
-      - ./startup:/app/startup
-      - ./masa:/app/masa
-      - ./neurons:/app/neurons
-      - ./pyproject.toml:/app/pyproject.toml
-      - ./config.json:/app/config.json
-    user: root
-    environment:
-      - BT_LOGGING_LOGGING_DIR=/root/.bt-masa
-      - COLDKEY_MNEMONIC=${COLDKEY_MNEMONIC}
-      - WALLET_NAME=${WALLET_NAME:-default}
-      - REPLICA_NUM={{.Task.Slot}}
-      - NETWORK=${NETWORK}
-      - DEVICE=cpu
-      - VALIDATOR_PORT=8091
-      - VALIDATOR_METRICS_PORT=9100
-      - ROLE=validator
-      - PYTHONUNBUFFERED=1
-      - LOGGING_DEBUG=${LOGGING_DEBUG:-false}
-      - SERVICE_NAME=validator
-    ports:
-      - "8091-8100:8091"
-      - "9100-9109:9100"
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8091"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+version: '3.8'
 
-  miner:
-    image: ${DOCKER_IMAGE:-masaengineering/masa-bittensor:latest}
-    deploy:
-      replicas: ${MINER_COUNT:-1}
-      restart_policy:
-        condition: none
-    volumes:
-      - ~/.bittensor/wallets:/root/.bittensor/wallets
-      - ~/.bt-masa:/root/.bt-masa
-      - ./startup:/app/startup
-      - ./masa:/app/masa
-      - ./neurons:/app/neurons
-      - ./pyproject.toml:/app/pyproject.toml
-    user: root
-    environment:
-      - BT_LOGGING_LOGGING_DIR=/root/.bt-masa
-      - WALLET_NAME=${WALLET_NAME:-default}
-      - NETWORK=${NETWORK}
-      - DEVICE=cpu
-      - MINER_PORT=8155
-      - MINER_METRICS_PORT=9164
-      - ROLE=miner
-      - PYTHONUNBUFFERED=1
-      - LOGGING_DEBUG=${LOGGING_DEBUG:-false}
-      - SERVICE_NAME=miner
-      - REPLICA_NUM={{.Task.Slot}}
+services:
+  # Masa Protocol Node (from masa-oracle repo)
+  protocol:
+    image: masaengineering/masa-protocol:${PROTOCOL_VERSION:-latest}
+    platform: linux/amd64
+    container_name: masa_protocol_node
     ports:
-      - "8155-8165:8155"
-      - "9164-9174:9164"
+      - "${PROTOCOL_PORT:-8081}:8081"
+      - "${P2P_PORT:-4001}:4001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+    volumes:
+      - protocol_data:/app/data
+    networks:
+      - masa_network
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8155"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+
+  # Validator for Subnet 42
+  validator:
+    image: ghcr.io/masa-finance/masa-bittensor/validator:${TAG:-latest}
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: masa_validator
+    depends_on:
+      protocol:
+        condition: service_healthy
+    environment:
+      - ROLE=validator
+      - NETWORK=${NETWORK:-test}
+      - NETUID=42
+      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
+      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
+      - PROTOCOL_URL=http://protocol:8081
+    ports:
+      - "${VALIDATOR_PORT:-8092}:8092"
+      - "${VALIDATOR_METRICS_PORT:-8000}:8000"
+    volumes:
+      - validator_data:/root/.bittensor
+    networks:
+      - masa_network
+
+  # Miner for Subnet 42
+  miner:
+    image: ghcr.io/masa-finance/masa-bittensor/miner:${TAG:-latest}
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: masa_miner
+    depends_on:
+      protocol:
+        condition: service_healthy
+    environment:
+      - ROLE=miner
+      - NETWORK=${NETWORK:-test}
+      - NETUID=42
+      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
+      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
+      - PROTOCOL_URL=http://protocol:8081
+    ports:
+      - "${MINER_PORT:-8093}:8093"
+      - "${MINER_METRICS_PORT:-8001}:8001"
+    volumes:
+      - miner_data:/root/.bittensor
+    networks:
+      - masa_network
 
 volumes:
-  subnet_wallets:
-  prometheus_data:
-  grafana_data:
-  portainer_data:
+  protocol_data:
+  validator_data:
+  miner_data:
+
+networks:
+  masa_network:
+    driver: bridge
