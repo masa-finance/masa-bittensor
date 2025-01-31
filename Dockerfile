@@ -1,40 +1,4 @@
-# Build stage for Rust components
-FROM --platform=$TARGETPLATFORM rust:1.74-bullseye as builder
-
-# Install build dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        python3 \
-        python3-pip \
-        python3-dev \
-        pkg-config \
-        libssl-dev \
-        libffi-dev \
-        libsodium-dev \
-        libc6-dev \
-        lld \
-        clang && \
-    rm -rf /var/lib/apt/lists/* && \
-    apt-get clean
-
-# Set up Rust environment
-ENV RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=lld"
-ENV SODIUM_INSTALL=system
-
-# Install maturin for building
-RUN pip3 install maturin==1.4.0
-
-# Create a directory for the wheel
-RUN mkdir -p /wheels
-
-# Download and build bittensor-wallet wheel
-RUN pip3 download --no-deps --no-binary :all: bittensor-wallet==3.0.0 && \
-    tar xf bittensor-wallet-3.0.0.tar.gz && \
-    cd bittensor-wallet-3.0.0 && \
-    maturin build --release && \
-    cp target/wheels/bittensor_wallet*.whl /wheels/
-
-# Final stage only - we'll use pre-built wheels
+# Use Python base image
 FROM --platform=$TARGETPLATFORM python:3.12-bullseye
 
 # Set environment variables for build optimization
@@ -136,9 +100,9 @@ RUN pip install --no-cache-dir --compile \
     "torch>=2.0.0" \
     "websockets>=12.0"
 
-# Layer 8: Install bittensor-wallet separately
+# Layer 8: Install bittensor-wallet separately with specific version
 RUN pip install --no-cache-dir --compile \
-    "bittensor-wallet>=3.0.0"
+    "bittensor-wallet==3.0.0"
 
 # Layer 9: Testing and additional packages
 RUN pip install --no-cache-dir --compile \
