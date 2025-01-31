@@ -1,27 +1,64 @@
+# ./start.sh to start the neuron
+# Runs as Validator or Miner Instance on
+# Masa Protocol Data Network on Bittensor
+# Mainnet:
+# netuid:42 
+# Testnet:
+# netuid:165 
+
+x-neuron-base: &neuron-base
+  image: masaengineering/masa-bittensor:${TAG:-latest}
+  environment: &env-base
+    NETWORK: ${NETWORK:-test}
+    COLDKEY_MNEMONIC: ${COLDKEY_MNEMONIC}
+  volumes:
+    - neuron_data:/root/.bittensor
+    - ./startup:/app/startup
+    - ./masa:/app/masa
+  networks:
+    - masa_network
+
 services:
-  # Validator for Subnet 42
   validator:
-    image: masaengineering/masa-bittensor:${TAG:-latest}
+    <<: *neuron-base
     environment:
-      - ROLE=validator
-      - NETWORK=${NETWORK:-test}
-      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
-      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
+      NETWORK: ${NETWORK:-test}
+      COLDKEY_MNEMONIC: ${COLDKEY_MNEMONIC}
+      ROLE: validator
     ports:
-      - "${VALIDATOR_PORT:-8092}:8092"
-      - "${VALIDATOR_METRICS_PORT:-8000}:8000"
-    volumes:
-      - validator_data:/root/.bittensor
-      - ./startup:/app/startup
-      - ./masa:/app/masa
-    networks:
-      - masa_network
+      - target: 8092
+        published: ${AXON_PORT:-8092}
+        protocol: tcp
+        mode: host
+      - target: 8000
+        published: ${METRICS_PORT:-8000}
+        protocol: tcp
+        mode: host
     deploy:
       mode: replicated
-      replicas: ${VALIDATOR_COUNT:-1}
+      replicas: ${VALIDATOR_COUNT:-0}
+
+  miner:
+    <<: *neuron-base
+    environment:
+      NETWORK: ${NETWORK:-test}
+      COLDKEY_MNEMONIC: ${COLDKEY_MNEMONIC}
+      ROLE: miner
+    ports:
+      - target: 8093
+        published: ${AXON_PORT:-8093}
+        protocol: tcp
+        mode: host
+      - target: 8001
+        published: ${METRICS_PORT:-8001}
+        protocol: tcp
+        mode: host
+    deploy:
+      mode: replicated
+      replicas: ${MINER_COUNT:-1}
 
 volumes:
-  validator_data:
+  neuron_data:
 
 networks:
   masa_network:
