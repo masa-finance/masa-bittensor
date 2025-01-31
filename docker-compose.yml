@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Validator for Subnet 42
   validator:
@@ -7,10 +5,8 @@ services:
     environment:
       - ROLE=validator
       - NETWORK=${NETWORK:-test}
-      - NETUID=42
       - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
       - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
-      - PROTOCOL_URL=${ORACLE_BASE_URL:-http://127.0.0.1:8080/api/v1}
     ports:
       - "${VALIDATOR_PORT:-8092}:8092"
       - "${VALIDATOR_METRICS_PORT:-8000}:8000"
@@ -20,32 +16,10 @@ services:
       - masa_network
     deploy:
       mode: replicated
-      replicas: ${VALIDATOR_COUNT:-0}
-
-  # Miner for Subnet 42
-  miner:
-    image: masaengineering/masa-bittensor:${TAG:-latest}
-    environment:
-      - ROLE=miner
-      - NETWORK=${NETWORK:-test}
-      - NETUID=42
-      - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
-      - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
-      - PROTOCOL_URL=${ORACLE_BASE_URL:-http://127.0.0.1:8080/api/v1}
-    ports:
-      - "${MINER_PORT:-8093}:8093"
-      - "${MINER_METRICS_PORT:-8001}:8001"
-    volumes:
-      - miner_data:/root/.bittensor
-    networks:
-      - masa_network
-    deploy:
-      mode: replicated
-      replicas: ${MINER_COUNT:-1}
+      replicas: ${VALIDATOR_COUNT:-1}
 
 volumes:
   validator_data:
-  miner_data:
 
 networks:
   masa_network:
