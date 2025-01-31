@@ -16,8 +16,9 @@ RUN apt-get update && \
     python3.12 -m venv /venv && \
     /venv/bin/pip install --upgrade pip
 
-# Install all packages in the virtualenv
+# Install all packages in the virtualenv with specific versions
 RUN /venv/bin/pip install \
+    "aiohttp>=3.9.0" \
     "bittensor>=8.2.0" \
     "bittensor-wallet>=3.0.0" \
     "masa-ai==0.2.7" \
