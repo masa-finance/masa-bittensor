@@ -1,5 +1,5 @@
-# Use official Python 3.8 image as base
-FROM --platform=linux/amd64 python:3.8-slim
+# Use official Python 3.12 image as base
+FROM --platform=linux/amd64 python:3.12-slim
 
 # Set environment variables
 ENV PIP_NO_CACHE_DIR=1 \
@@ -13,18 +13,24 @@ RUN apt-get update && \
         git \
         && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python dependencies from pyproject.toml
 RUN pip install --no-cache-dir \
-    "bittensor>=8.2.0" \
-    "bittensor-wallet>=3.0.0" \
-    "fiber-py>=0.3.0"
+    "bittensor==8.2.0" \
+    "loguru==0.7.2" \
+    "python-dotenv==0.21.0" \
+    "torch==2.3.0" \
+    "scikit-learn==1.5.1" \
+    "masa-ai==0.2.5" \
+    "pytest==7.2.2" \
+    "pytest-asyncio==0.21.0" \
+    "requests==2.32.3"
 
 # Set up workspace and environment
 WORKDIR /app
 ENV CONFIG_PATH=/app/subnet-config.json \
     ROLE=validator \
     NETWORK=test \
-    NETUID=165 \
+    NETUID=42 \
     PYTHONPATH=/app
 
 # Use Python for entrypoint
