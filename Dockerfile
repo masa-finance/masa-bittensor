@@ -5,9 +5,12 @@ FROM --platform=$TARGETPLATFORM python:3.12-bullseye
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
-    SODIUM_INSTALL=system
+    SODIUM_INSTALL=system \
+    RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
 
-# Install system dependencies
+# Install system dependencies and Rust
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
@@ -24,6 +27,10 @@ RUN apt-get update && \
         autoconf \
         lld \
         clang && \
+    # Install Rust
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --target aarch64-unknown-linux-gnu && \
+    rustup default stable && \
+    # Cleanup
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
@@ -82,9 +89,8 @@ RUN pip install --no-cache-dir --compile \
     "ansible>=9.3.0" \
     "ansible-vault>=2.1.0"
 
-# Layer 7: Install bittensor and its dependencies first
+# Layer 7: Install bittensor dependencies first
 RUN pip install --no-cache-dir --compile \
-    "bittensor>=8.2.0" \
     "aiohttp>=3.8.1" \
     "base58>=2.1.1" \
     "cryptography>=41.0.1" \
@@ -100,8 +106,10 @@ RUN pip install --no-cache-dir --compile \
     "torch>=2.0.0" \
     "websockets>=12.0"
 
-# Layer 8: Install bittensor-wallet separately with specific version
+# Layer 8: Install bittensor and bittensor-wallet
 RUN pip install --no-cache-dir --compile \
+    "bittensor-commit-reveal>=0.2.0" \
+    "bittensor==8.2.0" \
     "bittensor-wallet==3.0.0"
 
 # Layer 9: Testing and additional packages
