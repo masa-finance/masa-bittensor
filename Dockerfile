@@ -78,9 +78,8 @@ RUN pip install --no-cache-dir --only-binary :all: \
     "py-ed25519-zebra-bindings<2,>=1.0"
 
 # Layer 6: Ansible packages
-RUN pip install --no-cache-dir --only-binary :all: \
-    "ansible>=9.3.0" \
-    "ansible-vault>=2.1.0"
+RUN pip install --no-cache-dir --only-binary :all: "ansible>=9.3.0" && \
+    pip install --no-cache-dir "ansible-vault>=2.1.0"
 
 # Layer 7: Install bittensor dependencies first
 RUN pip install --no-cache-dir --only-binary :all: \
