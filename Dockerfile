@@ -16,11 +16,11 @@ RUN apt-get update && \
     python3.12 -m venv /venv && \
     /venv/bin/pip install --upgrade pip
 
-# Install masa-ai in the virtualenv
-RUN /venv/bin/pip install "masa-ai==0.2.7"
-
-# Install testing packages in system Python
-RUN pip install --no-cache-dir --only-binary :all: \
+# Install all packages in the virtualenv
+RUN /venv/bin/pip install \
+    "bittensor>=8.2.0" \
+    "bittensor-wallet>=3.0.0" \
+    "masa-ai==0.2.7" \
     "pytest>=7.2.0" \
     "pytest-asyncio>=0.21.0"
 
@@ -38,5 +38,5 @@ ENV CONFIG_PATH=/app/subnet-config.json \
 # Copy startup directory
 COPY startup /app/startup
 
-# Use Python script directly as entrypoint
-ENTRYPOINT ["python", "-u", "/app/startup/entrypoint.py"]
+# Use Python 3.12 from virtualenv for entrypoint
+ENTRYPOINT ["/venv/bin/python", "-u", "/app/startup/entrypoint.py"]
