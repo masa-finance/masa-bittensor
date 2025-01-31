@@ -18,19 +18,23 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
-# Install Rust and base Python setup with optimized settings
+# Set environment variables for builds
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV RUST_BACKTRACE=1
-ENV RUSTFLAGS="-C target-cpu=native"
+ENV RUSTFLAGS="-C target-cpu=native -C link-arg=-fuse-ld=lld"
 ENV CARGO_PROFILE_RELEASE_LTO=true
 ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 ENV SODIUM_INSTALL=system
+ENV RUST_TARGET="aarch64-unknown-linux-gnu"
+ENV PYO3_CROSS_LIB_DIR="/usr/local"
+ENV CARGO_BUILD_TARGET="aarch64-unknown-linux-gnu"
 
-# Install minimal Rust toolchain for crypto compilation
+# Install Rust with cross-compilation support
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable && \
     . $HOME/.cargo/env && \
-    pip install --no-cache-dir "setuptools~=70.0.0" wheel
+    rustup target add aarch64-unknown-linux-gnu && \
+    pip install --no-cache-dir "setuptools~=70.0.0" wheel maturin==1.4.0
 
 # Install base Python setup
 RUN pip install --no-cache-dir "setuptools~=70.0.0" wheel
@@ -87,9 +91,21 @@ RUN pip install --no-cache-dir \
     "ansible>=9.3.0" \
     "ansible-vault>=2.1.0"
 
-# Install bittensor and testing packages separately to handle native dependencies
-RUN pip install --no-cache-dir "bittensor==8.2.0"
-RUN pip install --no-cache-dir "bittensor_wallet==2.1.3"
+# Install bittensor and wallet with specific build settings
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true \
+    RUST_BACKTRACE=full \
+    RUSTFLAGS="-C target-cpu=native -C link-arg=-fuse-ld=lld" \
+    SODIUM_INSTALL=system
+
+# Install bittensor first
+RUN pip install --no-cache-dir --no-deps "bittensor==8.2.0" && \
+    pip install --no-cache-dir -r <(pip show bittensor | grep Requires: | cut -d ' ' -f 2-)
+
+# Install bittensor_wallet with specific version constraints
+RUN pip install --no-cache-dir --no-deps "bittensor_wallet==2.1.3" && \
+    pip install --no-cache-dir -r <(pip show bittensor_wallet | grep Requires: | cut -d ' ' -f 2-)
+
+# Install remaining packages
 RUN pip install --no-cache-dir \
     "masa-ai>=0.2.5" \
     "pytest>=7.2.0" \
