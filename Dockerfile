@@ -24,8 +24,15 @@ ENV SODIUM_INSTALL=system
 # Install maturin for building
 RUN pip3 install maturin==1.4.0
 
-# Build bittensor-wallet wheel
-RUN pip3 install "bittensor-wallet==2.1.3" --target /wheels
+# Create a directory for the wheel
+RUN mkdir -p /wheels
+
+# Download and build bittensor-wallet wheel
+RUN pip3 download --no-deps --no-binary :all: bittensor-wallet==3.0.0 && \
+    tar xf bittensor-wallet-3.0.0.tar.gz && \
+    cd bittensor-wallet-3.0.0 && \
+    maturin build --release && \
+    cp target/wheels/bittensor_wallet*.whl /wheels/
 
 # Final stage
 FROM --platform=$TARGETPLATFORM python:3.12-bullseye
@@ -115,8 +122,8 @@ RUN pip install --no-cache-dir --compile \
 
 # Layer 7: Install bittensor and its dependencies
 RUN pip install --no-cache-dir --compile \
-    /wheels/bittensor_wallet-2.1.3-*.whl \
-    "bittensor==8.2.0" \
+    /wheels/bittensor_wallet*.whl \
+    "bittensor>=8.2.0" \
     "aiohttp>=3.8.1" \
     "base58>=2.1.1" \
     "cryptography>=41.0.1" \
