@@ -1,5 +1,5 @@
 # Use official bittensor image as base
-FROM --platform=$TARGETPLATFORM opentensorfdn/bittensor:latest
+FROM --platform=$TARGETPLATFORM bittensor/bittensor:latest
 
 # Set environment variables
 ENV PIP_NO_CACHE_DIR=1 \
