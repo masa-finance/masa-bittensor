@@ -81,8 +81,15 @@ RUN pip install --no-cache-dir --only-binary :all: \
 RUN pip install --no-cache-dir --only-binary :all: "ansible>=9.3.0" && \
     pip install --no-cache-dir "ansible-vault>=2.1.0"
 
-# Layer 7: Install bittensor dependencies first
-RUN pip install --no-cache-dir --only-binary :all: \
+# Layer 7: Install Rust for bittensor-commit-reveal
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    . $HOME/.cargo/env && \
+    rustup target add aarch64-unknown-linux-gnu && \
+    rustup default stable
+
+# Layer 8: Install bittensor dependencies first
+RUN . $HOME/.cargo/env && \
+    pip install --no-cache-dir --only-binary :all: \
     "aiohttp>=3.8.1" \
     "base58>=2.1.1" \
     "cryptography>=41.0.1" \
@@ -98,13 +105,14 @@ RUN pip install --no-cache-dir --only-binary :all: \
     "torch>=2.0.0" \
     "websockets>=12.0"
 
-# Layer 8: Install bittensor and bittensor-wallet (using pre-built wheels)
-RUN pip install --no-cache-dir "bittensor-commit-reveal==0.2.0" && \
+# Layer 9: Install bittensor and bittensor-wallet (using pre-built wheels where possible)
+RUN . $HOME/.cargo/env && \
+    pip install --no-cache-dir "bittensor-commit-reveal==0.2.0" && \
     pip install --no-cache-dir --only-binary :all: \
     "bittensor==8.2.0" \
     "bittensor-wallet==3.0.0"
 
-# Layer 9: Testing and additional packages
+# Layer 10: Testing and additional packages
 RUN pip install --no-cache-dir "masa-ai==0.2.7" && \
     pip install --no-cache-dir --only-binary :all: \
     "pytest>=7.2.0" \
