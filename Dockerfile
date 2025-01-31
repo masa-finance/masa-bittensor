@@ -27,10 +27,14 @@ RUN pip install --no-cache-dir \
 
 # Set up workspace and environment
 WORKDIR /app
+
+# Copy startup scripts and code
+COPY startup/ /app/startup/
+COPY masa/ /app/masa/
+
 ENV CONFIG_PATH=/app/subnet-config.json \
     ROLE=validator \
     NETWORK=test \
-    NETUID=42 \
     PYTHONPATH=/app
 
 # Use Python for entrypoint
