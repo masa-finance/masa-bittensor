@@ -99,8 +99,8 @@ RUN pip install --no-cache-dir --only-binary :all: \
     "websockets>=12.0"
 
 # Layer 8: Install bittensor and bittensor-wallet (using pre-built wheels)
-RUN pip install --no-cache-dir --only-binary :all: \
-    "bittensor-commit-reveal==0.2.0" \
+RUN pip install --no-cache-dir "bittensor-commit-reveal==0.2.0" && \
+    pip install --no-cache-dir --only-binary :all: \
     "bittensor==8.2.0" \
     "bittensor-wallet==3.0.0"
 
