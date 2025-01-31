@@ -106,9 +106,10 @@ RUN pip install --no-cache-dir --only-binary :all: \
 
 # Layer 9: Testing and additional packages
 RUN pip install --no-cache-dir --only-binary :all: \
-    "masa-ai>=0.2.5" \
+    "uuid>=1.30,<2.0" \
     "pytest>=7.2.0" \
-    "pytest-asyncio>=0.21.0"
+    "pytest-asyncio>=0.21.0" && \
+    pip install --no-cache-dir --only-binary :all: "masa-ai==0.2.7"
 
 # Set up workspace
 WORKDIR /app
