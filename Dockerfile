@@ -6,7 +6,7 @@ ENV PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive
 
-# Install Python 3.12 and create virtualenv
+# Install Python 3.12 and create virtualenv for masa-ai
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         python3.12 \
@@ -16,28 +16,27 @@ RUN apt-get update && \
     python3.12 -m venv /venv && \
     /venv/bin/pip install --upgrade pip
 
-# Install all packages in the virtualenv with specific versions
-RUN /venv/bin/pip install \
-    "aiohttp>=3.9.0" \
-    "bittensor>=8.2.0" \
-    "bittensor-wallet>=3.0.0" \
-    "masa-ai==0.2.7" \
+# Install masa-ai in Python 3.12 venv
+RUN /venv/bin/pip install "masa-ai==0.2.7"
+
+# Install testing packages in system Python 3.8
+RUN pip install --only-binary :all: \
     "pytest>=7.2.0" \
     "pytest-asyncio>=0.21.0"
 
 # Set up workspace
 WORKDIR /app
 
-# Set environment variables
+# Set environment variables - include both Python paths
 ENV CONFIG_PATH=/app/subnet-config.json \
     ROLE=validator \
     NETWORK=test \
     NETUID=165 \
-    PYTHONPATH=/app:/venv/lib/python3.12/site-packages \
-    PATH="/venv/bin:$PATH"
+    PYTHONPATH=/app:/usr/local/lib/python3.8/site-packages:/venv/lib/python3.12/site-packages \
+    PATH="/usr/local/bin:/venv/bin:$PATH"
 
 # Copy startup directory
 COPY startup /app/startup
 
-# Use Python 3.12 from virtualenv for entrypoint
-ENTRYPOINT ["/venv/bin/python", "-u", "/app/startup/entrypoint.py"]
+# Use system Python 3.8 for entrypoint since it needs bittensor
+ENTRYPOINT ["python", "-u", "/app/startup/entrypoint.py"]
