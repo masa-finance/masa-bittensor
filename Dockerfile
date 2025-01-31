@@ -34,13 +34,14 @@ RUN pip3 download --no-deps --no-binary :all: bittensor-wallet==3.0.0 && \
     maturin build --release && \
     cp target/wheels/bittensor_wallet*.whl /wheels/
 
-# Final stage
+# Final stage only - we'll use pre-built wheels
 FROM --platform=$TARGETPLATFORM python:3.12-bullseye
 
 # Set environment variables for build optimization
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
+    SODIUM_INSTALL=system
 
 # Install system dependencies
 RUN apt-get update && \
@@ -61,9 +62,6 @@ RUN apt-get update && \
         clang && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
-
-# Copy wheels from builder
-COPY --from=builder /wheels /wheels
 
 # Install Python packages in optimized layers
 # Layer 1: Basic utilities and dependencies
@@ -120,9 +118,8 @@ RUN pip install --no-cache-dir --compile \
     "ansible>=9.3.0" \
     "ansible-vault>=2.1.0"
 
-# Layer 7: Install bittensor and its dependencies
+# Layer 7: Install bittensor and its dependencies first
 RUN pip install --no-cache-dir --compile \
-    /wheels/bittensor_wallet*.whl \
     "bittensor>=8.2.0" \
     "aiohttp>=3.8.1" \
     "base58>=2.1.1" \
@@ -139,7 +136,11 @@ RUN pip install --no-cache-dir --compile \
     "torch>=2.0.0" \
     "websockets>=12.0"
 
-# Layer 8: Testing and additional packages
+# Layer 8: Install bittensor-wallet separately
+RUN pip install --no-cache-dir --compile \
+    "bittensor-wallet>=3.0.0"
+
+# Layer 9: Testing and additional packages
 RUN pip install --no-cache-dir --compile \
     "masa-ai>=0.2.5" \
     "pytest>=7.2.0" \
