@@ -12,6 +12,8 @@ services:
       - "${VALIDATOR_METRICS_PORT:-8000}:8000"
     volumes:
       - validator_data:/root/.bittensor
+      - ./startup:/app/startup
+      - ./masa:/app/masa
     networks:
       - masa_network
     deploy:
