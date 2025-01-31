@@ -7,7 +7,14 @@ RUN apt-get update && \
         git \
         curl \
         pkg-config \
-        libssl-dev && \
+        libssl-dev \
+        libffi-dev \
+        libsodium-dev \
+        libc6-dev \
+        cmake \
+        automake \
+        libtool \
+        autoconf && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
@@ -18,6 +25,7 @@ ENV RUST_BACKTRACE=1
 ENV RUSTFLAGS="-C target-cpu=native"
 ENV CARGO_PROFILE_RELEASE_LTO=true
 ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+ENV SODIUM_INSTALL=system
 
 # Install minimal Rust toolchain for crypto compilation
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable && \
@@ -79,10 +87,10 @@ RUN pip install --no-cache-dir \
     "ansible>=9.3.0" \
     "ansible-vault>=2.1.0"
 
-# Install bittensor and testing packages
+# Install bittensor and testing packages separately to handle native dependencies
+RUN pip install --no-cache-dir "bittensor==8.2.0"
+RUN pip install --no-cache-dir "bittensor_wallet==2.1.3"
 RUN pip install --no-cache-dir \
-    "bittensor==8.2.0" \
-    "bittensor_wallet==2.1.3" \
     "masa-ai>=0.2.5" \
     "pytest>=7.2.0" \
     "pytest-asyncio>=0.21.0"
