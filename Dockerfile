@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim-bullseye
 
 # Install minimal system dependencies
 RUN apt-get update && \
@@ -8,7 +8,8 @@ RUN apt-get update && \
         curl \
         pkg-config \
         libssl-dev && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
 
 # Install Rust and base Python setup with optimized settings
 ENV PATH="/root/.cargo/bin:${PATH}"
@@ -23,8 +24,9 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --pr
     . $HOME/.cargo/env && \
     pip install --no-cache-dir "setuptools~=70.0.0" wheel
 
-# Install core dependencies first
+# Install all Python dependencies in a single layer
 RUN pip install --no-cache-dir \
+    "setuptools~=70.0.0" wheel \
     "loguru>=0.7.0" \
     "python-dotenv>=0.21.0" \
     "requests>=2.32.0" \
@@ -56,26 +58,15 @@ RUN pip install --no-cache-dir \
     "py-sr25519-bindings<1,>=0.2.0" \
     "py-ed25519-zebra-bindings<2,>=1.0" \
     "ansible>=9.3.0" \
-    "ansible-vault>=2.1.0"
-
-# Install scientific packages with minimal dependencies
-RUN pip install --no-cache-dir \
+    "ansible-vault>=2.1.0" \
     "scipy>=1.12.0" \
     "scikit-learn>=1.5.1" \
-    --only-binary=:all:
-
-# Install minimal bittensor components
-RUN pip install --no-cache-dir \
     "bittensor==8.2.0" \
-    --no-deps && \
-    pip install --no-cache-dir \
-    "bittensor_wallet==2.1.3" && \
-    pip install --no-cache-dir \
+    "bittensor_wallet==2.1.3" \
     "masa-ai>=0.2.5" \
-    --no-deps && \
-    pip install --no-cache-dir \
     "pytest>=7.2.0" \
-    "pytest-asyncio>=0.21.0"
+    "pytest-asyncio>=0.21.0" \
+    --only-binary=:all: numpy,scipy,scikit-learn
 
 # Set up workspace
 WORKDIR /app
