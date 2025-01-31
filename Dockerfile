@@ -5,12 +5,9 @@ FROM --platform=$TARGETPLATFORM python:3.12-bullseye
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
-    SODIUM_INSTALL=system \
-    RUSTUP_HOME=/usr/local/rustup \
-    CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:$PATH
+    SODIUM_INSTALL=system
 
-# Install system dependencies and Rust
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
@@ -27,16 +24,12 @@ RUN apt-get update && \
         autoconf \
         lld \
         clang && \
-    # Install Rust
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --target aarch64-unknown-linux-gnu && \
-    rustup default stable && \
-    # Cleanup
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
 # Install Python packages in optimized layers
 # Layer 1: Basic utilities and dependencies
-RUN pip install --no-cache-dir --compile \
+RUN pip install --no-cache-dir --only-binary :all: \
     "setuptools~=70.0.0" \
     wheel \
     "loguru>=0.7.0" \
@@ -50,13 +43,13 @@ RUN pip install --no-cache-dir --compile \
     "rich>=13.0.0"
 
 # Layer 2: Scientific and ML packages
-RUN pip install --no-cache-dir --compile \
+RUN pip install --no-cache-dir --only-binary :all: \
     "numpy~=2.0.1" \
     "scipy>=1.12.0" \
     "scikit-learn>=1.5.1"
 
 # Layer 3: Web and async packages
-RUN pip install --no-cache-dir --compile \
+RUN pip install --no-cache-dir --only-binary :all: \
     "nest-asyncio>=1.5.0" \
     "aiohttp~=3.9" \
     "fastapi~=0.110.1" \
@@ -65,7 +58,7 @@ RUN pip install --no-cache-dir --compile \
     "websockets>=14.1"
 
 # Layer 4: Blockchain and crypto base packages
-RUN pip install --no-cache-dir --compile \
+RUN pip install --no-cache-dir --only-binary :all: \
     "scalecodec==1.2.11" \
     "substrate-interface~=1.7.9" \
     "msgpack-numpy-opentensor~=0.5.0" \
@@ -79,18 +72,18 @@ RUN pip install --no-cache-dir --compile \
     "password-strength>=0.0.3.post2"
 
 # Layer 5: Crypto bindings
-RUN pip install --no-cache-dir --compile \
+RUN pip install --no-cache-dir --only-binary :all: \
     "py-bip39-bindings==0.1.11" \
     "py-sr25519-bindings<1,>=0.2.0" \
     "py-ed25519-zebra-bindings<2,>=1.0"
 
 # Layer 6: Ansible packages
-RUN pip install --no-cache-dir --compile \
+RUN pip install --no-cache-dir --only-binary :all: \
     "ansible>=9.3.0" \
     "ansible-vault>=2.1.0"
 
 # Layer 7: Install bittensor dependencies first
-RUN pip install --no-cache-dir --compile \
+RUN pip install --no-cache-dir --only-binary :all: \
     "aiohttp>=3.8.1" \
     "base58>=2.1.1" \
     "cryptography>=41.0.1" \
@@ -106,14 +99,14 @@ RUN pip install --no-cache-dir --compile \
     "torch>=2.0.0" \
     "websockets>=12.0"
 
-# Layer 8: Install bittensor and bittensor-wallet
-RUN pip install --no-cache-dir --compile \
-    "bittensor-commit-reveal>=0.2.0" \
+# Layer 8: Install bittensor and bittensor-wallet (using pre-built wheels)
+RUN pip install --no-cache-dir --only-binary :all: \
+    "bittensor-commit-reveal==0.2.0" \
     "bittensor==8.2.0" \
     "bittensor-wallet==3.0.0"
 
 # Layer 9: Testing and additional packages
-RUN pip install --no-cache-dir --compile \
+RUN pip install --no-cache-dir --only-binary :all: \
     "masa-ai>=0.2.5" \
     "pytest>=7.2.0" \
     "pytest-asyncio>=0.21.0"
