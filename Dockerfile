@@ -97,13 +97,36 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true \
     RUSTFLAGS="-C target-cpu=native -C link-arg=-fuse-ld=lld" \
     SODIUM_INSTALL=system
 
-# Install bittensor first
-RUN pip install --no-cache-dir --no-deps "bittensor==8.2.0" && \
-    pip install --no-cache-dir -r <(pip show bittensor | grep Requires: | cut -d ' ' -f 2-)
+# Install bittensor and its dependencies
+RUN pip install --no-cache-dir "bittensor==8.2.0" && \
+    pip install --no-cache-dir \
+        "aiohttp>=3.8.1" \
+        "ansible>=9.3.0" \
+        "base58>=2.1.1" \
+        "cryptography>=41.0.1" \
+        "fastapi>=0.110.0" \
+        "netaddr>=0.8.0" \
+        "numpy>=2.0.0" \
+        "pycryptodome>=3.18.0" \
+        "pydantic>=2.3.0" \
+        "python-dotenv>=0.21.0" \
+        "requests>=2.31.0" \
+        "scalecodec>=1.2.0" \
+        "substrate-interface>=1.7.4" \
+        "torch>=2.0.0" \
+        "websockets>=12.0"
 
-# Install bittensor_wallet with specific version constraints
-RUN pip install --no-cache-dir --no-deps "bittensor_wallet==2.1.3" && \
-    pip install --no-cache-dir -r <(pip show bittensor_wallet | grep Requires: | cut -d ' ' -f 2-)
+# Install bittensor_wallet and its dependencies
+RUN pip install --no-cache-dir "bittensor_wallet==2.1.3" && \
+    pip install --no-cache-dir \
+        "base58>=2.1.1" \
+        "cryptography>=41.0.1" \
+        "eth-utils>=2.2.0" \
+        "msgpack>=1.0.5" \
+        "password-strength>=0.0.3.post2" \
+        "py-sr25519-bindings>=0.2.0" \
+        "py-ed25519-zebra-bindings>=1.0.0" \
+        "py-bip39-bindings>=0.1.11"
 
 # Install remaining packages
 RUN pip install --no-cache-dir \
