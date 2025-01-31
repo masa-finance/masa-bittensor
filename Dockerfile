@@ -1,19 +1,10 @@
 # Use official bittensor image as base
-FROM --platform=$TARGETPLATFORM bittensor/bittensor:latest
+FROM bittensor/bittensor:latest
 
 # Set environment variables
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive \
-    SODIUM_INSTALL=system
-
-# Install additional system dependencies if needed
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        pkg-config \
-        libsodium-dev && \
-    rm -rf /var/lib/apt/lists/* && \
-    apt-get clean
+    DEBIAN_FRONTEND=noninteractive
 
 # Install masa-ai and testing packages
 RUN pip install --no-cache-dir "masa-ai==0.2.7" && \
