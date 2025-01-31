@@ -14,13 +14,13 @@ BOLD='\033[1m'
 # Default timeout in seconds (10 minutes)
 TIMEOUT=${TIMEOUT:-600}
 
-# Default service counts if not set
-MINER_COUNT=${MINER_COUNT:-1}
+# Default configuration
 VALIDATOR_COUNT=${VALIDATOR_COUNT:-0}
+MINER_COUNT=${MINER_COUNT:-1}
+NETWORK=${NETWORK:-test}
 LOGGING_DEBUG=${LOGGING_DEBUG:-false}
 
 # Determine network details early
-NETWORK=${NETWORK:-test}
 if [ "$NETWORK" = "finney" ]; then
     NETWORK_DISPLAY="${RED}MAIN NETWORK (FINNEY)${NC}"
     NETUID="42"
@@ -176,18 +176,36 @@ monitor_registration() {
     local consecutive_failures=0
     
     while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-        # Check service health first
-        if ! check_service_health masa_miner; then
+        # Check services health first
+        local services_healthy=true
+        
+        if [ "$VALIDATOR_COUNT" -gt 0 ] && ! check_service_health masa_validator; then
+            services_healthy=false
             consecutive_failures=$((consecutive_failures + 1))
             if [ $consecutive_failures -ge 3 ]; then
-                echo -e "${RED}Error: Services appear to be unhealthy. Please check logs:${NC}"
+                echo -e "${RED}Error: Validator service appears to be unhealthy. Please check logs:${NC}"
+                echo -e "${YELLOW}docker service logs masa_validator${NC}"
+                return 1
+            fi
+            sleep 10
+            continue
+        fi
+        
+        if [ "$MINER_COUNT" -gt 0 ] && ! check_service_health masa_miner; then
+            services_healthy=false
+            consecutive_failures=$((consecutive_failures + 1))
+            if [ $consecutive_failures -ge 3 ]; then
+                echo -e "${RED}Error: Miner service appears to be unhealthy. Please check logs:${NC}"
                 echo -e "${YELLOW}docker service logs masa_miner${NC}"
                 return 1
             fi
             sleep 10
             continue
         fi
-        consecutive_failures=0
+        
+        if $services_healthy; then
+            consecutive_failures=0
+        fi
         
         # Run the report script with timeout
         if ! timeout 30s python startup/report.py 0 > /tmp/report_output 2>&1; then
@@ -204,20 +222,36 @@ monitor_registration() {
         
         # Show registration status
         echo -e "\n[Attempt ${ATTEMPT}/${MAX_ATTEMPTS}] Checking registrations..."
-        if [[ $miner_reg == *"Registered"* ]]; then
-            echo -e "  Miners: ${GREEN}✓${NC} Registered"
-        elif [[ $miner_reg == *"Not Registered"* ]]; then
-            echo -e "  Miners: ${YELLOW}⏳${NC} Not registered yet"
+        
+        if [ "$MINER_COUNT" -gt 0 ]; then
+            if [[ $miner_reg == *"Registered"* ]]; then
+                echo -e "  Miners: ${GREEN}✓${NC} Registered"
+            elif [[ $miner_reg == *"Not Registered"* ]]; then
+                echo -e "  Miners: ${YELLOW}⏳${NC} Not registered yet"
+            fi
         fi
         
-        if [[ $validator_reg == *"Registered"* ]]; then
-            echo -e "  Validators: ${GREEN}✓${NC} Registered"
-        elif [[ $validator_reg == *"Not Registered"* ]]; then
-            echo -e "  Validators: ${YELLOW}⏳${NC} Not registered yet"
+        if [ "$VALIDATOR_COUNT" -gt 0 ]; then
+            if [[ $validator_reg == *"Registered"* ]]; then
+                echo -e "  Validators: ${GREEN}✓${NC} Registered"
+            elif [[ $validator_reg == *"Not Registered"* ]]; then
+                echo -e "  Validators: ${YELLOW}⏳${NC} Not registered yet"
+            fi
         fi
         
-        # Check if all services are registered
-        if echo "$OUTPUT" | grep -q "✅ All services are running and registered successfully!"; then
+        # Check if all required services are registered
+        local all_registered=true
+        
+        if [ "$MINER_COUNT" -gt 0 ] && [[ ! $miner_reg == *"Registered"* ]]; then
+            all_registered=false
+        fi
+        
+        if [ "$VALIDATOR_COUNT" -gt 0 ] && [[ ! $validator_reg == *"Registered"* ]]; then
+            all_registered=false
+        fi
+        
+        if $all_registered; then
+            echo -e "\n${GREEN}✅ All services are running and registered successfully!${NC}"
             REGISTERED=true
             return 0
         fi
@@ -236,12 +270,54 @@ cleanup() {
     rm -f /tmp/report_output 2>/dev/null || true
 }
 
+# Monitor deployment
+monitor_deployment() {
+    echo -e "\n${BLUE}Monitoring deployment...${NC}"
+    local start_time=$(date +%s)
+    local elapsed=0
+
+    while [ $elapsed -lt $TIMEOUT ]; do
+        # Check if services are running
+        local all_running=true
+        
+        # Check validator service if replicas > 0
+        if [ "$VALIDATOR_COUNT" -gt 0 ] && ! check_service_health masa_validator; then
+            all_running=false
+            echo -e "\n${BLUE}Status for validator:${NC}"
+            get_service_status masa_validator
+        fi
+        
+        # Check miner service if replicas > 0
+        if [ "$MINER_COUNT" -gt 0 ] && ! check_service_health masa_miner; then
+            all_running=false
+            echo -e "\n${BLUE}Status for miner:${NC}"
+            get_service_status masa_miner
+        fi
+
+        if $all_running; then
+            echo -e "${GREEN}All services are running${NC}"
+            break
+        fi
+
+        # Update elapsed time
+        elapsed=$(($(date +%s) - start_time))
+        sleep 10
+    done
+
+    if [ $elapsed -ge $TIMEOUT ]; then
+        echo -e "${RED}Deployment timed out after ${TIMEOUT} seconds${NC}"
+        return 1
+    fi
+
+    return 0
+}
+
 # Main deployment section
 main() {
     echo -e "${BOLD}Starting Masa Bittensor Subnet Services${NC}"
     echo -e "Network: $NETWORK_DISPLAY"
     echo -e "Subnet ID: ${YELLOW}$NETUID${NC}"
-    echo -e "Deploying: ${GREEN}$VALIDATOR_COUNT validators${NC}, ${GREEN}$MINER_COUNT miners${NC}"
+    echo -e "Deploying: ${GREEN}$MINER_COUNT miners and $VALIDATOR_COUNT validators${NC}"
     echo
 
     # Validate environment
@@ -260,7 +336,7 @@ main() {
     sleep 5
 
     # Check for immediate failures
-    for service in masa_validator masa_miner; do
+    for service in masa_neuron; do
         if docker service ps $service --format "{{.Error}}" 2>/dev/null | grep -q .; then
             echo -e "${RED}Service $service failed to start. Logs:${NC}"
             docker service ps $service --no-trunc --format "{{.Error}}" | grep -v "^$"
@@ -279,20 +355,20 @@ main() {
     while [ $elapsed -lt $TIMEOUT ]; do
         # Check if services are running
         local all_running=true
-        for service in masa_validator masa_miner; do
-            if ! check_service_health $service; then
-                all_running=false
-                # Check for errors
-                if docker service ps $service --format "{{.Error}}" 2>/dev/null | grep -q .; then
-                    echo -e "${RED}Service $service failed. Logs:${NC}"
-                    docker service ps $service --no-trunc --format "{{.Error}}" | grep -v "^$"
-                    echo -e "\n${YELLOW}Container logs:${NC}"
-                    docker service logs $service 2>&1 || true
-                    cleanup
-                    exit 1
-                fi
-            fi
-        done
+        
+        # Check validator service if replicas > 0
+        if [ "$VALIDATOR_COUNT" -gt 0 ] && ! check_service_health masa_validator; then
+            all_running=false
+            echo -e "\n${BLUE}Status for validator:${NC}"
+            get_service_status masa_validator
+        fi
+        
+        # Check miner service if replicas > 0
+        if [ "$MINER_COUNT" -gt 0 ] && ! check_service_health masa_miner; then
+            all_running=false
+            echo -e "\n${BLUE}Status for miner:${NC}"
+            get_service_status masa_miner
+        fi
 
         if $all_running; then
             echo -e "${GREEN}All services are running${NC}"
@@ -301,13 +377,6 @@ main() {
 
         # Update elapsed time
         elapsed=$(($(date +%s) - start_time))
-        
-        # Show current status
-        for service in masa_validator masa_miner; do
-            echo -e "\n${BLUE}Status for $service:${NC}"
-            get_service_status $service
-        done
-
         sleep 10
     done
 
