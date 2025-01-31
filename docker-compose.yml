@@ -1,41 +1,16 @@
 version: '3.8'
 
 services:
-  # Masa Protocol Node (from masa-oracle repo)
-  protocol:
-    image: masaengineering/masa-protocol:${PROTOCOL_VERSION:-latest}
-    platform: linux/amd64
-    container_name: masa_protocol_node
-    ports:
-      - "${PROTOCOL_PORT:-8081}:8081"
-      - "${P2P_PORT:-4001}:4001"
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-    volumes:
-      - protocol_data:/app/data
-    networks:
-      - masa_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   # Validator for Subnet 42
   validator:
     image: masaengineering/masa-bittensor:${TAG:-latest}
-    platform: linux/amd64
-    container_name: masa_validator
-    depends_on:
-      protocol:
-        condition: service_healthy
     environment:
       - ROLE=validator
       - NETWORK=${NETWORK:-test}
       - NETUID=42
       - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
       - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
-      - PROTOCOL_URL=http://protocol:8081
+      - PROTOCOL_URL=${ORACLE_BASE_URL:-http://127.0.0.1:8080/api/v1}
     ports:
       - "${VALIDATOR_PORT:-8092}:8092"
       - "${VALIDATOR_METRICS_PORT:-8000}:8000"
@@ -43,22 +18,20 @@ services:
       - validator_data:/root/.bittensor
     networks:
       - masa_network
+    deploy:
+      mode: replicated
+      replicas: ${VALIDATOR_COUNT:-0}
 
   # Miner for Subnet 42
   miner:
     image: masaengineering/masa-bittensor:${TAG:-latest}
-    platform: linux/amd64
-    container_name: masa_miner
-    depends_on:
-      protocol:
-        condition: service_healthy
     environment:
       - ROLE=miner
       - NETWORK=${NETWORK:-test}
       - NETUID=42
       - COLDKEY_PASSWORD=${COLDKEY_PASSWORD:-your_coldkey_password}
       - HOTKEY_PASSWORD=${HOTKEY_PASSWORD:-your_hotkey_password}
-      - PROTOCOL_URL=http://protocol:8081
+      - PROTOCOL_URL=${ORACLE_BASE_URL:-http://127.0.0.1:8080/api/v1}
     ports:
       - "${MINER_PORT:-8093}:8093"
       - "${MINER_METRICS_PORT:-8001}:8001"
@@ -66,12 +39,14 @@ services:
       - miner_data:/root/.bittensor
     networks:
       - masa_network
+    deploy:
+      mode: replicated
+      replicas: ${MINER_COUNT:-1}
 
 volumes:
-  protocol_data:
   validator_data:
   miner_data:
 
 networks:
   masa_network:
-    driver: bridge
+    driver: overlay
