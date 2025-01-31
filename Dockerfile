@@ -77,9 +77,9 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
     . $HOME/.cargo/env && \
     rustup target add aarch64-unknown-linux-gnu && \
     rustup default stable && \
+    pip install --no-cache-dir "bittensor>=8.2.0" && \
     pip install --no-cache-dir "bittensor-commit-reveal==0.2.0" && \
-    pip install --no-cache-dir --only-binary :all: "bittensor-wallet==2.0.0" && \
-    pip install --no-cache-dir --only-binary :all: "bittensor>=8.2.0"
+    pip install --no-cache-dir "bittensor-wallet>=2.0.0"
 
 # Layer 5: Testing and additional packages
 RUN pip install --no-cache-dir "masa-ai==0.2.7" && \
