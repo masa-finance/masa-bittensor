@@ -6,9 +6,21 @@ ENV PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive
 
-# Install masa-ai and testing packages
-RUN pip install --no-cache-dir "masa-ai==0.2.7" && \
-    pip install --no-cache-dir --only-binary :all: \
+# Install Python 3.12 and create virtualenv
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3.12 \
+        python3.12-venv \
+        python3.12-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    python3.12 -m venv /venv && \
+    /venv/bin/pip install --upgrade pip
+
+# Install masa-ai in the virtualenv
+RUN /venv/bin/pip install "masa-ai==0.2.7"
+
+# Install testing packages in system Python
+RUN pip install --no-cache-dir --only-binary :all: \
     "pytest>=7.2.0" \
     "pytest-asyncio>=0.21.0"
 
@@ -20,7 +32,8 @@ ENV CONFIG_PATH=/app/subnet-config.json \
     ROLE=validator \
     NETWORK=test \
     NETUID=165 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app:/venv/lib/python3.12/site-packages \
+    PATH="/venv/bin:$PATH"
 
 # Copy startup directory
 COPY startup /app/startup
