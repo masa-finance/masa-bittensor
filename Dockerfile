@@ -108,8 +108,8 @@ RUN . $HOME/.cargo/env && \
 # Layer 9: Install bittensor and bittensor-wallet (using pre-built wheels where possible)
 RUN . $HOME/.cargo/env && \
     pip install --no-cache-dir "bittensor-commit-reveal==0.2.0" && \
-    pip install --no-cache-dir "bittensor-wallet==3.0.0" && \
-    pip install --no-cache-dir --only-binary :all: "bittensor==8.2.0"
+    pip install --no-cache-dir "bittensor-wallet>=3.0.0" && \
+    pip install --no-cache-dir --only-binary :all: "bittensor>=8.2.0"
 
 # Layer 10: Testing and additional packages
 RUN pip install --no-cache-dir "masa-ai==0.2.7" && \
