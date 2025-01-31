@@ -105,11 +105,10 @@ RUN pip install --no-cache-dir --only-binary :all: \
     "bittensor-wallet==3.0.0"
 
 # Layer 9: Testing and additional packages
-RUN pip install --no-cache-dir --only-binary :all: \
-    "uuid>=1.30,<2.0" \
+RUN pip install --no-cache-dir "masa-ai==0.2.7" && \
+    pip install --no-cache-dir --only-binary :all: \
     "pytest>=7.2.0" \
-    "pytest-asyncio>=0.21.0" && \
-    pip install --no-cache-dir --only-binary :all: "masa-ai==0.2.7"
+    "pytest-asyncio>=0.21.0"
 
 # Set up workspace
 WORKDIR /app
