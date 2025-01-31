@@ -1,6 +1,35 @@
+# Build stage for Rust components
+FROM rust:1.74-slim-bullseye as builder
+
+# Install build dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3-dev \
+        python3-pip \
+        pkg-config \
+        libssl-dev \
+        libffi-dev \
+        libsodium-dev \
+        libc6-dev \
+        lld \
+        clang && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+# Set up Rust environment
+ENV RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=lld"
+ENV SODIUM_INSTALL=system
+
+# Install maturin for building
+RUN pip3 install maturin==1.4.0
+
+# Build bittensor-wallet wheel
+RUN pip3 install "bittensor-wallet==2.1.3" --target /wheels
+
+# Final stage
 FROM python:3.12-slim-bullseye
 
-# Install minimal system dependencies
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
@@ -14,27 +43,14 @@ RUN apt-get update && \
         cmake \
         automake \
         libtool \
-        autoconf && \
+        autoconf \
+        lld \
+        clang && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
-# Set environment variables for builds
-ENV PATH="/root/.cargo/bin:${PATH}"
-ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
-ENV RUST_BACKTRACE=1
-ENV RUSTFLAGS="-C target-cpu=native -C link-arg=-fuse-ld=lld"
-ENV CARGO_PROFILE_RELEASE_LTO=true
-ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
-ENV SODIUM_INSTALL=system
-ENV RUST_TARGET="aarch64-unknown-linux-gnu"
-ENV PYO3_CROSS_LIB_DIR="/usr/local"
-ENV CARGO_BUILD_TARGET="aarch64-unknown-linux-gnu"
-
-# Install Rust with cross-compilation support
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable && \
-    . $HOME/.cargo/env && \
-    rustup target add aarch64-unknown-linux-gnu && \
-    pip install --no-cache-dir "setuptools~=70.0.0" wheel maturin==1.4.0
+# Copy wheels from builder
+COPY --from=builder /wheels /wheels
 
 # Install base Python setup
 RUN pip install --no-cache-dir "setuptools~=70.0.0" wheel
@@ -91,42 +107,24 @@ RUN pip install --no-cache-dir \
     "ansible>=9.3.0" \
     "ansible-vault>=2.1.0"
 
-# Install bittensor and wallet with specific build settings
-ENV CARGO_NET_GIT_FETCH_WITH_CLI=true \
-    RUST_BACKTRACE=full \
-    RUSTFLAGS="-C target-cpu=native -C link-arg=-fuse-ld=lld" \
-    SODIUM_INSTALL=system
-
 # Install bittensor and its dependencies
-RUN pip install --no-cache-dir "bittensor==8.2.0" && \
-    pip install --no-cache-dir \
-        "aiohttp>=3.8.1" \
-        "ansible>=9.3.0" \
-        "base58>=2.1.1" \
-        "cryptography>=41.0.1" \
-        "fastapi>=0.110.0" \
-        "netaddr>=0.8.0" \
-        "numpy>=2.0.0" \
-        "pycryptodome>=3.18.0" \
-        "pydantic>=2.3.0" \
-        "python-dotenv>=0.21.0" \
-        "requests>=2.31.0" \
-        "scalecodec>=1.2.0" \
-        "substrate-interface>=1.7.4" \
-        "torch>=2.0.0" \
-        "websockets>=12.0"
-
-# Install bittensor_wallet and its dependencies
-RUN pip install --no-cache-dir "bittensor_wallet==2.1.3" && \
-    pip install --no-cache-dir \
-        "base58>=2.1.1" \
-        "cryptography>=41.0.1" \
-        "eth-utils>=2.2.0" \
-        "msgpack>=1.0.5" \
-        "password-strength>=0.0.3.post2" \
-        "py-sr25519-bindings>=0.2.0" \
-        "py-ed25519-zebra-bindings>=1.0.0" \
-        "py-bip39-bindings>=0.1.11"
+RUN pip install --no-cache-dir \
+    /wheels/bittensor_wallet-2.1.3-*.whl \
+    "bittensor==8.2.0" \
+    "aiohttp>=3.8.1" \
+    "base58>=2.1.1" \
+    "cryptography>=41.0.1" \
+    "fastapi>=0.110.0" \
+    "netaddr>=0.8.0" \
+    "numpy>=2.0.0" \
+    "pycryptodome>=3.18.0" \
+    "pydantic>=2.3.0" \
+    "python-dotenv>=0.21.0" \
+    "requests>=2.31.0" \
+    "scalecodec>=1.2.0" \
+    "substrate-interface>=1.7.4" \
+    "torch>=2.0.0" \
+    "websockets>=12.0"
 
 # Install remaining packages
 RUN pip install --no-cache-dir \
