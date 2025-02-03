@@ -1,0 +1,42 @@
+services:
+  masa-protocol:
+    image: masaengineering/oracle:latest
+    environment:
+      - TWITTER_SCRAPER=${TWITTER_SCRAPER}
+      - TWITTER_ACCOUNTS=${TWITTER_ACCOUNTS}
+      - USER_AGENTS=${USER_AGENTS}
+      - TWITTER_API_KEY=${TWITTER_API_KEY}
+      - TWITTER_API_SECRET=${TWITTER_API_SECRET}
+      - TWITTER_ACCESS_TOKEN=${TWITTER_ACCESS_TOKEN}
+      - TWITTER_ACCESS_SECRET=${TWITTER_ACCESS_SECRET}
+      - TWITTER_BEARER_TOKEN=${TWITTER_BEARER_TOKEN}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  masa-node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      - ROLE=${ROLE:-miner}
+      - WALLET_NAME=subnet_${NETUID:-42}
+      - HOTKEY_NAME=${ROLE:-miner}_1
+      - MINER_PORT=8242
+      - METRICS_PORT=8101
+      - GRAFANA_PORT=3101
+      - MASA_BASE_URL=http://masa-protocol:8080
+      - API_URL=http://masa-protocol:8080
+      - NETWORK=${NETWORK:-finney}
+      - NETUID=${NETUID:-42}
+    volumes:
+      - ./.env:/app/.env
+      - ./.bittensor:/root/.bittensor
+    ports:
+      - "8242:8242"
+      - "8101:8101"
+      - "3101:3101"
+    depends_on:
+      - masa-protocol
+    restart: unless-stopped

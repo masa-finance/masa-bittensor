@@ -1,6 +1,6 @@
-# Masa Bittensor Subnet
+# Subnet 42 Masa Protocol
 
-Welcome to the Masa Bittensor Subnet! Follow our [documentation](https://developers.masa.ai/docs/masa-subnet/welcome) to get started as a miner or validator. We are subnet #42 on mainnet and #165 on testnet. See you in the metagraph.
+Welcome to subnet 42 Masa Protocol! Follow our [documentation](https://developers.masa.ai/docs/masa-protocol/environment-setup) to get started as a miner or validator. We are subnet #42 on mainnet and #165 on testnet. See you in the metagraph.
 
 ## Contributing
 
