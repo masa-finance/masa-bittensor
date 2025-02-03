@@ -1,0 +1,49 @@
+# Quick Start Instructions:
+#
+# 1. Copy .env.example to .env and configure:
+#    cp .env.example .env
+#
+# 2. Add your coldkey mnemonic to .env:
+#    COLDKEY_MNEMONIC="your mnemonic here"
+#
+# 3. To run a miner:
+#    docker-compose up
+#    
+# 4. To run a validator:
+#    ROLE=validator docker-compose up
+#
+# Note: Make sure you have enough TAO for registration and have posted
+# your verification tweet if running a miner.
+
+version: '3.8'
+
+services:
+  masa-node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      - ROLE=${ROLE:-miner}  # Default to miner if not specified
+      - REPLICA_NUM=1
+      - VALIDATOR_WALLET_NAME=subnet_${NETUID}
+      - VALIDATOR_HOTKEY_NAME=${ROLE:-miner}_1
+      - WALLET_NAME=subnet_${NETUID}
+      - HOTKEY_NAME=${ROLE:-miner}_1
+      - AXON_PORT=${VALIDATOR_AXON_PORT:-8142}
+      - METRICS_PORT=${VALIDATOR_METRICS_PORT:-8001}
+      - GRAFANA_PORT=${VALIDATOR_GRAFANA_PORT:-3001}
+      - MINER_PORT=${MINER_AXON_PORT:-8242}
+      - MASA_BASE_URL=${API_URL:-https://test.protocol-api.masa.ai}
+      - API_URL=${API_URL:-https://test.protocol-api.masa.ai}
+    volumes:
+      - ./.env:/app/.env
+      - ./.bittensor:/root/.bittensor
+    ports:
+      - "${VALIDATOR_AXON_PORT:-8142}:${VALIDATOR_AXON_PORT:-8142}"
+      - "${VALIDATOR_METRICS_PORT:-8001}:${VALIDATOR_METRICS_PORT:-8001}"
+      - "${VALIDATOR_GRAFANA_PORT:-3001}:${VALIDATOR_GRAFANA_PORT:-3001}"
+      - "${MINER_AXON_PORT:-8242}:${MINER_AXON_PORT:-8242}"
+      - "${MINER_METRICS_PORT:-8101}:${MINER_METRICS_PORT:-8101}"
+      - "${MINER_GRAFANA_PORT:-3101}:${MINER_GRAFANA_PORT:-3101}"
+    restart: unless-stopped
