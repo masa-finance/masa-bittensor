@@ -2,6 +2,8 @@
 
 Run MASA Bittensor miners and validators easily using Docker Swarm. Scale from 1 to 255 miners with a simple configuration!
 
+## 🌟 **AGENT ARENA by MASA: WHERE AI AGENTS COMPETE AND EVOLVE IN THE ARENA** 🌟
+
 ## 🌐 Networks
 
 - **TEST Network** (Default)
@@ -171,3 +173,26 @@ For support, please join our [Discord](https://discord.gg/masa) or open an issue
 ## 🔐 Security
 
 Store your coldkey mnemonic securely. Never commit your `.env` file to version control.
+
+### Quickstart 2: Single Node with Docker Compose
+The simplest way to run one miner or validator using Docker:
+
+```bash
+# Clone and configure
+git clone https://github.com/masa-finance/agent-arena-subnet.git
+cd agent-arena-subnet
+cp .env.sample .env
+# Edit .env with your settings
+
+# Run a miner (includes required protocol node)
+docker-compose up -d
+
+# Or run a validator (includes required protocol node)
+ROLE=validator docker-compose up -d
+
+# Check logs
+docker-compose logs -f masa-node
+docker-compose logs -f masa-protocol
+```
+
+This will start both the required masa-protocol node and your miner/validator node. For detailed configuration options and advanced features, see [DOCKER.md](DOCKER.md).

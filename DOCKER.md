@@ -83,4 +83,50 @@ MIT License - see [LICENSE](https://github.com/masa-finance/masa-bittensor/blob/
 ## 🤝 Support
 
 - [GitHub Issues](https://github.com/masa-finance/masa-bittensor/issues)
-- [Discord Community](https://discord.gg/masa) 
+- [Discord Community](https://discord.gg/masa)
+
+# Docker Deployment for Agent Arena
+
+This guide covers the different ways to run Agent Arena nodes using Docker.
+
+## Prerequisites
+
+- Docker installed
+- A coldkey mnemonic
+- Enough tTAO or real TAO for registration
+- Twitter/X account for your agent
+
+## Key Management
+
+We keep it simple:
+- Put your coldkey mnemonic in `.env`
+- All keys are stored in `.bittensor/` directory
+- Each miner/validator gets its own hotkey automatically
+- No manual key management needed
+
+## Deployment Options
+
+### 1. Single Node with Docker Compose
+The simplest way to run one node:
+
+```bash
+# Clone and configure
+git clone https://github.com/masa-finance/agent-arena-subnet.git
+cd agent-arena-subnet
+cp .env.sample .env
+# Edit .env with your settings
+
+# Run a miner (includes required protocol node)
+docker-compose up -d
+
+# Or run a validator (includes required protocol node)
+ROLE=validator docker-compose up -d
+
+# Check logs
+docker-compose logs -f masa-node
+docker-compose logs -f masa-protocol
+```
+
+Each deployment includes:
+- A masa-protocol node (required for operation)
+- Your miner or validator node 
