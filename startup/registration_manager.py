@@ -59,70 +59,20 @@ class RegistrationManager:
         if is_registered:
             return True, uid
 
-        # Check balance and registration cost
-        balance = self.subtensor.get_balance(wallet.coldkeypub.ss58_address)
-        cost = self.subtensor.recycle(netuid)
-
-        self.logger.info(f"Current balance: {balance} TAO")
-        self.logger.info(f"Registration cost: {cost} TAO")
-
-        if balance < cost:
-            raise Exception(
-                f"Insufficient balance ({balance} TAO) for registration. Need {cost} TAO"
-            )
-
-        self.logger.info("Balance sufficient for registration, proceeding...")
-        self.logger.info(
-            f"This process will burn {cost} TAO from your balance of {balance} TAO"
+        success = self.subtensor.burn_register(
+            wallet=wallet,
+            netuid=netuid,
+            wait_for_inclusion=True,
+            wait_for_finalization=True,
         )
 
-        # Perform registration with retries
-        max_retries = 10
-        retry_count = 0
-        while retry_count < max_retries:
-            try:
-                success = self.subtensor.burned_register(
-                    wallet=wallet,
-                    netuid=netuid,
-                    wait_for_inclusion=True,
-                    wait_for_finalization=True,
-                )
-
-                if success:
-                    break
-                else:
-                    retry_count += 1
-                    self.logger.warning(
-                        f"Registration attempt {retry_count} failed, retrying in 10 seconds..."
-                    )
-                    time.sleep(10)
-
-            except Exception as e:
-                error_str = str(e)
-                if "Priority is too low" in error_str:
-                    retry_count += 1
-                    self.logger.warning(
-                        f"Got priority error on attempt {retry_count}, retrying in 10 seconds..."
-                    )
-                    time.sleep(10)
-                else:
-                    role = "validator" if is_validator else "miner"
-                    raise Exception(f"Failed to register {role} hotkey - {str(e)}")
-
-        if retry_count >= max_retries:
+        if not success:
             role = "validator" if is_validator else "miner"
-            raise Exception(
-                f"Failed to register {role} hotkey after {max_retries} attempts"
-            )
+            raise Exception(f"Failed to register {role} hotkey")
 
         # Verify registration and get UID
         is_registered, uid = self.check_registration(wallet, netuid)
         if is_registered:
-            new_balance = self.subtensor.get_balance(wallet.coldkeypub.ss58_address)
-            self.logger.info(f"Successfully registered hotkey with UID {uid}")
-            self.logger.info(
-                f"New balance after registration: {new_balance} TAO (burned {balance - new_balance} TAO)"
-            )
             return True, uid
         else:
             raise Exception(

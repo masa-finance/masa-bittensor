@@ -141,7 +141,7 @@ def generate_report(wait_time=20):
         print("⏳ Some services are still initializing or need attention.")
         print("\nTip: Run this report again in a few minutes to check progress.")
         print(
-            "     You can also check detailed logs with: docker service logs masa_miner -f"
+            "     You can also check detailed logs with: docker service logs masa_neuron -f"
         )
 
 

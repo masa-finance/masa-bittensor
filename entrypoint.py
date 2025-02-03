@@ -6,6 +6,7 @@ import bittensor as bt
 from neurons.validator import Validator
 from contextlib import redirect_stdout
 import subprocess
+import time
 
 # Remove prometheus imports
 # from prometheus_client import start_http_server, Gauge, Counter
@@ -249,49 +250,54 @@ class Orchestrator:
                         netuid=config.subtensor.netuid,
                         hotkey_ss58=wallet.hotkey.ss58_address,
                     ):
-                        logging.info(
-                            "Hotkey was registered by another process, continuing..."
-                        )
-                        success = True
+                        logging.info("Hotkey is already registered")
                     else:
-                        logging.info("Calling burned_register...")
-                        success = subtensor.burned_register(
-                            wallet=wallet,
-                            netuid=config.subtensor.netuid,
-                            wait_for_inclusion=True,
-                            wait_for_finalization=True,
-                        )
-                        logging.info("burned_register call completed")
+                        # Attempt registration with retries
+                        max_retries = 10
+                        retry_count = 0
+                        while retry_count < max_retries:
+                            try:
+                                # Attempt registration with retries
+                                success = subtensor.burn_register(
+                                    wallet=wallet,
+                                    netuid=config.subtensor.netuid,
+                                    wait_for_inclusion=True,
+                                    wait_for_finalization=True,
+                                )
 
-                    if not success:
-                        raise Exception(
-                            "Failed to register validator hotkey - check subnet and balance"
-                        )
+                                if success:
+                                    new_balance = subtensor.get_balance(
+                                        wallet.coldkeypub.ss58_address
+                                    )
+                                    logging.info(
+                                        "Successfully registered validator hotkey"
+                                    )
+                                    logging.info(
+                                        f"New balance after registration: {new_balance} TAO (burned {balance - new_balance} TAO)"
+                                    )
+                                else:
+                                    raise Exception(
+                                        "Failed to register validator hotkey"
+                                    )
 
-                    # Verify registration
-                    is_registered = subtensor.is_hotkey_registered(
-                        netuid=config.subtensor.netuid,
-                        hotkey_ss58=wallet.hotkey.ss58_address,
-                    )
+                            except Exception as e:
+                                error_str = str(e)
+                                if "Priority is too low" in error_str:
+                                    retry_count += 1
+                                    logging.warning(
+                                        f"Got priority error on attempt {retry_count}, retrying in 10 seconds..."
+                                    )
+                                    time.sleep(10)
+                                else:
+                                    raise Exception(
+                                        f"Failed to register validator hotkey - {str(e)}"
+                                    )
 
-                    if is_registered:
-                        new_balance = subtensor.get_balance(
-                            wallet.coldkeypub.ss58_address
-                        )
-                        uid = subtensor.get_uid_for_hotkey_on_subnet(
-                            hotkey_ss58=wallet.hotkey.ss58_address,
-                            netuid=config.subtensor.netuid,
-                        )
-                        logging.info(
-                            f"Successfully registered validator hotkey with UID {uid}"
-                        )
-                        logging.info(
-                            f"New balance after registration: {new_balance} TAO (burned {balance - new_balance} TAO)"
-                        )
-                    else:
-                        raise Exception(
-                            "Registration appeared to succeed but hotkey is not registered"
-                        )
+                        if retry_count >= max_retries:
+                            raise Exception(
+                                f"Failed to register validator hotkey after {max_retries} attempts"
+                            )
+
                 else:
                     # For miners, attempt registration
                     logging.info("Attempting to register miner hotkey...")
@@ -325,7 +331,7 @@ class Orchestrator:
                         success = True
                     else:
                         logging.info("Calling burned_register...")
-                        success = subtensor.burned_register(
+                        success = subtensor.burned_register_extrinsic(
                             wallet=wallet,
                             netuid=config.subtensor.netuid,
                             wait_for_inclusion=True,

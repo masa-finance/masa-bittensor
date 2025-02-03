@@ -23,9 +23,11 @@ class Orchestrator:
     def __init__(self):
         """Initialize the orchestrator with configuration from environment."""
         # Get network configuration
-        self.netuid = int(os.environ["NETUID"])
         self.network = os.environ["NETWORK"].split("#")[0].strip()
         self.role = os.environ.get("ROLE", "validator")
+
+        # Determine NETUID based on network
+        self.netuid = 165 if self.network == "test" else 42
 
         # Map network and subnet IDs
         self.chain_endpoint = get_chain_endpoint(self.network)
