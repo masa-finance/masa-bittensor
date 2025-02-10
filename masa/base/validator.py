@@ -284,7 +284,10 @@ class BaseValidatorNeuron(BaseNeuron):
                 "Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
 
-        # Check if all scores are the same
+        # Check if scores are empty or all scores are the same
+        if self.scores.numel() == 0:
+            bt.logging.warning("Scores are empty. Skipping set_weights.")
+            return
         if torch.all(self.scores == self.scores[0]):
             bt.logging.warning("All scores are the same. Skipping set_weights.")
             return
@@ -480,7 +483,7 @@ class BaseValidatorNeuron(BaseNeuron):
         if os.path.isfile(state_path):
             state = torch.load(state_path, map_location=torch.device("cpu"))
             self.step = dict(state).get("step", 0)
-            self.scores = dict(state).get("scores", [])
+            self.scores = dict(state).get("scores", torch.zeros(self.metagraph.n))
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
             self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
