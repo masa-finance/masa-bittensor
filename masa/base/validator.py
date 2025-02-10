@@ -284,6 +284,11 @@ class BaseValidatorNeuron(BaseNeuron):
                 "Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
 
+        # Check if all scores are the same
+        if torch.all(self.scores == self.scores[0]):
+            bt.logging.warning("All scores are the same. Skipping set_weights.")
+            return
+
         # Calculate the average reward for each uid across non-zero values.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
 
