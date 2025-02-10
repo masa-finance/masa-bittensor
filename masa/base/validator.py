@@ -458,10 +458,10 @@ class BaseValidatorNeuron(BaseNeuron):
         torch.save(
             {
                 "step": self.step,
-                "scores": self.scores,
+                # "scores": self.scores,
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
-                "tweets_by_uid": self.tweets_by_uid,
+                # "tweets_by_uid": self.tweets_by_uid,
             },
             self.config.neuron.full_path + "/state.pt",
         )
