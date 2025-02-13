@@ -111,10 +111,18 @@ async def get_uncalled_miner_uids(
             weights_version = self.subtensor.get_subnet_hyperparameters(
                 self.config.netuid
             ).weights_version
-            version_checked_uids = [
-                uid for uid in healthy_uids if self.versions[uid] >= weights_version
-            ]
+            version_checked_uids = []
+            for uid in healthy_uids:
+                if uid < len(self.versions) and isinstance(
+                    self.versions[uid], (int, float)
+                ):
+                    if self.versions[uid] >= weights_version:
+                        version_checked_uids.append(uid)
             self.uncalled_uids = set(version_checked_uids)
+
+        if not self.uncalled_uids:
+            bt.logging.warning("No valid UIDs found after version check")
+            return None
 
         k = min(k, len(self.uncalled_uids))
         random_sample = random.sample(list(self.uncalled_uids), k)

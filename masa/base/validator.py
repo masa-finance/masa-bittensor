@@ -3,14 +3,14 @@
 # Copyright © 2023 Masa
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
-# documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+# documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
 # and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
 # The above copyright notice and this permission notice shall be included in all copies or substantial portions of
 # the Software.
 
-# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
 # THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
@@ -69,6 +69,8 @@ class BaseValidatorNeuron(BaseNeuron):
         self.keywords = []  # note, for volume scoring queries
         self.uncalled_uids = set()  # note, for volume scoring queries
         self.volume_window = 6  # note, score volumes from last 6 tempos
+        self.tweets_by_uid = {}  # Initialize tweets_by_uid as empty dict
+        self.volumes = []  # Initialize volumes as empty list
 
         # load config file for subnet specific settings as default
         # note, every tempo we fetch the latest config file from github main branch
@@ -453,15 +455,15 @@ class BaseValidatorNeuron(BaseNeuron):
     def save_state(self):
         """Saves the state of the validator to a file."""
         bt.logging.info("Saving validator state.")
-
-        # Save the state of the validator to file.
         torch.save(
             {
                 "step": self.step,
                 "scores": self.scores,
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
-                # "tweets_by_uid": self.tweets_by_uid,
+                "tweets_by_uid": {
+                    int(k): list(v) for k, v in self.tweets_by_uid.items()
+                },
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -469,22 +471,19 @@ class BaseValidatorNeuron(BaseNeuron):
     def load_state(self):
         """Loads the state of the validator from a file."""
         bt.logging.info("Loading validator state.")
-
-        # Load the state of the validator from file.
         state_path = self.config.neuron.full_path + "/state.pt"
         if os.path.isfile(state_path):
             state = torch.load(state_path, map_location=torch.device("cpu"))
-            self.step = dict(state).get("step", 0)
-            self.scores = dict(state).get("scores", [])
-            self.hotkeys = dict(state).get("hotkeys", [])
-            self.volumes = dict(state).get("volumes", [])
-            self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
+            self.step = state.get("step", 0)
+            self.scores = state.get("scores", torch.zeros_like(self.scores))
+            self.hotkeys = state.get("hotkeys", copy.deepcopy(self.metagraph.hotkeys))
+            self.volumes = state.get("volumes", [])
+            loaded_tweets = state.get("tweets_by_uid", {})
+            self.tweets_by_uid = {int(k): set(v) for k, v in loaded_tweets.items()}
         else:
+            bt.logging.warning(f"No state file found at: {state_path}")
             self.step = 0
-            self.scores = torch.zeros(self.metagraph.n)
-            self.hotkeys = []
+            self.scores = torch.zeros_like(self.scores)
+            self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
             self.volumes = []
             self.tweets_by_uid = {}
-            bt.logging.warning(
-                f"State file not found at {state_path}. Skipping state load."
-            )
