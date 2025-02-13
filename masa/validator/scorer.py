@@ -52,10 +52,16 @@ class Scorer:
 
             miner_volumes = {}
             for volume in volumes[-self.validator.volume_window :]:
-                for miner_uid, vol in volume["miners"].items():
-                    if miner_uid not in miner_volumes:
-                        miner_volumes[miner_uid] = 0
-                    miner_volumes[miner_uid] += vol
+                miners_dict = volume.get("miners", {})
+                for miner_uid, vol in miners_dict.items():
+                    try:
+                        uid = int(miner_uid)
+                        if uid not in miner_volumes:
+                            miner_volumes[uid] = 0
+                        miner_volumes[uid] += float(vol)
+                    except (ValueError, TypeError) as e:
+                        bt.logging.warning(f"Invalid miner_uid or volume: {e}")
+                        continue
 
             valid_miner_uids = list(miner_volumes.keys())
 
@@ -64,20 +70,31 @@ class Scorer:
                 return JSONResponse(content=[])
 
             mean_volume = sum(miner_volumes.values()) / len(miner_volumes)
-            std_dev_volume = (
-                sum((x - mean_volume) ** 2 for x in miner_volumes.values())
-                / len(miner_volumes)
-            ) ** 0.5
+            std_dev_volume = max(
+                (
+                    sum((x - mean_volume) ** 2 for x in miner_volumes.values())
+                    / len(miner_volumes)
+                )
+                ** 0.5,
+                1e-8,
+            )  # Avoid division by zero
 
             if len(miner_volumes) == 1:
                 rewards = [1]
             else:
-                rewards = [
-                    self.kurtosis_based_score(
-                        miner_volumes[uid], mean_volume, std_dev_volume
-                    )
-                    for uid in valid_miner_uids
-                ]
+                rewards = []
+                for uid in valid_miner_uids:
+                    try:
+                        score = self.kurtosis_based_score(
+                            miner_volumes[uid], mean_volume, std_dev_volume
+                        )
+                        rewards.append(float(score))
+                    except Exception as e:
+                        bt.logging.warning(
+                            f"Error calculating score for uid {uid}: {e}"
+                        )
+                        rewards.append(0.0)
+
             scores = torch.FloatTensor(rewards).to(self.validator.device)
 
             async with self.validator.lock:
@@ -92,11 +109,11 @@ class Scorer:
             if volumes:
                 serializable_volumes = [
                     {
-                        "uid": int(miner_uid),
-                        "volume": float(miner_volumes[miner_uid]),
-                        "score": rewards[valid_miner_uids.index(miner_uid)],
+                        "uid": int(uid),
+                        "volume": float(miner_volumes[uid]),
+                        "score": float(rewards[i]),
                     }
-                    for miner_uid in valid_miner_uids
+                    for i, uid in enumerate(valid_miner_uids)
                 ]
                 return JSONResponse(content=serializable_volumes)
             return JSONResponse(content=[])
@@ -113,7 +130,11 @@ class Scorer:
         return similarity_percentage
 
     def kurtosis_based_score(self, volume, mean, std_dev, scale_factor=1.0):
-        if std_dev == 0:
-            return 0
-        z_score = (volume - mean) / std_dev
-        return stats.norm.cdf(z_score) * scale_factor
+        try:
+            if std_dev < 1e-8:  # Numerical stability
+                return 0.0
+            z_score = (float(volume) - float(mean)) / float(std_dev)
+            return float(stats.norm.cdf(z_score) * scale_factor)
+        except Exception as e:
+            bt.logging.error(f"Error in kurtosis_based_score: {e}")
+            return 0.0

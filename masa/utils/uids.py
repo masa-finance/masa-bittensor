@@ -73,10 +73,9 @@ async def get_random_miner_uids(
 
         version_checked_uids = []
         for uid in healthy_uids:
-            if uid < len(self.versions) and isinstance(
-                self.versions[uid], (int, float)
-            ):
-                if self.versions[uid] >= weights_version:
+            if uid < len(self.versions):
+                version = self.versions[uid]
+                if isinstance(version, (int, float)) and version >= weights_version:
                     version_checked_uids.append(uid)
 
         if not version_checked_uids:
@@ -91,7 +90,10 @@ async def get_random_miner_uids(
         bt.logging.error(f"Failed to get random miner uids: {e}")
         return None
     finally:
-        await dendrite.close_session()
+        try:
+            await dendrite.close_session()
+        except:
+            pass
 
 
 async def get_uncalled_miner_uids(
@@ -121,10 +123,9 @@ async def get_uncalled_miner_uids(
             ).weights_version
             version_checked_uids = []
             for uid in healthy_uids:
-                if uid < len(self.versions) and isinstance(
-                    self.versions[uid], (int, float)
-                ):
-                    if self.versions[uid] >= weights_version:
+                if uid < len(self.versions):
+                    version = self.versions[uid]
+                    if isinstance(version, (int, float)) and version >= weights_version:
                         version_checked_uids.append(uid)
             self.uncalled_uids = set(version_checked_uids)
 
@@ -143,4 +144,7 @@ async def get_uncalled_miner_uids(
         bt.logging.error(f"Failed to get uncalled miner uids: {e}")
         return None
     finally:
-        dendrite.close_session()
+        try:
+            await dendrite.close_session()
+        except:
+            pass
