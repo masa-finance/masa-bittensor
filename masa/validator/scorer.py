@@ -43,61 +43,66 @@ class Scorer:
         self.validator.volumes[-1]["miners"][miner_uid] += volume
 
     async def score_miner_volumes(self):
-        volumes = self.validator.volumes
+        try:
+            volumes = self.validator.volumes
 
-        if not volumes:
-            bt.logging.info("No volumes to score yet")
+            if not volumes:
+                bt.logging.info("No volumes to score yet")
+                return JSONResponse(content=[])
+
+            miner_volumes = {}
+            for volume in volumes[-self.validator.volume_window :]:
+                for miner_uid, vol in volume["miners"].items():
+                    if miner_uid not in miner_volumes:
+                        miner_volumes[miner_uid] = 0
+                    miner_volumes[miner_uid] += vol
+
+            valid_miner_uids = list(miner_volumes.keys())
+
+            if not miner_volumes:
+                self.validator.save_state()
+                return JSONResponse(content=[])
+
+            mean_volume = sum(miner_volumes.values()) / len(miner_volumes)
+            std_dev_volume = (
+                sum((x - mean_volume) ** 2 for x in miner_volumes.values())
+                / len(miner_volumes)
+            ) ** 0.5
+
+            if len(miner_volumes) == 1:
+                rewards = [1]
+            else:
+                rewards = [
+                    self.kurtosis_based_score(
+                        miner_volumes[uid], mean_volume, std_dev_volume
+                    )
+                    for uid in valid_miner_uids
+                ]
+            scores = torch.FloatTensor(rewards).to(self.validator.device)
+
+            async with self.validator.lock:
+                self.validator.update_scores(scores, valid_miner_uids)
+                if self.validator.should_set_weights():
+                    try:
+                        self.validator.set_weights()
+                    except Exception as e:
+                        bt.logging.error(f"Failed to set weights: {e}")
+
+            self.validator.last_scoring_block = self.validator.subtensor.block
+            if volumes:
+                serializable_volumes = [
+                    {
+                        "uid": int(miner_uid),
+                        "volume": float(miner_volumes[miner_uid]),
+                        "score": rewards[valid_miner_uids.index(miner_uid)],
+                    }
+                    for miner_uid in valid_miner_uids
+                ]
+                return JSONResponse(content=serializable_volumes)
             return JSONResponse(content=[])
-
-        miner_volumes = {}
-        for volume in volumes[-self.validator.volume_window :]:
-            for miner_uid, vol in volume["miners"].items():
-                if miner_uid not in miner_volumes:
-                    miner_volumes[miner_uid] = 0
-                miner_volumes[miner_uid] += vol
-
-        valid_miner_uids = list(miner_volumes.keys())
-
-        if not miner_volumes:
-            self.validator.save_state()
+        except Exception as e:
+            bt.logging.error(f"Error in score_miner_volumes: {str(e)}")
             return JSONResponse(content=[])
-
-        mean_volume = sum(miner_volumes.values()) / len(miner_volumes)
-        std_dev_volume = (
-            sum((x - mean_volume) ** 2 for x in miner_volumes.values())
-            / len(miner_volumes)
-        ) ** 0.5
-
-        if len(miner_volumes) == 1:
-            rewards = [1]
-        else:
-            rewards = [
-                self.kurtosis_based_score(
-                    miner_volumes[uid], mean_volume, std_dev_volume
-                )
-                for uid in valid_miner_uids
-            ]
-        scores = torch.FloatTensor(rewards).to(self.validator.device)
-
-        self.validator.update_scores(scores, valid_miner_uids)
-        if self.validator.should_set_weights():
-            try:
-                self.validator.set_weights()
-            except Exception as e:
-                bt.logging.error(f"Failed to set weights: {e}")
-
-        self.validator.last_scoring_block = self.validator.subtensor.block
-        if volumes:
-            serializable_volumes = [
-                {
-                    "uid": int(miner_uid),
-                    "volume": float(miner_volumes[miner_uid]),
-                    "score": rewards[valid_miner_uids.index(miner_uid)],
-                }
-                for miner_uid in valid_miner_uids
-            ]
-            return JSONResponse(content=serializable_volumes)
-        return JSONResponse(content=[])
 
     def calculate_similarity_percentage(self, response_embedding, source_embedding):
         cosine_similarity = torch.nn.functional.cosine_similarity(

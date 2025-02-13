@@ -71,9 +71,17 @@ async def get_random_miner_uids(
             self.config.netuid
         ).weights_version
 
-        version_checked_uids = [
-            uid for uid in healthy_uids if self.versions[uid] >= weights_version
-        ]
+        version_checked_uids = []
+        for uid in healthy_uids:
+            if uid < len(self.versions) and isinstance(
+                self.versions[uid], (int, float)
+            ):
+                if self.versions[uid] >= weights_version:
+                    version_checked_uids.append(uid)
+
+        if not version_checked_uids:
+            bt.logging.warning("No valid UIDs found after version check")
+            return None
 
         k = min(k, len(version_checked_uids))
         random_sample = random.sample(version_checked_uids, k)
@@ -83,7 +91,7 @@ async def get_random_miner_uids(
         bt.logging.error(f"Failed to get random miner uids: {e}")
         return None
     finally:
-        dendrite.close_session()
+        await dendrite.close_session()
 
 
 async def get_uncalled_miner_uids(
