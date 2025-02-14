@@ -19,6 +19,7 @@
 import time
 from typing import Any, Tuple
 import bittensor as bt
+import asyncio
 
 from masa.base.miner import BaseMinerNeuron
 
@@ -32,7 +33,24 @@ from masa.synapses import (
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
+        self._is_initialized = False
+
+    @classmethod
+    async def create(cls, config=None):
+        if config is None:
+            config = cls.config()
+
+        self = cls(config=config)
+        await self.initialize(config)
+        return self
+
+    async def initialize(self, config=None):
+        if self._is_initialized:
+            return
+
+        await super().initialize(config)
         bt.logging.info("Miner initialized with config: {}".format(config))
+        self._is_initialized = True
 
     async def blacklist(self, synapse: Any) -> Tuple[bool, str]:
         if self.check_tempo(synapse):
@@ -141,7 +159,10 @@ class Miner(BaseMinerNeuron):
         return await self.priority(synapse)
 
 
+async def main():
+    miner = await Miner.create()
+    await miner.run()
+
+
 if __name__ == "__main__":
-    with Miner() as miner:
-        while True:
-            time.sleep(5)
+    asyncio.run(main())

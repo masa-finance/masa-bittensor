@@ -21,7 +21,6 @@ import bittensor as bt
 import subprocess
 import requests
 from dotenv import load_dotenv
-import asyncio
 
 # Sync calls set weights and also resyncs the metagraph.
 from masa.utils.config import check_config, add_args, config
@@ -66,8 +65,7 @@ class BaseNeuron(ABC):
     def __init__(self, config=None):
         """Synchronous initialization of basic attributes."""
         base_config = copy.deepcopy(config or self.config())
-        # Set the chain endpoint before anything else
-        base_config.subtensor.network = "wss://entrypoint-finney.masa.ai"
+
         self.config = base_config
         self.device = None
         self.wallet = None
