@@ -223,121 +223,139 @@ class Forwarder:
                 if not all_responses:
                     continue
 
-                # Updated regex to include a wider range of zero characters
+                # First filter out any tweets with non-numeric IDs and log bad miners
+                valid_tweet_count = 0
+                invalid_tweet_count = 0
+                invalid_ids = []
+                for tweet in all_responses:
+                    if (
+                        "Tweet" in tweet
+                        and "ID" in tweet["Tweet"]
+                        and tweet["Tweet"]["ID"]
+                    ):  # Ensure ID exists and is not empty
+                        tweet_id = tweet["Tweet"]["ID"].strip()
+                        if tweet_id.isdigit():  # Must be purely numeric
+                            valid_tweets.append(tweet)
+                            valid_tweet_count += 1
+                        else:
+                            invalid_ids.append(tweet_id)
+                            invalid_tweet_count += 1
+                    else:
+                        invalid_tweet_count += 1
+
+                if invalid_tweet_count > 0:
+                    bt.logging.error(
+                        f"Miner {uid} submitted {invalid_tweet_count} invalid tweets out of {len(all_responses)}. "
+                        f"Invalid IDs found: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}"
+                    )
+                    # Give zero score for submitting any invalid tweets
+                    self.validator.scorer.add_volume(int(uid), 0, current_block)
+                    continue  # Skip further processing for this miner
+
+                # Deduplicate valid tweets using numeric IDs
                 unique_tweets_response = list(
-                    {
-                        re.sub(
-                            r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០]+", "", resp["Tweet"]["ID"].strip()
-                        ): {
-                            **resp,
-                            "Tweet": {
-                                **resp["Tweet"],
-                                "ID": re.sub(
-                                    r"^[0０٠۰०০੦૦୦௦౦೦൦๐໐༠၀០]+",
-                                    "",
-                                    resp["Tweet"]["ID"].strip(),
-                                ),
-                            },
-                        }
-                        for resp in all_responses
-                        if "Tweet" in resp and "ID" in resp["Tweet"]
-                    }.values()
+                    {tweet["Tweet"]["ID"]: tweet for tweet in valid_tweets}.values()
                 )
 
-                if unique_tweets_response is not None:
-                    # note, first spot check this payload, ensuring a random tweet is valid
-                    random_tweet = dict(random.choice(unique_tweets_response)).get(
-                        "Tweet", {}
+                if not unique_tweets_response:  # If no valid tweets after filtering
+                    bt.logging.warning(
+                        f"Miner {uid} had no valid tweets after filtering"
                     )
+                    continue
 
-                    # Add exponential backoff for rate limits
-                    retry_count = 0
-                    max_retries = 3
-                    while retry_count < max_retries:
-                        try:
-                            is_valid = validator.validate_tweet(
-                                random_tweet.get("ID"),
-                                random_tweet.get("Name"),
-                                random_tweet.get("Username"),
-                                random_tweet.get("Text"),
-                                random_tweet.get("Timestamp"),
-                                random_tweet.get("Hashtags"),
+                # Continue with validation of a random tweet from the valid set
+                random_tweet = dict(random.choice(unique_tweets_response)).get(
+                    "Tweet", {}
+                )
+
+                # Add exponential backoff for rate limits
+                retry_count = 0
+                max_retries = 3
+                while retry_count < max_retries:
+                    try:
+                        is_valid = validator.validate_tweet(
+                            random_tweet.get("ID"),
+                            random_tweet.get("Name"),
+                            random_tweet.get("Username"),
+                            random_tweet.get("Text"),
+                            random_tweet.get("Timestamp"),
+                            random_tweet.get("Hashtags"),
+                        )
+                        break
+                    except Exception as e:
+                        if "429" in str(e) and retry_count < max_retries - 1:
+                            wait_time = (2**retry_count) * 5  # 5, 10, 20 seconds
+                            bt.logging.warning(
+                                f"Rate limited, waiting {wait_time} seconds before retry"
                             )
+                            await asyncio.sleep(wait_time)
+                            retry_count += 1
+                        else:
+                            bt.logging.error(
+                                f"Failed to validate tweet after {retry_count} retries: {e}"
+                            )
+                            is_valid = False
                             break
-                        except Exception as e:
-                            if "429" in str(e) and retry_count < max_retries - 1:
-                                wait_time = (2**retry_count) * 5  # 5, 10, 20 seconds
-                                bt.logging.warning(
-                                    f"Rate limited, waiting {wait_time} seconds before retry"
-                                )
-                                await asyncio.sleep(wait_time)
-                                retry_count += 1
-                            else:
-                                bt.logging.error(
-                                    f"Failed to validate tweet after {retry_count} retries: {e}"
-                                )
-                                is_valid = False
-                                break
 
-                    # Always wait at least 2 seconds between validations
-                    await asyncio.sleep(2)
+                # Always wait at least 2 seconds between validations
+                await asyncio.sleep(2)
 
-                    query_words = (
-                        self.normalize_whitespace(random_keyword.replace('"', ""))
-                        .strip()
-                        .lower()
-                        .split()
+                query_words = (
+                    self.normalize_whitespace(random_keyword.replace('"', ""))
+                    .strip()
+                    .lower()
+                    .split()
+                )
+
+                fields_to_check = [
+                    self.normalize_whitespace(random_tweet.get("Text", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Name", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Username", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
+                    .strip()
+                    .lower(),
+                ]
+
+                query_in_tweet = all(
+                    any(word in field for field in fields_to_check)
+                    for word in query_words
+                )
+
+                if not query_in_tweet:
+                    bt.logging.warning(
+                        f"Query: {random_keyword} is not in the tweet: {fields_to_check}"
                     )
 
-                    fields_to_check = [
-                        self.normalize_whitespace(random_tweet.get("Text", ""))
-                        .strip()
-                        .lower(),
-                        self.normalize_whitespace(random_tweet.get("Name", ""))
-                        .strip()
-                        .lower(),
-                        self.normalize_whitespace(random_tweet.get("Username", ""))
-                        .strip()
-                        .lower(),
-                        self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
-                        .strip()
-                        .lower(),
-                    ]
+                tweet_timestamp = datetime.fromtimestamp(
+                    random_tweet.get("Timestamp", 0), UTC
+                )
 
-                    query_in_tweet = all(
-                        any(word in field for field in fields_to_check)
-                        for word in query_words
+                yesterday = datetime.now(UTC).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                ) - timedelta(days=1)
+                is_since_date_requested = yesterday <= tweet_timestamp
+
+                if not is_since_date_requested:
+                    bt.logging.warning(
+                        f"Tweet timestamp {tweet_timestamp} is not since {yesterday}"
                     )
 
-                    if not query_in_tweet:
-                        bt.logging.warning(
-                            f"Query: {random_keyword} is not in the tweet: {fields_to_check}"
-                        )
-
-                    tweet_timestamp = datetime.fromtimestamp(
-                        random_tweet.get("Timestamp", 0), UTC
+                # note, they passed the spot check!
+                if is_valid and query_in_tweet and is_since_date_requested:
+                    bt.logging.success(
+                        f"Miner {uid} passed the spot check with query: {random_keyword}"
                     )
-
-                    yesterday = datetime.now(UTC).replace(
-                        hour=0, minute=0, second=0, microsecond=0
-                    ) - timedelta(days=1)
-                    is_since_date_requested = yesterday <= tweet_timestamp
-
-                    if not is_since_date_requested:
-                        bt.logging.warning(
-                            f"Tweet timestamp {tweet_timestamp} is not since {yesterday}"
-                        )
-
-                    # note, they passed the spot check!
-                    if is_valid and query_in_tweet and is_since_date_requested:
-                        bt.logging.success(
-                            f"Miner {uid} passed the spot check with query: {random_keyword}"
-                        )
-                        for tweet in unique_tweets_response:
-                            if tweet:
-                                valid_tweets.append(tweet)
-                    else:
-                        bt.logging.warning(f"Miner {uid} failed the spot check!")
+                    for tweet in unique_tweets_response:
+                        if tweet:
+                            valid_tweets.append(tweet)
+                else:
+                    bt.logging.warning(f"Miner {uid} failed the spot check!")
 
                 all_valid_tweets.extend(valid_tweets)
 
