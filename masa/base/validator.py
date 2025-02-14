@@ -195,23 +195,18 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
             return False
 
-        # Check if enough blocks have elapsed since last weight setting
-        current_block = await self.block
-        blocks_elapsed = (
-            current_block - self.last_weights_block
-            if self.last_weights_block > 0
-            else float("inf")
-        )
-        bt.logging.debug(f"Blocks elapsed since last weight setting: {blocks_elapsed}")
+        # Check if enough blocks have elapsed since last update
+        blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
+        bt.logging.debug(f"Blocks elapsed since last update: {blocks_elapsed}")
 
-        # Only allow setting weights if enough blocks have elapsed
+        # Only allow setting weights if enough blocks elapsed
         if blocks_elapsed <= 100:
             bt.logging.debug(
-                f"❌ Only {blocks_elapsed} blocks elapsed since last weight setting"
+                f"❌ Only {blocks_elapsed} blocks elapsed since last update"
             )
             return False
 
-        if self.last_weights_block == 0:
+        if self.metagraph.last_update[self.uid] == 0:
             bt.logging.info("✅ Initial weight setting")
         else:
             bt.logging.info(
