@@ -141,8 +141,7 @@ class Scorer:
                 return JSONResponse(content=[])
 
             try:
-                self.validator.update_scores(scores, valid_miner_uids)
-                bt.logging.debug("update_scores completed successfully")
+                await self.validator.update_scores(scores, valid_miner_uids)
             except Exception as e:
                 bt.logging.error(
                     f"Error updating scores: {e}, scores shape: {scores.shape}, uids length: {len(valid_miner_uids)}"

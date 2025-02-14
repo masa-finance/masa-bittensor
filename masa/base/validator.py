@@ -357,10 +357,40 @@ class BaseValidatorNeuron(BaseNeuron):
                 "Tweets not exported, missing config --validator.export_url"
             )
 
-    def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
+    async def save_state(self):
+        """Saves the state of the validator to a file."""
+        bt.logging.info("Starting to save validator state...")
+
+        try:
+            state_dict = {
+                "step": self.step,
+                "scores": self.scores,
+                "hotkeys": self.hotkeys,
+                "volumes": self.volumes,
+                "tweets_by_uid": self.tweets_by_uid,
+            }
+
+            save_path = self.config.neuron.full_path + "/state.pt"
+            temp_path = save_path + ".tmp"
+
+            # Use asyncio to run blocking operations in a thread pool
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: torch.save(state_dict, temp_path)
+            )
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: os.replace(temp_path, save_path)
+            )
+
+            bt.logging.info(f"Successfully saved state to {save_path}")
+
+        except Exception as e:
+            bt.logging.error(f"Failed to save state: {str(e)}")
+            # Continue execution even if save fails
+            pass
+
+    async def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""
         try:
-            bt.logging.debug("Starting update_scores...")
             # Check if rewards contains NaN values.
             if torch.isnan(rewards).any():
                 bt.logging.warning(f"NaN values detected in rewards: {rewards}")
@@ -383,10 +413,6 @@ class BaseValidatorNeuron(BaseNeuron):
             max_uid_needed = max(max(uids), self.metagraph.n - 1)
             current_size = len(self.scores)
 
-            bt.logging.debug(
-                f"Current scores size: {current_size}, Max UID needed: {max_uid_needed}"
-            )
-
             # If we need to expand the scores tensor
             if max_uid_needed >= current_size:
                 new_size = max(max_uid_needed + 1, self.metagraph.n)
@@ -403,11 +429,6 @@ class BaseValidatorNeuron(BaseNeuron):
             # Scatter the rewards into the zero tensor
             scattered_rewards.scatter_(0, uids_tensor, rewards)
 
-            bt.logging.debug(
-                f"Scattered rewards shape: {scattered_rewards.shape}, Scores shape: {self.scores.shape}"
-            )
-            bt.logging.info(f"Scattered rewards: {rewards}")
-
             # Only update scores for UIDs we've actually scored this round
             alpha: float = self.config.neuron.moving_average_alpha
             mask = torch.zeros_like(self.scores, dtype=torch.bool)
@@ -415,8 +436,6 @@ class BaseValidatorNeuron(BaseNeuron):
             self.scores[mask] = (
                 alpha * scattered_rewards[mask] + (1 - alpha) * self.scores[mask]
             )
-
-            bt.logging.info(f"Updated moving averages: {self.scores}")
 
             # Limit the number of tweet IDs stored per UID to 100,000
             for uid in uids:
@@ -427,59 +446,11 @@ class BaseValidatorNeuron(BaseNeuron):
                         list(self.tweets_by_uid[uid])[:100000]
                     )
 
-            bt.logging.debug("About to save state...")
-            self.save_state()
-            bt.logging.debug("State saved, update_scores complete")
+            await self.save_state()
 
         except Exception as e:
             bt.logging.error(f"Error in update_scores: {str(e)}")
-            bt.logging.debug(
-                f"Debug info - UIDs: {uids}, Rewards shape: {rewards.shape}, Scores shape: {self.scores.shape}, Metagraph size: {self.metagraph.n}"
-            )
-            raise  # Re-raise the exception to ensure it's properly handled
-
-    def save_state(self):
-        """Saves the state of the validator to a file."""
-        bt.logging.info("Starting to save validator state...")
-
-        try:
-            bt.logging.debug("Preparing state dictionary...")
-            state_dict = {
-                "step": self.step,
-                "scores": self.scores,
-                "hotkeys": self.hotkeys,
-                "volumes": self.volumes,
-                "tweets_by_uid": self.tweets_by_uid,
-            }
-            bt.logging.debug("State dictionary prepared successfully")
-
-            bt.logging.debug(
-                f"State contains: step={self.step}, scores shape={self.scores.shape}, "
-                f"hotkeys len={len(self.hotkeys)}, volumes len={len(self.volumes)}, "
-                f"tweets_by_uid entries={len(self.tweets_by_uid)}"
-            )
-
-            save_path = self.config.neuron.full_path + "/state.pt"
-            temp_path = save_path + ".tmp"
-
-            bt.logging.debug(f"Saving to temporary file: {temp_path}")
-            torch.save(state_dict, temp_path)
-            bt.logging.debug("Temporary file saved successfully")
-
-            bt.logging.debug(f"Replacing old state file: {save_path}")
-            os.replace(temp_path, save_path)
-            bt.logging.debug("File replacement completed")
-
-            bt.logging.info(f"Successfully saved state to {save_path}")
-
-        except Exception as e:
-            bt.logging.error(f"Failed to save state with error: {str(e)}")
-            bt.logging.error(f"Error type: {type(e)}")
-            import traceback
-
-            bt.logging.error(f"Traceback: {traceback.format_exc()}")
-            # Continue execution even if save fails
-            pass
+            raise
 
     def load_state(self):
         """Loads the state of the validator from a file and rebuilds scores from scores.log if needed."""
