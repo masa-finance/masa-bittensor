@@ -27,7 +27,7 @@ import bittensor as bt
 
 from typing import List
 
-from masa.base.neuron import BaseNeuron
+from masa.base.neuron import BaseNeuron, FINNEY_ENDPOINTS
 from masa.utils.config import add_validator_args
 
 from masa.validator.scorer import Scorer
