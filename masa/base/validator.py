@@ -206,22 +206,28 @@ class BaseValidatorNeuron(BaseNeuron):
             )
         )
 
-        # Create a log entry with timestamp
+        # Create weight entry in the exact format needed
         import datetime
+        import json
 
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Convert weights to the format in scores.log
+        weights_list = [
+            {"uid": int(uid), "weight": float(weight * 65535)}  # Scale to u16::MAX
+            for uid, weight in zip(uint_uids, uint_weights)
+        ]
+
+        log_entry = {
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+            "netuid": self.config.netuid,
+            "hotkey": self.wallet.hotkey.ss58_address,
+            "weights": weights_list,
+        }
 
         # Log to scores.log
         log_file = os.path.join(self.config.neuron.full_path, "scores.log")
         try:
             with open(log_file, "a") as f:
-                f.write(f"\n=== Weight Update at {timestamp} ===\n")
-                for uid, weight in zip(uint_uids, uint_weights):
-                    f.write(f"UID: {uid}, Weight: {weight:.6f}\n")
-                f.write(f"Total UIDs: {len(uint_uids)}\n")
-                f.write(f"Sum of weights: {sum(uint_weights):.6f}\n")
-                f.write("=" * 50 + "\n")
-
+                f.write(json.dumps(log_entry) + "\n")
             bt.logging.info(f"Logged weights for {len(uint_uids)} uids to {log_file}")
         except Exception as e:
             bt.logging.error(f"Failed to log weights: {e}")
