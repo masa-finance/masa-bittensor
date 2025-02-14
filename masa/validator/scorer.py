@@ -43,7 +43,7 @@ class Scorer:
             self.validator.volumes[-1]["miners"][miner_uid_str] = 0
         self.validator.volumes[-1]["miners"][miner_uid_str] += volume
 
-    async def score_miner_volumes(self):
+    async def score_miner_volumes(self, current_block: int):
         try:
             volumes = self.validator.volumes
 
@@ -147,7 +147,7 @@ class Scorer:
                 )
                 return JSONResponse(content=[])
 
-            self.validator.last_scoring_block = self.validator.subtensor.block
+            self.validator.last_scoring_block = current_block
             if volumes:
                 try:
                     serializable_volumes = [

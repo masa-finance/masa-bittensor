@@ -80,7 +80,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
             if current_block - self.last_scoring_block > self.tempo:
                 bt.logging.info(f"Scoring miner volumes at block {current_block}")
-                await self.scorer.score_miner_volumes()
+                await self.scorer.score_miner_volumes(current_block)
                 self.last_scoring_block = current_block
 
             if current_block - self.last_healthcheck_block > self.tempo:
