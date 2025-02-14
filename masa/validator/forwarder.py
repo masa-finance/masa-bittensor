@@ -119,6 +119,25 @@ class Forwarder:
     async def get_discord_all_guilds(self):
         return ["Not yet implemented"]
 
+    def _summarize_versions(self, versions):
+        """Summarize version distribution and count unreachable miners."""
+        version_counts = {}
+        unreachable = 0
+        for v in versions:
+            if v == 0:
+                unreachable += 1
+            else:
+                version_counts[v] = version_counts.get(v, 0) + 1
+
+        # Format the summary string
+        summary_parts = [
+            f"v{v} - {count} miners" for v, count in sorted(version_counts.items())
+        ]
+        if unreachable > 0:
+            summary_parts.append(f"unreachable - {unreachable} miners")
+
+        return ", ".join(summary_parts)
+
     async def ping_axons(self, current_block: int):
         request = PingAxonSynapse(
             sent_from=get_external_ip(), is_active=False, version=0
@@ -140,7 +159,13 @@ class Forwarder:
                 all_responses.extend(batch_responses)
 
         self.validator.versions = [response.version for response in all_responses]
-        bt.logging.info(f"Miner Versions: {self.validator.versions}")
+        # Log version summary at INFO level
+        bt.logging.info(
+            f"Miner Version Summary: {self._summarize_versions(self.validator.versions)}"
+        )
+        # Log detailed version list at DEBUG level
+        bt.logging.debug(f"Detailed Miner Versions: {self.validator.versions}")
+
         self.validator.last_healthcheck_block = current_block
         return [
             {

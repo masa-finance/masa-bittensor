@@ -37,7 +37,7 @@ class Scorer:
                 -self.validator.volume_window :
             ]
 
-        # Convert miner_uid to string for consistent storage
+        # Always store miner_uid as string in volumes
         miner_uid_str = str(miner_uid)
         if miner_uid_str not in self.validator.volumes[-1]["miners"]:
             self.validator.volumes[-1]["miners"][miner_uid_str] = 0
@@ -53,9 +53,11 @@ class Scorer:
 
             window_size = min(self.validator.volume_window, len(volumes))
             miner_volumes = {}
+
+            # Process volumes and aggregate miner data
             try:
                 for volume in volumes[-window_size:]:
-                    bt.logging.debug(f"Processing volume: {volume}")
+                    bt.logging.debug(f"Processing volume from tempo {volume['tempo']}")
                     for miner_uid_str, vol in volume["miners"].items():
                         # Ensure consistent string keys
                         miner_uid_str = str(miner_uid_str)
@@ -68,18 +70,34 @@ class Scorer:
                 )
                 return JSONResponse(content=[])
 
-            bt.logging.debug(f"Miner volumes: {miner_volumes}")
+            bt.logging.debug(f"Aggregated miner volumes: {miner_volumes}")
+
             try:
                 # Convert string UIDs to integers for scoring
-                valid_miner_uids = [int(uid) for uid in miner_volumes.keys()]
+                valid_miner_uids = []
+                for uid_str in miner_volumes.keys():
+                    try:
+                        uid_int = int(uid_str)
+                        if uid_int < len(
+                            self.validator.scores
+                        ):  # Ensure UID is in valid range
+                            valid_miner_uids.append(uid_int)
+                        else:
+                            bt.logging.warning(
+                                f"UID {uid_int} is out of range, skipping"
+                            )
+                    except ValueError:
+                        bt.logging.warning(f"Invalid UID format: {uid_str}, skipping")
+
+                bt.logging.debug(f"Valid miner UIDs for scoring: {valid_miner_uids}")
             except Exception as e:
                 bt.logging.error(
-                    f"Error converting UIDs: {e}, UIDs: {list(miner_volumes.keys())}"
+                    f"Error validating UIDs: {e}, UIDs: {list(miner_volumes.keys())}"
                 )
                 return JSONResponse(content=[])
 
-            if not miner_volumes:
-                self.validator.save_state()
+            if not valid_miner_uids:
+                bt.logging.warning("No valid miner UIDs to score")
                 return JSONResponse(content=[])
 
             try:
@@ -88,6 +106,9 @@ class Scorer:
                     sum((x - mean_volume) ** 2 for x in miner_volumes.values())
                     / len(miner_volumes)
                 ) ** 0.5
+                bt.logging.debug(
+                    f"Volume statistics - Mean: {mean_volume:.2f}, StdDev: {std_dev_volume:.2f}"
+                )
             except Exception as e:
                 bt.logging.error(
                     f"Error calculating statistics: {e}, values: {list(miner_volumes.values())}"
@@ -95,17 +116,22 @@ class Scorer:
                 return JSONResponse(content=[])
 
             try:
-                if len(miner_volumes) == 1:
+                if len(valid_miner_uids) == 1:
                     rewards = [1]
                 else:
-                    rewards = [
-                        self.kurtosis_based_score(
-                            miner_volumes[str(uid)],  # Convert UID to string for lookup
-                            mean_volume,
-                            std_dev_volume,
+                    rewards = []
+                    for uid in valid_miner_uids:
+                        volume = miner_volumes[
+                            str(uid)
+                        ]  # Convert UID to string for lookup
+                        reward = self.kurtosis_based_score(
+                            volume, mean_volume, std_dev_volume
                         )
-                        for uid in valid_miner_uids
-                    ]
+                        rewards.append(reward)
+                        bt.logging.debug(
+                            f"UID {uid}: volume={volume}, reward={reward:.4f}"
+                        )
+
                 scores = torch.FloatTensor(rewards).to(self.validator.device)
             except Exception as e:
                 bt.logging.error(
@@ -117,7 +143,7 @@ class Scorer:
                 self.validator.update_scores(scores, valid_miner_uids)
             except Exception as e:
                 bt.logging.error(
-                    f"Error updating scores: {e}, scores: {scores}, uids: {valid_miner_uids}"
+                    f"Error updating scores: {e}, scores shape: {scores.shape}, uids length: {len(valid_miner_uids)}"
                 )
                 return JSONResponse(content=[])
 
@@ -127,9 +153,7 @@ class Scorer:
                     serializable_volumes = [
                         {
                             "uid": uid,
-                            "volume": float(
-                                miner_volumes[str(uid)]
-                            ),  # Convert UID to string for lookup
+                            "volume": float(miner_volumes[str(uid)]),
                             "score": rewards[valid_miner_uids.index(uid)],
                         }
                         for uid in valid_miner_uids
