@@ -302,9 +302,8 @@ class Forwarder:
                         invalid_tweet_count += 1
 
                 if invalid_tweet_count > 0:
-                    bt.logging.info(
-                        f"Miner {uid} submitted {invalid_tweet_count} invalid tweets out of {len(all_responses)}. "
-                        f"Invalid IDs found: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}"
+                    bt.logging.debug(
+                        f"Miner {uid} submitted {invalid_tweet_count} invalid tweets out of {len(all_responses)}"
                     )
                     # Give zero score for submitting any invalid tweets
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
@@ -316,9 +315,7 @@ class Forwarder:
                 )
 
                 if not unique_tweets_response:  # If no valid tweets after filtering
-                    bt.logging.warning(
-                        f"Miner {uid} had no valid tweets after filtering"
-                    )
+                    bt.logging.debug(f"Miner {uid} had no valid tweets after filtering")
                     continue
 
                 # Continue with validation of a random tweet from the valid set
@@ -386,8 +383,8 @@ class Forwarder:
                 )
 
                 if not query_in_tweet:
-                    bt.logging.info(
-                        f"Query match check for {self.format_tweet_url(random_tweet.get('ID'))}: {query}"
+                    bt.logging.debug(
+                        f"Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
                 tweet_timestamp = datetime.fromtimestamp(
@@ -400,8 +397,8 @@ class Forwarder:
                 is_since_date_requested = yesterday <= tweet_timestamp
 
                 if not is_since_date_requested:
-                    bt.logging.info(
-                        f"Tweet timestamp check for {self.format_tweet_url(random_tweet.get('ID'))}: {tweet_timestamp} vs {yesterday}"
+                    bt.logging.debug(
+                        f"Tweet timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
                 # note, they passed the spot check!
@@ -429,7 +426,7 @@ class Forwarder:
                     self.validator.scorer.add_volume(
                         uid_int, len(valid_tweets), current_block
                     )
-                    bt.logging.info(
+                    bt.logging.debug(
                         f"Miner {uid_int} produced {len(valid_tweets)} new tweets"
                     )
                 else:
@@ -440,7 +437,7 @@ class Forwarder:
                     self.validator.scorer.add_volume(
                         uid_int, len(updates), current_block
                     )
-                    bt.logging.info(
+                    bt.logging.debug(
                         f"Miner {uid_int} produced {len(updates)} new tweets"
                     )
             except Exception as e:
@@ -480,7 +477,7 @@ class Forwarder:
         try:
             # Spot check validation
             if await self.validate_spot_check(uid, response):
-                bt.logging.info(f"Miner {uid} passed spot check")
+                bt.logging.debug(f"Miner {uid} passed spot check")
 
                 # Process tweet counts
                 if len(response.get("tweets", [])) > 0:
@@ -490,9 +487,11 @@ class Forwarder:
                     total_tweets = len(response["tweets"])
 
                     if new_tweets == total_tweets:
-                        bt.logging.info(f"Miner {uid} produced {new_tweets} new tweets")
+                        bt.logging.debug(
+                            f"Miner {uid} produced {new_tweets} new tweets"
+                        )
                     else:
-                        bt.logging.info(
+                        bt.logging.debug(
                             f"Miner {uid} produced {new_tweets} new tweets (total: {total_tweets})"
                         )
 
@@ -503,7 +502,7 @@ class Forwarder:
                             f"Sample tweet from miner {uid}: {self.format_tweet_url(sample_tweet['id'])}"
                         )
             else:
-                bt.logging.warning(f"Miner {uid} failed spot check")
+                bt.logging.debug(f"Miner {uid} failed spot check")
 
         except Exception as e:
             bt.logging.error(f"Error processing response from miner {uid}: {e}")
@@ -521,11 +520,11 @@ class Forwarder:
 
             if is_valid:
                 bt.logging.info(
-                    f"Miner {uid} tweet validated: {self.format_tweet_url(tweet_id)}"
+                    f"Tweet validation passed: {self.format_tweet_url(tweet_id)}"
                 )
             else:
-                bt.logging.warning(
-                    f"Miner {uid} tweet failed validation: {self.format_tweet_url(tweet_id)}"
+                bt.logging.info(
+                    f"Tweet validation failed: {self.format_tweet_url(tweet_id)}"
                 )
 
             return is_valid
