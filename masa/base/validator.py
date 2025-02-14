@@ -302,9 +302,24 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.info(
             "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
         )
+
+        # Ensure scores tensor is large enough for the current metagraph
+        if len(self.scores) < self.metagraph.n:
+            bt.logging.info(
+                f"Expanding scores tensor to match metagraph size: {self.metagraph.n}"
+            )
+            new_scores = torch.zeros(self.metagraph.n, dtype=torch.float32).to(
+                self.device
+            )
+            new_scores[: len(self.scores)] = self.scores
+            self.scores = new_scores
+
         # Zero out all hotkeys that have been replaced.
         for uid, hotkey in enumerate(self.hotkeys):
-            if hotkey != self.metagraph.hotkeys[uid]:
+            if (
+                uid < len(self.metagraph.hotkeys)
+                and hotkey != self.metagraph.hotkeys[uid]
+            ):
                 self.scores[uid] = 0  # hotkey has been replaced
                 # Take the last 6 objects in the self.volumes list
                 recent_volumes = self.volumes[-self.volume_window :]
@@ -315,15 +330,6 @@ class BaseValidatorNeuron(BaseNeuron):
 
                 # Replace unique tweets by uid
                 self.tweets_by_uid[uid] = set()
-
-        # Check to see if the metagraph has changed size.
-        # If so, we need to add new hotkeys and moving averages.
-        if len(self.hotkeys) < len(self.metagraph.hotkeys):
-            # Update the size of the moving average scores.
-            new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
-            min_len = min(len(self.hotkeys), len(self.scores))
-            new_moving_average[:min_len] = self.scores[:min_len]
-            self.scores = new_moving_average
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
@@ -362,59 +368,77 @@ class BaseValidatorNeuron(BaseNeuron):
 
     def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""
+        try:
+            # Check if rewards contains NaN values.
+            if torch.isnan(rewards).any():
+                bt.logging.warning(f"NaN values detected in rewards: {rewards}")
+                # Replace any NaN values in rewards with 0.
+                rewards = torch.nan_to_num(rewards, 0)
 
-        # Check if rewards contains NaN values.
-        if torch.isnan(rewards).any():
-            bt.logging.warning(f"NaN values detected in rewards: {rewards}")
-            # Replace any NaN values in rewards with 0.
-            rewards = torch.nan_to_num(rewards, 0)
+            # Check if `uids` is already a tensor and clone it to avoid the warning.
+            if isinstance(uids, torch.Tensor):
+                uids_tensor = uids.clone().detach()
+            else:
+                uids_tensor = torch.tensor(uids).to(self.device)
 
-        # Check if `uids` is already a tensor and clone it to avoid the warning.
-        if isinstance(uids, torch.Tensor):
-            uids_tensor = uids.clone().detach()
-        else:
-            uids_tensor = torch.tensor(uids).to(self.device)
+            # Ensure that the uids_tensor and rewards have the same length
+            if len(uids_tensor) != len(rewards):
+                raise ValueError(
+                    "The length of uids_tensor and rewards must be the same."
+                )
 
-        # Ensure that the uids_tensor and rewards have the same length
-        if len(uids_tensor) != len(rewards):
-            raise ValueError("The length of uids_tensor and rewards must be the same.")
+            # Get the maximum UID value needed
+            max_uid_needed = max(max(uids), self.metagraph.n - 1)
+            current_size = len(self.scores)
 
-        # Get the maximum UID value
-        max_uid = max(uids_tensor.max().item(), len(self.scores) - 1)
-
-        # If we need to expand the scores tensor
-        if max_uid >= len(self.scores):
-            bt.logging.info(
-                f"Expanding scores tensor from size {len(self.scores)} to {max_uid + 1}"
+            bt.logging.debug(
+                f"Current scores size: {current_size}, Max UID needed: {max_uid_needed}"
             )
-            new_scores = torch.zeros(max_uid + 1).to(self.device)
-            new_scores[: len(self.scores)] = self.scores
-            self.scores = new_scores
 
-        # Compute forward pass rewards, assumes uids are mutually exclusive.
-        # shape: [ metagraph.n ]
-        scattered_rewards: torch.FloatTensor = torch.zeros_like(self.scores)
-        scattered_rewards.scatter_(0, uids_tensor, rewards)
+            # If we need to expand the scores tensor
+            if max_uid_needed >= current_size:
+                new_size = max(max_uid_needed + 1, self.metagraph.n)
+                bt.logging.info(
+                    f"Expanding scores tensor from size {current_size} to {new_size}"
+                )
+                new_scores = torch.zeros(new_size, dtype=torch.float32).to(self.device)
+                new_scores[:current_size] = self.scores
+                self.scores = new_scores
 
-        bt.logging.info(f"Scattered rewards: {rewards}")
+            # Create a zero tensor for scattered rewards with the same size as scores
+            scattered_rewards = torch.zeros_like(self.scores)
 
-        # Update scores with rewards produced by this step.
-        # shape: [ metagraph.n ]
-        alpha: float = self.config.neuron.moving_average_alpha
-        self.scores: torch.FloatTensor = (
-            alpha * scattered_rewards + (1 - alpha) * self.scores
-        )
+            # Scatter the rewards into the zero tensor
+            scattered_rewards.scatter_(0, uids_tensor, rewards)
 
-        bt.logging.info(f"Updated moving averages: {self.scores}")
+            bt.logging.debug(
+                f"Scattered rewards shape: {scattered_rewards.shape}, Scores shape: {self.scores.shape}"
+            )
+            bt.logging.info(f"Scattered rewards: {rewards}")
 
-        # Limit the number of tweet IDs stored per UID to 100,000
-        for uid in uids:
-            if uid not in self.tweets_by_uid:
-                self.tweets_by_uid[uid] = set()
-            elif len(self.tweets_by_uid[uid]) > 100000:
-                self.tweets_by_uid[uid] = set(list(self.tweets_by_uid[uid])[:100000])
+            # Update scores with rewards produced by this step.
+            alpha: float = self.config.neuron.moving_average_alpha
+            self.scores = alpha * scattered_rewards + (1 - alpha) * self.scores
 
-        self.save_state()
+            bt.logging.info(f"Updated moving averages: {self.scores}")
+
+            # Limit the number of tweet IDs stored per UID to 100,000
+            for uid in uids:
+                if uid not in self.tweets_by_uid:
+                    self.tweets_by_uid[uid] = set()
+                elif len(self.tweets_by_uid[uid]) > 100000:
+                    self.tweets_by_uid[uid] = set(
+                        list(self.tweets_by_uid[uid])[:100000]
+                    )
+
+            self.save_state()
+
+        except Exception as e:
+            bt.logging.error(f"Error in update_scores: {str(e)}")
+            bt.logging.debug(
+                f"Debug info - UIDs: {uids}, Rewards shape: {rewards.shape}, Scores shape: {self.scores.shape}, Metagraph size: {self.metagraph.n}"
+            )
+            raise
 
     def save_state(self):
         """Saves the state of the validator to a file."""
