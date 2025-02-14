@@ -62,6 +62,7 @@ class BaseValidatorNeuron(BaseNeuron):
         """Run the validator forever."""
         while True:
             current_block = await self.block
+            bt.logging.debug(f"Run loop at block {current_block}")
 
             if current_block - self.last_sync_block > self.tempo:
                 bt.logging.info(f"Syncing at block {current_block}")
@@ -82,6 +83,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.info(f"Scoring miner volumes at block {current_block}")
                 await self.scorer.score_miner_volumes(current_block)
                 self.last_scoring_block = current_block
+                bt.logging.debug("After scoring, before sleep")
 
             if current_block - self.last_healthcheck_block > self.tempo:
                 bt.logging.info(f"Running health check at block {current_block}")
@@ -89,6 +91,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 self.last_healthcheck_block = current_block
 
             await asyncio.sleep(1)
+            bt.logging.debug("After sleep")
 
     async def initialize(self, config=None):
         """Async initialization method."""
