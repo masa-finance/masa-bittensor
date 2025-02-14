@@ -240,16 +240,14 @@ class BaseValidatorNeuron(BaseNeuron):
             )
             return
 
-        # Calculate the average reward for each uid across non-zero values.
-        raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
-
+        # Use raw scores directly - let process_weights_for_netuid handle normalization
         bt.logging.info("Processing weights through subnet-specific logic...")
         (
             processed_weight_uids,
             processed_weights,
         ) = await process_weights_for_netuid(
             uids=self.metagraph.uids,
-            weights=raw_weights.to("cpu").numpy(),
+            weights=self.scores.to("cpu").numpy(),  # Pass raw scores
             netuid=self.config.netuid,
             subtensor=self.subtensor,
             metagraph=self.metagraph,
@@ -291,7 +289,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 f"✅ Successfully logged weights for {len(uint_uids)} uids to {log_file}"
             )
             bt.logging.debug(
-                f"Weight stats - Min: {raw_weights.min():.6f}, Max: {raw_weights.max():.6f}, Mean: {raw_weights.mean():.6f}"
+                f"Weight stats - Min: {self.scores.min():.6f}, Max: {self.scores.max():.6f}, Mean: {self.scores.mean():.6f}"
             )
         except Exception as e:
             bt.logging.error(f"❌ Failed to log weights: {e}")
