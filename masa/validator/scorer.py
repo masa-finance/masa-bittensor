@@ -45,6 +45,7 @@ class Scorer:
     async def score_miner_volumes(self):
         try:
             volumes = self.validator.volumes
+            bt.logging.debug(f"Processing volumes: {volumes}")
 
             if not volumes:
                 bt.logging.info("No volumes to score yet")
@@ -52,7 +53,9 @@ class Scorer:
 
             miner_volumes = {}
             for volume in volumes[-self.validator.volume_window :]:
+                bt.logging.debug(f"Processing volume entry: {volume}")
                 miners_dict = volume.get("miners", {})
+                bt.logging.debug(f"Miners dict: {miners_dict}")
                 for miner_uid, vol in miners_dict.items():
                     try:
                         uid = int(miner_uid)
@@ -60,42 +63,54 @@ class Scorer:
                             miner_volumes[uid] = 0
                         miner_volumes[uid] += float(vol)
                     except (ValueError, TypeError) as e:
-                        bt.logging.warning(f"Invalid miner_uid or volume: {e}")
+                        bt.logging.warning(
+                            f"Invalid miner_uid {miner_uid} or volume {vol}: {e}"
+                        )
                         continue
 
             valid_miner_uids = list(miner_volumes.keys())
+            bt.logging.debug(f"Valid miner UIDs: {valid_miner_uids}")
+            bt.logging.debug(f"Miner volumes: {miner_volumes}")
 
             if not miner_volumes:
+                bt.logging.warning("No valid miner volumes found")
                 self.validator.save_state()
                 return JSONResponse(content=[])
 
             mean_volume = sum(miner_volumes.values()) / len(miner_volumes)
-            std_dev_volume = max(
-                (
-                    sum((x - mean_volume) ** 2 for x in miner_volumes.values())
-                    / len(miner_volumes)
-                )
-                ** 0.5,
-                1e-8,
-            )  # Avoid division by zero
+            bt.logging.debug(f"Mean volume: {mean_volume}")
+
+            squared_diffs = [(x - mean_volume) ** 2 for x in miner_volumes.values()]
+            bt.logging.debug(f"Squared differences: {squared_diffs}")
+
+            variance = sum(squared_diffs) / len(miner_volumes)
+            bt.logging.debug(f"Variance: {variance}")
+
+            std_dev_volume = max(variance**0.5, 1e-8)
+            bt.logging.debug(f"Standard deviation: {std_dev_volume}")
 
             if len(miner_volumes) == 1:
                 rewards = [1]
+                bt.logging.debug("Single miner case - setting reward to 1")
             else:
                 rewards = []
                 for uid in valid_miner_uids:
                     try:
-                        score = self.kurtosis_based_score(
-                            miner_volumes[uid], mean_volume, std_dev_volume
+                        volume = miner_volumes[uid]
+                        bt.logging.debug(
+                            f"Calculating score for UID {uid} with volume {volume}"
                         )
+                        score = self.kurtosis_based_score(
+                            volume, mean_volume, std_dev_volume
+                        )
+                        bt.logging.debug(f"Score for UID {uid}: {score}")
                         rewards.append(float(score))
                     except Exception as e:
-                        bt.logging.warning(
-                            f"Error calculating score for uid {uid}: {e}"
-                        )
+                        bt.logging.error(f"Error calculating score for uid {uid}: {e}")
                         rewards.append(0.0)
 
             scores = torch.FloatTensor(rewards).to(self.validator.device)
+            bt.logging.debug(f"Final scores tensor: {scores}")
 
             async with self.validator.lock:
                 self.validator.update_scores(scores, valid_miner_uids)
@@ -119,6 +134,7 @@ class Scorer:
             return JSONResponse(content=[])
         except Exception as e:
             bt.logging.error(f"Error in score_miner_volumes: {str(e)}")
+            bt.logging.error(f"Full error details:", exc_info=True)
             return JSONResponse(content=[])
 
     def calculate_similarity_percentage(self, response_embedding, source_embedding):

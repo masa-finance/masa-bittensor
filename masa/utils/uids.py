@@ -2,6 +2,7 @@ import torch
 import random
 import bittensor as bt
 from typing import List
+import asyncio
 
 
 def check_uid_availability(metagraph: "bt.metagraph.Metagraph", uid: int) -> bool:
@@ -61,9 +62,10 @@ async def get_random_miner_uids(
         If `k` is larger than the number of available `uids`, set `k` to the number of
         available `uids`.
     """
-    dendrite = bt.dendrite(wallet=self.wallet)
-
+    dendrite = None
     try:
+        dendrite = bt.dendrite(wallet=self.wallet)
+
         # Generic sanitation
         avail_uids = get_available_uids(self.metagraph)
         healthy_uids = remove_excluded_uids(avail_uids, exclude)
@@ -90,10 +92,15 @@ async def get_random_miner_uids(
         bt.logging.error(f"Failed to get random miner uids: {e}")
         return None
     finally:
-        try:
-            await dendrite.close_session()
-        except:
-            pass
+        if dendrite is not None:
+            try:
+                loop = asyncio.get_event_loop()
+                if not loop.is_running():
+                    loop.run_until_complete(dendrite.close_session())
+                else:
+                    asyncio.create_task(dendrite.close_session())
+            except Exception as e:
+                bt.logging.warning(f"Error closing dendrite session: {e}")
 
 
 async def get_uncalled_miner_uids(
@@ -111,9 +118,10 @@ async def get_uncalled_miner_uids(
         If `k` is larger than the number of available `uids`, set `k` to the number of
         available `uids`.
     """
-    dendrite = bt.dendrite(wallet=self.wallet)
-
+    dendrite = None
     try:
+        dendrite = bt.dendrite(wallet=self.wallet)
+
         if len(self.uncalled_uids) == 0:
             # Generic sanitation
             avail_uids = get_available_uids(self.metagraph)
@@ -144,7 +152,12 @@ async def get_uncalled_miner_uids(
         bt.logging.error(f"Failed to get uncalled miner uids: {e}")
         return None
     finally:
-        try:
-            await dendrite.close_session()
-        except:
-            pass
+        if dendrite is not None:
+            try:
+                loop = asyncio.get_event_loop()
+                if not loop.is_running():
+                    loop.run_until_complete(dendrite.close_session())
+                else:
+                    asyncio.create_task(dendrite.close_session())
+            except Exception as e:
+                bt.logging.warning(f"Error closing dendrite session: {e}")

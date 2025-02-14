@@ -17,7 +17,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
-from typing import Any
+from typing import Any, List, Tuple
 from datetime import datetime, UTC, timedelta
 import aiohttp
 import json
@@ -43,37 +43,54 @@ class Forwarder:
         self.validator = validator
 
     async def forward_request(
-        self,
-        request: Any,
-        sample_size: int = None,
-        timeout: int = None,
-        sequential: bool = False,
-    ):
-        if not sample_size:
-            sample_size = self.validator.subnet_config.get("organic").get("sample_size")
-        if not timeout:
-            timeout = self.validator.subnet_config.get("organic").get("timeout")
-        if sequential:
-            miner_uids = await get_uncalled_miner_uids(self.validator, k=sample_size)
-        else:
-            miner_uids = await get_random_miner_uids(self.validator, k=sample_size)
+        self, miner_uids: List[int], query: str, tweets: List[dict]
+    ) -> Tuple[List[dict], List[int]]:
+        """
+        Forward a request to multiple miners.
+        """
+        dendrite = None
+        try:
+            dendrite = bt.dendrite(wallet=self.validator.wallet)
+            responses = []
+            successful_uids = []
 
-        if len(miner_uids) == 0:
+            # Create the request message
+            message = {"query": query, "tweets": tweets}
+
+            # Get responses from all miners
+            async def query_miner(uid):
+                try:
+                    response = await dendrite(
+                        self.validator.metagraph.axons[uid],
+                        message,
+                        deserialize=True,
+                        timeout=30,
+                    )
+                    if response is not None and isinstance(response, dict):
+                        responses.append(response)
+                        successful_uids.append(uid)
+                except Exception as e:
+                    bt.logging.debug(f"Error querying miner {uid}: {str(e)}")
+
+            # Query all miners concurrently
+            await asyncio.gather(
+                *(query_miner(uid) for uid in miner_uids), return_exceptions=True
+            )
+
+            return responses, successful_uids
+        except Exception as e:
+            bt.logging.error(f"Error in forward_request: {str(e)}")
             return [], []
-
-        dendrite = bt.dendrite(wallet=self.validator.wallet)
-        responses = await dendrite(
-            [self.validator.metagraph.axons[uid] for uid in miner_uids],
-            request,
-            deserialize=True,
-            timeout=timeout,
-        )
-
-        formatted_responses = [
-            {"uid": int(uid), "response": response}
-            for uid, response in zip(miner_uids, responses)
-        ]
-        return formatted_responses, miner_uids
+        finally:
+            if dendrite is not None:
+                try:
+                    loop = asyncio.get_event_loop()
+                    if not loop.is_running():
+                        loop.run_until_complete(dendrite.close_session())
+                    else:
+                        await dendrite.close_session()
+                except Exception as e:
+                    bt.logging.warning(f"Error closing dendrite session: {e}")
 
     async def get_twitter_profile(self, username: str = "getmasafi"):
         request = TwitterProfileSynapse(username=username)
