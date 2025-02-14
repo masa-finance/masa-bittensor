@@ -115,7 +115,7 @@ async def get_uncalled_miner_uids(
         k = min(k, len(self.uncalled_uids))
         random_sample = random.sample(list(self.uncalled_uids), k)
         bt.logging.info(f"Selected {len(random_sample)} miners to query")
-        bt.logging.debug(f"Selected UIDs: {random_sample}")
+        bt.logging.info(f"Selected UIDs: {random_sample}")
         self.uncalled_uids.difference_update(random_sample)
         bt.logging.debug(f"Remaining UIDs in pool: {list(self.uncalled_uids)}")
         uids = torch.tensor(random_sample)
