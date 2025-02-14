@@ -318,6 +318,18 @@ class BaseValidatorNeuron(BaseNeuron):
                         f"❌ Failed to set weights on chain"
                         f"\n    - Error: {result.error if hasattr(result, 'error') else 'Unknown error'}"
                     )
+            elif isinstance(result, tuple) and len(result) == 2:
+                success, message = result
+                if not success and "too soon" in message.lower():
+                    bt.logging.info(f"⏳ Weight setting skipped - {message}")
+                    return
+                elif success:
+                    bt.logging.success(
+                        f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
+                    )
+                    self.last_weights_block = await self.block
+                else:
+                    bt.logging.error(f"❌ Failed to set weights: {message}")
             elif result:
                 bt.logging.success(
                     f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
