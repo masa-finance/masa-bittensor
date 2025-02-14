@@ -193,7 +193,7 @@ class BaseValidatorNeuron(BaseNeuron):
         except Exception as e:
             bt.logging.error(f"Error updating config: {e}")
 
-    async def should_set_weights(self, force: bool = False) -> bool:
+    async def should_set_weights(self) -> bool:
         # Skip if weights are disabled in config
         if self.config.neuron.disable_set_weights:
             bt.logging.debug("Weight setting disabled in config")
@@ -211,22 +211,18 @@ class BaseValidatorNeuron(BaseNeuron):
             )
             return False
 
-        # Skip block elapsed check if force=True (used during initialization)
-        if not force:
-            # Check if enough blocks have elapsed since last update
-            blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
-            if blocks_elapsed <= 100:  # Set weights every 100 blocks
-                if (
-                    self.last_weights_block > 0
-                ):  # Only show waiting message if not first run
-                    bt.logging.debug(
-                        f"Only {blocks_elapsed} blocks elapsed since last weight setting, waiting for 100"
-                    )
-                return False
+        # Check if enough blocks have elapsed since last update
+        blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
+        if blocks_elapsed <= 100:  # Set weights every 100 blocks
+            if (
+                self.last_weights_block > 0
+            ):  # Only show waiting message if not first run
+                bt.logging.debug(
+                    f"Only {blocks_elapsed} blocks elapsed since last weight setting"
+                )
+            return False
 
-        bt.logging.info(
-            f"✅ Will set weights: {scored_uids} scored UIDs{' (forced)' if force else ''}"
-        )
+        bt.logging.info(f"Will set weights with {scored_uids} scored UIDs")
         return True
 
     async def set_weights(self):
