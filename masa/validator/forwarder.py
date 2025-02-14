@@ -386,8 +386,8 @@ class Forwarder:
                 )
 
                 if not query_in_tweet:
-                    bt.logging.warning(
-                        f"Query: {random_keyword} is not in the tweet: {fields_to_check}"
+                    bt.logging.info(
+                        f"Query match check for {self.format_tweet_url(random_tweet.get('ID'))}: {query}"
                     )
 
                 tweet_timestamp = datetime.fromtimestamp(
@@ -400,20 +400,22 @@ class Forwarder:
                 is_since_date_requested = yesterday <= tweet_timestamp
 
                 if not is_since_date_requested:
-                    bt.logging.warning(
-                        f"Tweet timestamp {tweet_timestamp} is not since {yesterday}"
+                    bt.logging.info(
+                        f"Tweet timestamp check for {self.format_tweet_url(random_tweet.get('ID'))}: {tweet_timestamp} vs {yesterday}"
                     )
 
                 # note, they passed the spot check!
                 if is_valid and query_in_tweet and is_since_date_requested:
                     bt.logging.info(
-                        f"Miner {uid} passed validation with tweet: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                     for tweet in unique_tweets_response:
                         if tweet:
                             valid_tweets.append(tweet)
                 else:
-                    bt.logging.warning(f"Miner {uid} failed validation")
+                    bt.logging.info(
+                        f"Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
 
                 all_valid_tweets.extend(valid_tweets)
 
@@ -439,7 +441,7 @@ class Forwarder:
                         uid_int, len(updates), current_block
                     )
                     bt.logging.info(
-                        f"Miner {uid_int} produced {len(updates)} new tweets (total: {len(self.validator.tweets_by_uid[uid_int])})"
+                        f"Miner {uid_int} produced {len(updates)} new tweets"
                     )
             except Exception as e:
                 bt.logging.error(f"Error processing miner {uid}: {e}")
@@ -470,8 +472,8 @@ class Forwarder:
         return " ".join(s.split())
 
     def format_tweet_url(self, tweet_id: str) -> str:
-        """Format a tweet ID as an x.com URL."""
-        return f"https://x.com/i/web/status/{tweet_id}"
+        """Format a tweet ID into an x.com URL."""
+        return f"https://x.com/i/status/{tweet_id}"
 
     async def process_response(self, uid: int, response: Any) -> None:
         """Process a single miner's response."""

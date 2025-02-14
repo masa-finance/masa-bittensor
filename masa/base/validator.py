@@ -390,12 +390,12 @@ class BaseValidatorNeuron(BaseNeuron):
                         }
                         async with session.post(api_url, json=payload) as response:
                             if response.status == 200:
-                                bt.logging.success(
-                                    f"Successfully sent data to the protocol API for chunk starting at index {i}."
+                                bt.logging.info(
+                                    f"Data sent to protocol API for chunk {i}"
                                 )
                             else:
                                 bt.logging.error(
-                                    f"Failed to send data to the protocol API for chunk starting at index {i}: {response.status}"
+                                    f"Failed to send data to protocol API for chunk {i}: {response.status}"
                                 )
                         await asyncio.sleep(1)  # Wait for 1 second between requests
             except Exception as e:
