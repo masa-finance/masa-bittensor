@@ -139,11 +139,19 @@ class BaseValidatorNeuron(BaseNeuron):
             try:
                 blocks_since_last_check = self.block - self.last_sync_block
                 if blocks_since_last_check >= 6:
-                    self.sync()
-                    self.step += 1
-                    self.last_sync_block = self.block
+                    async with self.lock:
+                        # Sync the metagraph
+                        self.metagraph.sync(subtensor=self.subtensor)
+                        # Update hotkeys and moving averages if needed
+                        self.resync_metagraph()
+                        # Update step and last sync block
+                        self.step += 1
+                        self.last_sync_block = self.block
+                        # Save state after successful sync
+                        self.save_state()
             except Exception as e:
                 bt.logging.error(f"Error running sync: {e}")
+                bt.logging.debug("Full sync error details:", exc_info=True)
             await asyncio.sleep(self.block_time)
 
     async def run_miner_ping(self):
@@ -332,9 +340,6 @@ class BaseValidatorNeuron(BaseNeuron):
         # Copies state of metagraph before syncing.
         previous_metagraph = copy.deepcopy(self.metagraph)
 
-        # Sync the metagraph.
-        self.metagraph.sync(subtensor=self.subtensor)
-
         # Check if the metagraph axon info has changed.
         if previous_metagraph.axons == self.metagraph.axons:
             return
@@ -350,11 +355,12 @@ class BaseValidatorNeuron(BaseNeuron):
                 recent_volumes = self.volumes[-self.volume_window :]
                 # Replace all instances of miners[uid] and set their values to 0
                 for volume in recent_volumes:
-                    if uid in volume["miners"]:
-                        volume["miners"][uid] = 0
+                    if str(uid) in volume["miners"]:
+                        volume["miners"][str(uid)] = 0
 
                 # Replace unique tweets by uid
-                self.tweets_by_uid[uid] = set()
+                if uid in self.tweets_by_uid:
+                    self.tweets_by_uid[uid] = set()
 
         # Check to see if the metagraph has changed size.
         # If so, we need to add new hotkeys and moving averages.
