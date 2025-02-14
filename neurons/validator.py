@@ -25,8 +25,20 @@ from masa.api.server import API
 
 
 class Validator(BaseValidatorNeuron):
-    async def __init__(self, config=None):
-        # Initialize parent class first
+    def __init__(self):
+        self._is_initialized = False
+
+    @classmethod
+    async def create(cls, config=None):
+        self = cls()
+        await self.initialize(config)
+        return self
+
+    async def initialize(self, config=None):
+        if self._is_initialized:
+            return
+
+        # Initialize parent class
         await super().__init__(config=config)
 
         # Initialize API if enabled
@@ -38,10 +50,12 @@ class Validator(BaseValidatorNeuron):
             bt.logging.info("Validator API initialized.")
         bt.logging.info("Validator initialized with config: {}".format(config))
 
+        self._is_initialized = True
+
 
 async def main():
-    validator = Validator()
-    await validator.__init__()  # Explicitly initialize
+    # Create and initialize the validator using the factory method
+    validator = await Validator.create()
 
     async with validator:  # Use async context manager
         while True:
