@@ -63,18 +63,9 @@ class BaseValidatorNeuron(BaseNeuron):
         while True:
             current_block = await self.block
 
-            # Tempo-based operations (every ~72 minutes)
-            if current_block - self.last_sync_block > self.tempo:
-                bt.logging.info(f"Syncing at block {current_block}")
-                await self.sync()
-                self.last_sync_block = current_block
-
-            # Weight setting (every 100 blocks, ~20 minutes)
-            if current_block - self.last_weights_block > 100:
-                if await self.should_set_weights():
-                    bt.logging.info(f"Setting weights at block {current_block}")
-                    await self.set_weights()
-                    self.last_weights_block = current_block
+            bt.logging.info(f"Syncing at block {current_block}")
+            await self.sync()
+            self.last_sync_block = current_block
 
             # Continuous operations - run every loop
             try:
