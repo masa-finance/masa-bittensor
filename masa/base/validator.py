@@ -437,7 +437,6 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Update scores with rewards produced by this step.
         # shape: [ metagraph.n ]
-
         alpha: float = self.config.neuron.moving_average_alpha
         self.scores: torch.FloatTensor = alpha * scattered_rewards + (
             1 - alpha
@@ -445,9 +444,13 @@ class BaseValidatorNeuron(BaseNeuron):
 
         bt.logging.info(f"Updated moving averages: {self.scores}")
 
-        # Limit the number of tweet IDs stored per UID to 100,000
+        # Initialize tweets_by_uid for new UIDs and limit tweet storage
         for uid in uids:
-            if len(self.tweets_by_uid[uid]) > 100000:
+            # Initialize if not exists
+            if uid not in self.tweets_by_uid:
+                self.tweets_by_uid[uid] = set()
+            # Limit storage if needed
+            elif len(self.tweets_by_uid[uid]) > 100000:
                 self.tweets_by_uid[uid] = set(list(self.tweets_by_uid[uid])[:100000])
 
         self.save_state()
