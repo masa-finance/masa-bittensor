@@ -252,7 +252,7 @@ class BaseValidatorNeuron(BaseNeuron):
             uids=processed_weight_uids, weights=processed_weights
         )
 
-        bt.logging.info(f"Setting weights: {uint_weights} for uids: {uint_uids}")
+        bt.logging.debug(f"Setting weights: {uint_weights} for uids: {uint_uids}")
 
         # Create weight entry in the exact format needed
         import datetime
