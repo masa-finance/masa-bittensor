@@ -244,7 +244,7 @@ class Forwarder:
                         invalid_tweet_count += 1
 
                 if invalid_tweet_count > 0:
-                    bt.logging.error(
+                    bt.logging.info(
                         f"Miner {uid} submitted {invalid_tweet_count} invalid tweets out of {len(all_responses)}. "
                         f"Invalid IDs found: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}"
                     )
