@@ -70,12 +70,12 @@ class BaseValidatorNeuron(BaseNeuron):
 
             if current_block - self.last_tempo_block > self.tempo:
                 bt.logging.info(f"Pinging miners at block {current_block}")
-                await self.forwarder.ping_axons()
+                await self.forwarder.ping_axons(current_block)
                 self.last_tempo_block = current_block
 
             if current_block - self.last_volume_block > self.tempo:
                 bt.logging.info(f"Getting miner volumes at block {current_block}")
-                await self.forwarder.get_miners_volumes()
+                await self.forwarder.get_miners_volumes(current_block)
                 self.last_volume_block = current_block
 
             if current_block - self.last_scoring_block > self.tempo:
