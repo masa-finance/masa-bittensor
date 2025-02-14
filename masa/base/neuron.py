@@ -113,9 +113,10 @@ class BaseNeuron(ABC):
         await self.check_registered()
 
         # Check code version.  If version is less than weights_version, warn the user.
-        weights_version = self.subtensor.get_subnet_hyperparameters(
+        subnet_params = await self.subtensor.get_subnet_hyperparameters(
             self.config.netuid
-        ).weights_version
+        )
+        weights_version = subnet_params.weights_version
         if self.spec_version < weights_version:
             bt.logging.warning(
                 f"🟡 Code is outdated based on subnet requirements!  Required: {weights_version}, Current: {self.spec_version}.  Please update your code to the latest release!"
