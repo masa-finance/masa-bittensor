@@ -175,24 +175,36 @@ class BaseValidatorNeuron(BaseNeuron):
                 )
                 # Try to switch to a working endpoint
                 connected = False
-                for endpoint in FINNEY_ENDPOINTS:
-                    if endpoint != self.subtensor.chain_endpoint:
-                        if await self.try_initialize_subtensor(endpoint):
-                            connected = True
-                            break
+                try:
+                    for endpoint in FINNEY_ENDPOINTS:
+                        if endpoint != self.subtensor.chain_endpoint:
+                            try:
+                                if await self.try_initialize_subtensor(endpoint):
+                                    connected = True
+                                    bt.logging.success(
+                                        f"Successfully switched to endpoint: {endpoint}"
+                                    )
+                                    break
+                            except Exception as e:
+                                bt.logging.warning(
+                                    f"Failed to connect to endpoint {endpoint}: {e}"
+                                )
+                                continue
+                except Exception as e:
+                    bt.logging.error(f"Error during endpoint switching: {e}")
 
                 if not connected:
                     bt.logging.error(
                         "Failed to find working endpoint during health check"
                     )
+                    # Don't raise here, let it try again next loop
 
             # Fetch latest config from GitHub
             await self.update_config()
 
-            # Run any other health checks here
-            pass
         except Exception as e:
             bt.logging.error(f"Error in health check: {e}")
+            # Don't raise, let it continue to next loop
 
     async def update_config(self):
         """Update config from GitHub."""
