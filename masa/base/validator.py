@@ -187,6 +187,7 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Error updating config: {e}")
 
     async def should_set_weights(self) -> bool:
+        bt.logging.info("VALIDATOR NEURON should_set_weights called")
         # Skip if weights are disabled in config
         if self.config.neuron.disable_set_weights:
             bt.logging.debug("Weight setting disabled in config")
