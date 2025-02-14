@@ -208,16 +208,52 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
             pass
 
+    async def _do_sync(self):
+        """Execute a single sync iteration."""
+        current_block = await self.block
+        if current_block - self.last_sync_block > self.tempo:
+            bt.logging.info(f"Syncing at block {current_block}")
+            await self.sync()
+            self.last_sync_block = current_block
+
+    async def _do_miner_ping(self):
+        """Execute a single miner ping iteration."""
+        current_block = await self.block
+        if current_block - self.last_tempo_block > self.tempo:
+            bt.logging.info(f"Pinging miners at block {current_block}")
+            await self.forwarder.ping_axons()
+            self.last_tempo_block = current_block
+
+    async def _do_miner_volume(self):
+        """Execute a single miner volume iteration."""
+        current_block = await self.block
+        if current_block - self.last_volume_block > self.tempo:
+            bt.logging.info(f"Getting miner volumes at block {current_block}")
+            await self.forwarder.get_miners_volumes()
+            self.last_volume_block = current_block
+
+    async def _do_miner_scoring(self):
+        """Execute a single miner scoring iteration."""
+        current_block = await self.block
+        if current_block - self.last_scoring_block > self.tempo:
+            bt.logging.info(f"Scoring miner volumes at block {current_block}")
+            await self.scorer.score_miner_volumes()
+            self.last_scoring_block = current_block
+
+    async def _do_auto_update(self):
+        """Execute a single auto update iteration."""
+        current_block = await self.block
+        if current_block - self.last_healthcheck_block > self.tempo:
+            bt.logging.info(f"Running health check at block {current_block}")
+            await self.healthcheck()
+            self.last_healthcheck_block = current_block
+
     async def run_sync(self):
         """Periodically sync with the network by updating the metagraph."""
         try:
             while not self.should_exit:
                 try:
-                    current_block = await self.block
-                    if current_block - self.last_sync_block > self.tempo:
-                        bt.logging.info(f"Syncing at block {current_block}")
-                        await self.sync()
-                        self.last_sync_block = current_block
+                    await self._do_sync()
                     await asyncio.sleep(1)  # Check every second
                 except Exception as e:
                     bt.logging.error(f"Error in sync iteration: {e}")
@@ -231,11 +267,7 @@ class BaseValidatorNeuron(BaseNeuron):
         try:
             while not self.should_exit:
                 try:
-                    current_block = await self.block
-                    if current_block - self.last_tempo_block > self.tempo:
-                        bt.logging.info(f"Pinging miners at block {current_block}")
-                        await self.forwarder.ping_axons()
-                        self.last_tempo_block = current_block
+                    await self._do_miner_ping()
                     await asyncio.sleep(1)  # Check every second
                 except Exception as e:
                     bt.logging.error(f"Error in miner ping iteration: {e}")
@@ -249,13 +281,7 @@ class BaseValidatorNeuron(BaseNeuron):
         try:
             while not self.should_exit:
                 try:
-                    current_block = await self.block
-                    if current_block - self.last_volume_block > self.tempo:
-                        bt.logging.info(
-                            f"Getting miner volumes at block {current_block}"
-                        )
-                        await self.forwarder.get_miners_volumes()
-                        self.last_volume_block = current_block
+                    await self._do_miner_volume()
                     await asyncio.sleep(1)  # Check every second
                 except Exception as e:
                     bt.logging.error(f"Error in miner volume iteration: {e}")
@@ -269,13 +295,7 @@ class BaseValidatorNeuron(BaseNeuron):
         try:
             while not self.should_exit:
                 try:
-                    current_block = await self.block
-                    if current_block - self.last_scoring_block > self.tempo:
-                        bt.logging.info(
-                            f"Scoring miner volumes at block {current_block}"
-                        )
-                        await self.scorer.score_miner_volumes()
-                        self.last_scoring_block = current_block
+                    await self._do_miner_scoring()
                     await asyncio.sleep(1)  # Check every second
                 except Exception as e:
                     bt.logging.error(f"Error in miner scoring iteration: {e}")
@@ -289,13 +309,7 @@ class BaseValidatorNeuron(BaseNeuron):
         try:
             while not self.should_exit:
                 try:
-                    current_block = await self.block
-                    if current_block - self.last_healthcheck_block > self.tempo:
-                        bt.logging.info(
-                            f"Running health check at block {current_block}"
-                        )
-                        await self.healthcheck()
-                        self.last_healthcheck_block = current_block
+                    await self._do_auto_update()
                     await asyncio.sleep(1)  # Check every second
                 except Exception as e:
                     bt.logging.error(f"Error in auto update iteration: {e}")
