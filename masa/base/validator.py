@@ -64,22 +64,18 @@ class BaseValidatorNeuron(BaseNeuron):
             current_block = await self.block
 
             bt.logging.info(f"Syncing at block {current_block}")
+            # Sync the metagraph
+            # This is in neuron.py
+            # It will check registration
+            # Update the metagraph if needed
+            # Set weights if needed
             await self.sync()
             self.last_sync_block = current_block
-
-            # Continuous operations - run every loop
-            try:
-                # Get and score miner volumes
-                await self.forwarder.get_miners_volumes(current_block)
-                await self.scorer.score_miner_volumes(current_block)
-
-                # Quick health check
-                await self.healthcheck()
-            except Exception as e:
-                bt.logging.error(f"Error in continuous operations: {e}")
-
-            # Brief pause to prevent overwhelming the network
-            await asyncio.sleep(1)
+            # Get and score miner volumes
+            await self.forwarder.get_miners_volumes(current_block)
+            await self.scorer.score_miner_volumes(current_block)
+            # Quick health check
+            await self.healthcheck()
 
     async def initialize(self, config=None):
         """Async initialization method."""
@@ -178,30 +174,25 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Error updating config: {e}")
 
     async def should_set_weights(self) -> bool:
-        bt.logging.debug("VALIDATOR NEURON should_set_weights called")
+        bt.logging.info("Checking if we should set weights")
         # Skip if weights are disabled in config
         if self.config.neuron.disable_set_weights:
             bt.logging.info("❌ Weights disabled in config")
             return False
 
-        # Skip if we're a miner
-        if self.neuron_type == "MinerNeuron":
-            bt.logging.debug("❌ We are a miner")
-            return False
-
         # Count how many UIDs have non-zero scores
         scored_uids = (self.scores > 0).sum().item()
         if scored_uids < 150:
-            bt.logging.debug(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
+            bt.logging.info(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
             return False
 
         # Check if enough blocks have elapsed since last update
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
-        bt.logging.debug(f"Blocks elapsed since last update: {blocks_elapsed}")
+        bt.logging.info(f"Blocks elapsed since last update: {blocks_elapsed}")
 
         # Only allow setting weights if enough blocks elapsed
         if blocks_elapsed <= 100:
-            bt.logging.debug(
+            bt.logging.info(
                 f"❌ Only {blocks_elapsed} blocks elapsed since last update"
             )
             return False

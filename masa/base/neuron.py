@@ -172,8 +172,7 @@ class BaseNeuron(ABC):
         ) > self.config.neuron.epoch_length
 
     async def should_set_weights(self) -> bool:
-        """This method should be implemented by validator neurons that need to set weights."""
-        bt.logging.info("BASE NEURON should_set_weights called - THIS IS WRONG")
+        """This method should be implemented by neurons that need to set weights."""
         return False
 
     def auto_update(self):
