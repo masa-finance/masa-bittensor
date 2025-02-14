@@ -207,18 +207,21 @@ class BaseValidatorNeuron(BaseNeuron):
         # Check if enough blocks have elapsed since last update
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
         bt.logging.info(f"Blocks elapsed since last update: {blocks_elapsed}")
-        if blocks_elapsed <= 100:  # Set weights every 100 blocks
-            if (
-                self.last_weights_block > 0
-            ):  # Only show waiting message if not first run
-                bt.logging.info(
-                    f"❌ Only {blocks_elapsed} blocks elapsed since last weight setting"
-                )
+
+        # Allow setting weights if this is initialization (last_weights_block == 0) or enough blocks elapsed
+        if blocks_elapsed <= 100 and self.last_weights_block > 0:
+            bt.logging.info(
+                f"❌ Only {blocks_elapsed} blocks elapsed since last weight setting"
+            )
             return False
 
-        bt.logging.info(
-            f"✅ Will set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
-        )
+        if self.last_weights_block == 0:
+            bt.logging.info("✅ Initial weight setting")
+        else:
+            bt.logging.info(
+                f"✅ Will set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
+            )
+
         return True
 
     async def set_weights(self):
