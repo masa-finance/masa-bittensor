@@ -317,17 +317,36 @@ class BaseValidatorNeuron(BaseNeuron):
                 uids=uint_uids,
                 weights=uint_weights,
                 version_key=self.spec_version,
-                wait_for_inclusion=False,
+                wait_for_inclusion=True,
                 wait_for_finalization=False,
             )
-            if result:
+
+            # Check the response in detail
+            if result and hasattr(result, "success"):
+                if result.success:
+                    bt.logging.success(
+                        f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
+                        f"\n    - Transaction hash: {result.hash}"
+                        f"\n    - Block number: {result.block_number}"
+                        f"\n    - Block hash: {result.block_hash}"
+                    )
+                else:
+                    bt.logging.error(
+                        f"❌ Failed to set weights on chain"
+                        f"\n    - Error: {result.error if hasattr(result, 'error') else 'Unknown error'}"
+                    )
+            elif result:
                 bt.logging.success(
                     f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
                 )
             else:
-                bt.logging.error("❌ Failed to set weights on chain")
+                bt.logging.error(
+                    "❌ Failed to set weights on chain - No response from server"
+                )
         except Exception as e:
-            bt.logging.error(f"❌ Failed to set weights on chain with error: {e}")
+            bt.logging.error(f"❌ Failed to set weights on chain with error: {str(e)}")
+            if hasattr(e, "debug_info"):
+                bt.logging.debug(f"Debug info: {e.debug_info}")
 
     async def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
