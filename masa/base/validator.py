@@ -183,44 +183,75 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Error updating config: {e}")
 
     async def set_weights(self):
-        """Sets the validator weights to the metagraph hotkeys based on the scores."""
+        """Logs the weights we would set based on miner scores."""
+        # Skip if we have no real scores yet
+        if torch.all(self.scores == 0):
+            bt.logging.info("No real scores yet, skipping weight setting")
+            return
+
         if torch.isnan(self.scores).any():
             bt.logging.warning(
                 "Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
+            return
 
-        raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
+        # Normalize scores to weights
+        weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
 
-        processed_weight_uids, processed_weights = process_weights_for_netuid(
-            uids=self.metagraph.uids,
-            weights=raw_weights.to("cpu").numpy(),
-            netuid=self.config.netuid,
-            subtensor=self.subtensor,
-            metagraph=self.metagraph,
-        )
-
+        # Convert to chain format
         uint_uids, uint_weights = (
             bt.utils.weight_utils.convert_weights_and_uids_for_emit(
-                uids=processed_weight_uids, weights=processed_weights
+                uids=self.metagraph.uids,
+                weights=weights.to("cpu").numpy(),
             )
         )
 
-        bt.logging.info(f"Setting weights: {uint_weights} for uids: {uint_uids}")
+        # Create a log entry with timestamp
+        import datetime
 
-        result = await self.subtensor.set_weights(
-            wallet=self.wallet,
-            netuid=self.config.netuid,
-            uids=uint_uids,
-            weights=uint_weights,
-            wait_for_finalization=False,
-            wait_for_inclusion=False,
-            version_key=self.spec_version,
-        )
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = {
+            "timestamp": timestamp,
+            "uids": uint_uids.tolist(),
+            "weights": uint_weights.tolist(),
+        }
 
-        if result.success:
-            bt.logging.success("set_weights on chain successfully!")
-        else:
-            bt.logging.error(f"set_weights failed: {result.error_message}")
+        # Log to file
+        import json
+        import os
+
+        log_file = os.path.join(self.config.neuron.full_path, "weight_logs.json")
+
+        try:
+            # Read existing logs if file exists
+            if os.path.exists(log_file):
+                with open(log_file, "r") as f:
+                    logs = json.load(f)
+            else:
+                logs = []
+
+            # Append new log
+            logs.append(log_entry)
+
+            # Write back to file
+            with open(log_file, "w") as f:
+                json.dump(logs, f, indent=2)
+
+            bt.logging.info(f"Logged weights for {len(uint_uids)} uids to {log_file}")
+
+        except Exception as e:
+            bt.logging.error(f"Failed to log weights: {e}")
+
+        # NOTE: Weight setting on chain disabled for now while we analyze scoring
+        # result = await self.subtensor.set_weights(
+        #     wallet=self.wallet,
+        #     netuid=self.config.netuid,
+        #     uids=uint_uids,
+        #     weights=uint_weights,
+        #     wait_for_finalization=False,
+        #     wait_for_inclusion=False,
+        #     version_key=self.spec_version,
+        # )
 
     async def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""

@@ -119,7 +119,7 @@ class Forwarder:
     async def get_discord_all_guilds(self):
         return ["Not yet implemented"]
 
-    async def ping_axons(self):
+    async def ping_axons(self, current_block: int):
         request = PingAxonSynapse(
             sent_from=get_external_ip(), is_active=False, version=0
         )
@@ -138,7 +138,7 @@ class Forwarder:
 
         self.validator.versions = [response.version for response in all_responses]
         bt.logging.info(f"Miner Versions: {self.validator.versions}")
-        self.validator.last_healthcheck_block = self.validator.subtensor.block
+        self.validator.last_healthcheck_block = current_block
         return [
             {
                 "status_code": response.dendrite.status_code,
@@ -183,13 +183,13 @@ class Forwarder:
                         f"failed to fetch subnet config from GitHub: {response.status}"
                     )
 
-    async def get_miners_volumes(self):
+    async def get_miners_volumes(self, current_block: int):
         if len(self.validator.versions) == 0:
             bt.logging.info("Pinging axons to get miner versions...")
-            return await self.ping_axons()
-        if len(self.validator.keywords) == 0 or self.check_tempo():
+            return await self.ping_axons(current_block)
+        if len(self.validator.keywords) == 0 or self.check_tempo(current_block):
             await self.fetch_twitter_queries()
-        if len(self.validator.subnet_config) == 0 or self.check_tempo():
+        if len(self.validator.subnet_config) == 0 or self.check_tempo(current_block):
             await self.fetch_subnet_config()
 
         random_keyword = random.choice(self.validator.keywords)
@@ -340,19 +340,16 @@ class Forwarder:
         )
 
         # note, set the last volume block to the current block
-        self.validator.last_volume_block = self.validator.subtensor.block
+        self.validator.last_volume_block = current_block
 
-    def check_tempo(self) -> bool:
+    def check_tempo(self, current_block: int) -> bool:
         if self.validator.last_tempo_block == 0:
-            self.validator.last_tempo_block = self.validator.subtensor.block
+            self.validator.last_tempo_block = current_block
             return True
 
-        tempo = self.validator.tempo
-        blocks_since_last_check = (
-            self.validator.subtensor.block - self.validator.last_tempo_block
-        )
-        if blocks_since_last_check >= tempo:
-            self.validator.last_tempo_block = self.validator.subtensor.block
+        blocks_since_last_check = current_block - self.validator.last_tempo_block
+        if blocks_since_last_check >= self.validator.tempo:
+            self.validator.last_tempo_block = current_block
             return True
         else:
             return False
