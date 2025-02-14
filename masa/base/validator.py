@@ -183,26 +183,34 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Error updating config: {e}")
 
     async def should_set_weights(self) -> bool:
-        # Don't set weights on initialization.
-        if self.step == 0:
+        # Don't set weights on initialization or if disabled
+        if self.step == 0 or self.config.neuron.disable_set_weights:
+            bt.logging.debug("Weight setting disabled: initialization or config")
             return False
 
-        # Check if enough epoch blocks have elapsed since the last epoch.
-        if self.config.neuron.disable_set_weights:
-            bt.logging.debug("Weight setting disabled by config")
-            return False
-
-        # Define appropriate logic for when set weights.
+        # Check if enough epoch blocks have elapsed
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
-        should_set = (
-            blocks_elapsed > self.config.neuron.epoch_length
-            and self.neuron_type != "MinerNeuron"
-        )
-        if should_set:
+        if blocks_elapsed <= self.config.neuron.epoch_length:
+            return False
+
+        # Count how many miners we have scores for
+        non_zero_scores = (self.scores > 0).sum().item()
+        total_miners = len(self.metagraph.hotkeys)
+        score_coverage = non_zero_scores / total_miners if total_miners > 0 else 0
+
+        # We want at least 80% of miners to have scores before setting weights
+        MIN_COVERAGE = 0.8
+        if score_coverage < MIN_COVERAGE:
             bt.logging.info(
-                f"Should set weights: {blocks_elapsed} blocks elapsed > {self.config.neuron.epoch_length} epoch length"
+                f"Not enough miner coverage for weight setting: {non_zero_scores}/{total_miners} miners scored ({score_coverage:.1%})"
             )
-        return should_set
+            return False
+
+        bt.logging.info(
+            f"Should set weights: {blocks_elapsed} blocks elapsed > {self.config.neuron.epoch_length} epoch length "
+            f"with {non_zero_scores}/{total_miners} miners scored ({score_coverage:.1%})"
+        )
+        return True
 
     async def set_weights(self):
         """Logs the weights we would set based on miner scores."""
@@ -371,35 +379,39 @@ class BaseValidatorNeuron(BaseNeuron):
         if len(uids_tensor) != len(rewards):
             raise ValueError("The length of uids_tensor and rewards must be the same.")
 
-        # Ensure self.scores has the required length to accommodate all uids in uids_tensor
-        max_uid = uids_tensor.max().item()
-        if max_uid >= self.scores.size(0):
-            new_size = max_uid + 1
-            new_scores = torch.zeros(new_size).to(self.device)
-            new_scores[: self.scores.size(0)] = self.scores
+        # Get the maximum UID value
+        max_uid = max(uids_tensor.max().item(), len(self.scores) - 1)
+
+        # If we need to expand the scores tensor
+        if max_uid >= len(self.scores):
+            bt.logging.info(
+                f"Expanding scores tensor from size {len(self.scores)} to {max_uid + 1}"
+            )
+            new_scores = torch.zeros(max_uid + 1).to(self.device)
+            new_scores[: len(self.scores)] = self.scores
             self.scores = new_scores
 
         # Compute forward pass rewards, assumes uids are mutually exclusive.
         # shape: [ metagraph.n ]
-        scattered_rewards: torch.FloatTensor = self.scores.scatter(
-            0, uids_tensor, rewards
-        ).to(self.device)
+        scattered_rewards: torch.FloatTensor = torch.zeros_like(self.scores)
+        scattered_rewards.scatter_(0, uids_tensor, rewards)
 
         bt.logging.info(f"Scattered rewards: {rewards}")
 
         # Update scores with rewards produced by this step.
         # shape: [ metagraph.n ]
-
         alpha: float = self.config.neuron.moving_average_alpha
-        self.scores: torch.FloatTensor = alpha * scattered_rewards + (
-            1 - alpha
-        ) * self.scores.to(self.device)
+        self.scores: torch.FloatTensor = (
+            alpha * scattered_rewards + (1 - alpha) * self.scores
+        )
 
         bt.logging.info(f"Updated moving averages: {self.scores}")
 
         # Limit the number of tweet IDs stored per UID to 100,000
         for uid in uids:
-            if len(self.tweets_by_uid[uid]) > 100000:
+            if uid not in self.tweets_by_uid:
+                self.tweets_by_uid[uid] = set()
+            elif len(self.tweets_by_uid[uid]) > 100000:
                 self.tweets_by_uid[uid] = set(list(self.tweets_by_uid[uid])[:100000])
 
         self.save_state()
@@ -421,15 +433,17 @@ class BaseValidatorNeuron(BaseNeuron):
         )
 
     def load_state(self):
-        """Loads the state of the validator from a file."""
+        """Loads the state of the validator from a file and rebuilds scores from scores.log if needed."""
         bt.logging.info("Loading validator state.")
 
-        # Load the state of the validator from file.
+        # Load the state of the validator from file
         state_path = self.config.neuron.full_path + "/state.pt"
+        scores_log_path = os.path.join(self.config.neuron.full_path, "scores.log")
+
         if os.path.isfile(state_path):
             state = torch.load(state_path, map_location=torch.device("cpu"))
             self.step = dict(state).get("step", 0)
-            self.scores = dict(state).get("scores", [])
+            self.scores = dict(state).get("scores", torch.zeros(self.metagraph.n))
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
             self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
@@ -440,5 +454,41 @@ class BaseValidatorNeuron(BaseNeuron):
             self.volumes = []
             self.tweets_by_uid = {}
             bt.logging.warning(
-                f"State file not found at {state_path}. Skipping state load."
+                f"State file not found at {state_path}. Attempting to rebuild from scores.log"
             )
+
+        # If we have no scores or very few non-zero scores, try to rebuild from scores.log
+        non_zero_scores = (self.scores > 0).sum().item()
+        if (
+            os.path.isfile(scores_log_path)
+            and non_zero_scores < len(self.metagraph.hotkeys) * 0.5
+        ):
+            bt.logging.info(f"Attempting to rebuild scores from {scores_log_path}")
+            try:
+                with open(scores_log_path, "r") as f:
+                    # Read the last line of scores.log
+                    for line in f:
+                        try:
+                            entry = json.loads(line.strip())
+                            if entry["netuid"] == self.config.netuid:
+                                last_weights = entry["weights"]
+                                # Convert weights back to scores (undo the u16::MAX scaling)
+                                new_scores = torch.zeros(self.metagraph.n)
+                                for weight in last_weights:
+                                    uid = weight["uid"]
+                                    if uid < len(new_scores):
+                                        new_scores[uid] = weight["weight"] / 65535.0
+
+                                if (new_scores > 0).sum().item() > non_zero_scores:
+                                    bt.logging.info(
+                                        f"Rebuilt scores from scores.log with {(new_scores > 0).sum().item()} non-zero scores"
+                                    )
+                                    self.scores = new_scores
+                        except json.JSONDecodeError:
+                            continue
+            except Exception as e:
+                bt.logging.error(f"Failed to rebuild scores from scores.log: {e}")
+
+        bt.logging.info(
+            f"Loaded state with {(self.scores > 0).sum().item()}/{len(self.scores)} non-zero scores"
+        )
