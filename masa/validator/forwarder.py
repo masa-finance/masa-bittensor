@@ -58,22 +58,22 @@ class Forwarder:
         else:
             miner_uids = await get_random_miner_uids(self.validator, k=sample_size)
 
-        if len(miner_uids) == 0:
+        if miner_uids is None or len(miner_uids) == 0:
             return [], []
 
-        dendrite = bt.dendrite(wallet=self.validator.wallet)
-        responses = await dendrite(
-            [self.validator.metagraph.axons[uid] for uid in miner_uids],
-            request,
-            deserialize=True,
-            timeout=timeout,
-        )
+        async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
+            responses = await dendrite(
+                [self.validator.metagraph.axons[uid] for uid in miner_uids],
+                request,
+                deserialize=True,
+                timeout=timeout,
+            )
 
-        formatted_responses = [
-            {"uid": int(uid), "response": response}
-            for uid, response in zip(miner_uids, responses)
-        ]
-        return formatted_responses, miner_uids
+            formatted_responses = [
+                {"uid": int(uid), "response": response}
+                for uid, response in zip(miner_uids, responses)
+            ]
+            return formatted_responses, miner_uids
 
     async def get_twitter_profile(self, username: str = "getmasafi"):
         request = TwitterProfileSynapse(username=username)
@@ -124,17 +124,20 @@ class Forwarder:
             sent_from=get_external_ip(), is_active=False, version=0
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
-        dendrite = bt.dendrite(wallet=self.validator.wallet)
         all_responses = []
-        for i in range(0, len(self.validator.metagraph.axons), sample_size):
-            batch = self.validator.metagraph.axons[i : i + sample_size]
-            batch_responses = await dendrite(
-                batch,
-                request,
-                deserialize=False,
-                timeout=self.validator.subnet_config.get("healthcheck").get("timeout"),
-            )
-            all_responses.extend(batch_responses)
+
+        async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
+            for i in range(0, len(self.validator.metagraph.axons), sample_size):
+                batch = self.validator.metagraph.axons[i : i + sample_size]
+                batch_responses = await dendrite(
+                    batch,
+                    request,
+                    deserialize=False,
+                    timeout=self.validator.subnet_config.get("healthcheck").get(
+                        "timeout"
+                    ),
+                )
+                all_responses.extend(batch_responses)
 
         self.validator.versions = [response.version for response in all_responses]
         bt.logging.info(f"Miner Versions: {self.validator.versions}")
