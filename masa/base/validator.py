@@ -226,7 +226,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Count how many UIDs have non-zero scores
         scored_uids = (self.scores > 0).sum().item()
-        if scored_uids < 200:
+        if scored_uids < 150:
             bt.logging.info(
                 f"Not enough scored UIDs ({scored_uids} < 200) to set weights"
             )
