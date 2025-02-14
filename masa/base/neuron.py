@@ -99,6 +99,10 @@ class BaseNeuron(ABC):
 
         self.wallet = bt.wallet(config=self.config)
         self.subtensor = bt.AsyncSubtensor(config=self.config)
+
+        # Initialize the AsyncSubtensor
+        await self.subtensor.initialize()
+
         self.metagraph = await self.subtensor.metagraph(self.config.netuid)
 
         bt.logging.info(f"Wallet: {self.wallet}")
