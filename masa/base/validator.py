@@ -62,44 +62,32 @@ class BaseValidatorNeuron(BaseNeuron):
         """Run the validator forever."""
         while True:
             current_block = await self.block
-            bt.logging.info(
-                f"Block: {current_block}, "
-                f"Tempo: {self.tempo}, "
-                f"Last sync: {self.last_sync_block}, "
-                f"Last tempo: {self.last_tempo_block}, "
-                f"Last volume: {self.last_volume_block}, "
-                f"Last scoring: {self.last_scoring_block}, "
-                f"Last health: {self.last_healthcheck_block}"
-            )
 
+            # Tempo-based operations (every ~72 minutes)
             if current_block - self.last_sync_block > self.tempo:
                 bt.logging.info(f"Syncing at block {current_block}")
                 await self.sync()
                 self.last_sync_block = current_block
 
-            if current_block - self.last_tempo_block > self.tempo:
-                bt.logging.info(f"Pinging miners at block {current_block}")
-                await self.forwarder.ping_axons(current_block)
-                self.last_tempo_block = current_block
+            # Weight setting (every 100 blocks, ~20 minutes)
+            if current_block - self.last_weights_block > 100:
+                bt.logging.info(f"Setting weights at block {current_block}")
+                await self.set_weights()
+                self.last_weights_block = current_block
 
-            if current_block - self.last_volume_block > self.tempo:
-                bt.logging.info(f"Getting miner volumes at block {current_block}")
+            # Continuous operations - run every loop
+            try:
+                # Get and score miner volumes
                 await self.forwarder.get_miners_volumes(current_block)
-                self.last_volume_block = current_block
-
-            if current_block - self.last_scoring_block > self.tempo:
-                bt.logging.info(f"Scoring miner volumes at block {current_block}")
                 await self.scorer.score_miner_volumes(current_block)
-                self.last_scoring_block = current_block
-                bt.logging.debug("After scoring, before sleep")
 
-            if current_block - self.last_healthcheck_block > self.tempo:
-                bt.logging.info(f"Running health check at block {current_block}")
+                # Quick health check
                 await self.healthcheck()
-                self.last_healthcheck_block = current_block
+            except Exception as e:
+                bt.logging.error(f"Error in continuous operations: {e}")
 
+            # Brief pause to prevent overwhelming the network
             await asyncio.sleep(1)
-            bt.logging.debug("After sleep")
 
     async def initialize(self, config=None):
         """Async initialization method."""
@@ -124,6 +112,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_volume_block = 0
         self.last_scoring_block = 0
         self.last_healthcheck_block = 0
+        self.last_weights_block = 0
 
         # load config file for subnet specific settings as default
         # note, every tempo we fetch the latest config file from github main branch
