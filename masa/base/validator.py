@@ -187,7 +187,7 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Error updating config: {e}")
 
     async def should_set_weights(self) -> bool:
-        bt.logging.info("VALIDATOR NEURON should_set_weights called")
+        bt.logging.debug("VALIDATOR NEURON should_set_weights called")
         # Skip if weights are disabled in config
         if self.config.neuron.disable_set_weights:
             bt.logging.info("❌ Weights disabled in config")
@@ -195,22 +195,22 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Skip if we're a miner
         if self.neuron_type == "MinerNeuron":
-            bt.logging.info("❌ We are a miner")
+            bt.logging.debug("❌ We are a miner")
             return False
 
         # Count how many UIDs have non-zero scores
         scored_uids = (self.scores > 0).sum().item()
         if scored_uids < 150:
-            bt.logging.info(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
+            bt.logging.debug(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
             return False
 
         # Check if enough blocks have elapsed since last update
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
-        bt.logging.info(f"Blocks elapsed since last update: {blocks_elapsed}")
+        bt.logging.debug(f"Blocks elapsed since last update: {blocks_elapsed}")
 
         # Allow setting weights if this is initialization (last_weights_block == 0) or enough blocks elapsed
         if blocks_elapsed <= 100 and self.last_weights_block > 0:
-            bt.logging.info(
+            bt.logging.debug(
                 f"❌ Only {blocks_elapsed} blocks elapsed since last weight setting"
             )
             return False
@@ -226,7 +226,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
     async def set_weights(self):
         """Sets weights based on miner scores."""
-        bt.logging.info("Starting weight setting process...")
+        bt.logging.debug("Starting weight setting process...")
 
         # Skip if we have no real scores yet
         if torch.all(self.scores == 0):
@@ -241,7 +241,7 @@ class BaseValidatorNeuron(BaseNeuron):
             return
 
         # Use raw scores directly - let process_weights_for_netuid handle normalization
-        bt.logging.info("Processing weights through subnet-specific logic...")
+        bt.logging.debug("Processing weights through subnet-specific logic...")
         (
             processed_weight_uids,
             processed_weights,
@@ -253,7 +253,7 @@ class BaseValidatorNeuron(BaseNeuron):
             metagraph=self.metagraph,
         )
 
-        bt.logging.info("Converting weights to chain format...")
+        bt.logging.debug("Converting weights to chain format...")
         (
             uint_uids,
             uint_weights,
@@ -285,8 +285,8 @@ class BaseValidatorNeuron(BaseNeuron):
         try:
             with open(log_file, "a") as f:
                 f.write(json.dumps(log_entry) + "\n")
-            bt.logging.success(
-                f"✅ Successfully logged weights for {len(uint_uids)} uids to {log_file}"
+            bt.logging.debug(
+                f"Successfully logged weights for {len(uint_uids)} uids to {log_file}"
             )
             bt.logging.debug(
                 f"Weight stats - Min: {self.scores.min():.6f}, Max: {self.scores.max():.6f}, Mean: {self.scores.mean():.6f}"
@@ -315,6 +315,7 @@ class BaseValidatorNeuron(BaseNeuron):
                         f"\n    - Block number: {result.block_number}"
                         f"\n    - Block hash: {result.block_hash}"
                     )
+                    self.last_weights_block = await self.block
                 else:
                     bt.logging.error(
                         f"❌ Failed to set weights on chain"
@@ -324,6 +325,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.success(
                     f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
                 )
+                self.last_weights_block = await self.block
             else:
                 bt.logging.error(
                     "❌ Failed to set weights on chain - No response from server"
