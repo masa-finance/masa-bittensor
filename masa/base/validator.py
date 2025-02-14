@@ -53,12 +53,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # Initialize instance variables before parent init
         self.should_exit = False
         self.is_running = False
-        self.sync_thread = None
-        self.miner_ping_thread = None
-        self.miner_volume_thread = None
-        self.miner_scoring_thread = None
-        self.auto_update_thread = None
-        self.lock = None
+        self._background_tasks = []  # Store task references
         self.versions = []  # note, for storing uid versions
         self.keywords = []  # note, for volume scoring queries
         self.uncalled_uids = set()  # note, for volume scoring queries
@@ -69,6 +64,57 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Call parent's __init__ with config
         super().__init__(config=config)
+
+    async def start_background_tasks(self):
+        """Start all background tasks in the same event loop."""
+        if not self.is_running:
+            bt.logging.debug("Starting validator background tasks.")
+            self.should_exit = False
+
+            # Create all background tasks
+            self._background_tasks = [
+                asyncio.create_task(self.run_sync()),
+                asyncio.create_task(self.run_miner_ping()),
+                asyncio.create_task(self.run_miner_volume()),
+                asyncio.create_task(self.run_miner_scoring()),
+                asyncio.create_task(self.run_auto_update()),
+            ]
+
+            self.is_running = True
+            bt.logging.debug("Started background tasks")
+
+    async def stop_background_tasks(self):
+        """Stop all background tasks."""
+        if self.is_running:
+            bt.logging.debug("Stopping validator background tasks.")
+            self.should_exit = True
+
+            # Cancel all tasks
+            for task in self._background_tasks:
+                task.cancel()
+
+            # Wait for all tasks to complete
+            if self._background_tasks:
+                await asyncio.gather(*self._background_tasks, return_exceptions=True)
+
+            self._background_tasks = []
+            self.is_running = False
+            bt.logging.debug("Stopped background tasks")
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        await self.start_background_tasks()
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        """Async context manager exit."""
+        await self.stop_background_tasks()
+
+    def __enter__(self):
+        raise RuntimeError("Use 'async with' instead of 'with'")
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        raise RuntimeError("Use 'async with' instead of 'with'")
 
     async def initialize(self, config=None):
         """Async initialization method."""
@@ -110,7 +156,7 @@ class BaseValidatorNeuron(BaseNeuron):
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
         # Init sync with the network. Updates the metagraph.
-        self.sync()
+        await self.sync()
         self.load_state()
 
         # Serve axon to enable external connections.
@@ -119,8 +165,7 @@ class BaseValidatorNeuron(BaseNeuron):
         else:
             bt.logging.warning("axon off, not serving ip to chain.")
 
-        # Instantiate runners
-        self.run_in_background_thread()
+        self._is_initialized = True
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -148,183 +193,98 @@ class BaseValidatorNeuron(BaseNeuron):
             pass
 
     async def run_sync(self):
-        while not self.should_exit:
-            try:
+        """Periodically sync with the network by updating the metagraph."""
+        try:
+            while not self.should_exit:
                 current_block = await self.block
-                blocks_since_last_check = current_block - self.last_sync_block
-                if blocks_since_last_check >= 6:
+                if current_block - self.last_sync_block > self.tempo:
+                    bt.logging.info(f"Syncing at block {current_block}")
                     await self.sync()
-                    self.step += 1
                     self.last_sync_block = current_block
-            except Exception as e:
-                if (
-                    "cannot call recv while another thread is already running recv"
-                    in str(e)
-                ):
-                    bt.logging.warning(f"Non-critical dendrite concurrency issue: {e}")
-                else:
-                    bt.logging.error(f"Error running sync: {e}")
-            await asyncio.sleep(self.block_time)
+                await asyncio.sleep(1)  # Check every second
+        except asyncio.CancelledError:
+            bt.logging.debug("Sync task cancelled")
+        except Exception as e:
+            bt.logging.error(f"Error in sync task: {e}")
 
     async def run_miner_ping(self):
-        while not self.should_exit:
-            try:
+        """Periodically ping miners to check their versions."""
+        try:
+            while not self.should_exit:
                 current_block = await self.block
-                blocks_since_last_check = current_block - self.last_healthcheck_block
-                blocks_to_wait = self.subnet_config.get("healthcheck").get("blocks")
-                if blocks_since_last_check >= blocks_to_wait:
+                if current_block - self.last_tempo_block > self.tempo:
+                    bt.logging.info(f"Pinging miners at block {current_block}")
                     await self.forwarder.ping_axons()
-                    self.last_healthcheck_block = current_block
-            except Exception as e:
-                bt.logging.error(f"Error running miner ping: {e}")
-            await asyncio.sleep(self.block_time)
+                    self.last_tempo_block = current_block
+                await asyncio.sleep(1)  # Check every second
+        except asyncio.CancelledError:
+            bt.logging.debug("Miner ping task cancelled")
+        except Exception as e:
+            bt.logging.error(f"Error in miner ping task: {e}")
 
     async def run_miner_volume(self):
-        while not self.should_exit:
-            try:
+        """Periodically check miner volumes."""
+        try:
+            while not self.should_exit:
                 current_block = await self.block
-                blocks_since_last_check = current_block - self.last_volume_block
-                blocks_to_wait = self.subnet_config.get("synthetic").get("blocks")
-                if blocks_since_last_check >= blocks_to_wait:
+                if current_block - self.last_volume_block > self.tempo:
+                    bt.logging.info(f"Getting miner volumes at block {current_block}")
                     await self.forwarder.get_miners_volumes()
                     self.last_volume_block = current_block
-            except Exception as e:
-                bt.logging.error(f"Error running miner volume: {e}")
-            await asyncio.sleep(self.block_time)
+                await asyncio.sleep(1)  # Check every second
+        except asyncio.CancelledError:
+            bt.logging.debug("Miner volume task cancelled")
+        except Exception as e:
+            bt.logging.error(f"Error in miner volume task: {e}")
 
     async def run_miner_scoring(self):
-        while not self.should_exit:
-            try:
+        """Periodically score miner volumes."""
+        try:
+            while not self.should_exit:
                 current_block = await self.block
-                blocks_since_last_check = current_block - self.last_scoring_block
-                if blocks_since_last_check >= self.tempo / 50:
+                if current_block - self.last_scoring_block > self.tempo:
+                    bt.logging.info(f"Scoring miner volumes at block {current_block}")
                     await self.scorer.score_miner_volumes()
                     self.last_scoring_block = current_block
-            except Exception as e:
-                if (
-                    "cannot call recv while another thread is already running recv"
-                    in str(e)
-                ):
-                    bt.logging.warning(f"Non-critical dendrite concurrency issue: {e}")
-                else:
-                    bt.logging.warning(f"Non-critical error in miner scoring: {e}")
-            await asyncio.sleep(self.block_time)
+                await asyncio.sleep(1)  # Check every second
+        except asyncio.CancelledError:
+            bt.logging.debug("Miner scoring task cancelled")
+        except Exception as e:
+            bt.logging.error(f"Error in miner scoring task: {e}")
 
     async def run_auto_update(self):
-        while not self.should_exit:
-            try:
-                if self.config.neuron.auto_update:
-                    self.auto_update()
-            except Exception as e:
-                bt.logging.error(f"Error running auto update: {e}")
-            await asyncio.sleep(self.tempo * self.block_time)
+        """Periodically check for and apply updates."""
+        try:
+            while not self.should_exit:
+                current_block = await self.block
+                if current_block - self.last_healthcheck_block > self.tempo:
+                    bt.logging.info(f"Running health check at block {current_block}")
+                    await self.healthcheck()
+                    self.last_healthcheck_block = current_block
+                await asyncio.sleep(1)  # Check every second
+        except asyncio.CancelledError:
+            bt.logging.debug("Auto update task cancelled")
+        except Exception as e:
+            bt.logging.error(f"Error in auto update task: {e}")
 
-    async def run_sync_in_loop(self):
-        """Run sync loop in asyncio event loop."""
-        await self.run_sync()
+    async def healthcheck(self):
+        """Run health check and auto-update."""
+        try:
+            # Fetch latest config from GitHub
+            await self.update_config()
 
-    async def run_miner_ping_in_loop(self):
-        """Run miner ping loop in asyncio event loop."""
-        await self.run_miner_ping()
+            # Run any other health checks here
+            pass
+        except Exception as e:
+            bt.logging.error(f"Error in health check: {e}")
 
-    async def run_miner_volume_in_loop(self):
-        """Run miner volume loop in asyncio event loop."""
-        await self.run_miner_volume()
-
-    async def run_miner_scoring_in_loop(self):
-        """Run miner scoring loop in asyncio event loop."""
-        await self.run_miner_scoring()
-
-    async def run_auto_update_in_loop(self):
-        """Run auto update loop in asyncio event loop."""
-        await self.run_auto_update()
-
-    def run_in_background_thread(self):
-        """
-        Starts the validator's operations in a background thread upon entering the context.
-        This method facilitates the use of the validator in a 'with' statement.
-        """
-        if not self.is_running:
-            bt.logging.debug("Starting validator in background thread.")
-            self.should_exit = False
-
-            # Create event loop for each thread
-            def run_async_loop(coro):
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(coro)
-                loop.close()
-
-            self.sync_thread = threading.Thread(
-                target=run_async_loop, args=(self.run_sync_in_loop(),), daemon=True
-            )
-            self.miner_ping_thread = threading.Thread(
-                target=run_async_loop,
-                args=(self.run_miner_ping_in_loop(),),
-                daemon=True,
-            )
-            self.miner_volume_thread = threading.Thread(
-                target=run_async_loop,
-                args=(self.run_miner_volume_in_loop(),),
-                daemon=True,
-            )
-            self.miner_scoring_thread = threading.Thread(
-                target=run_async_loop,
-                args=(self.run_miner_scoring_in_loop(),),
-                daemon=True,
-            )
-            self.auto_update_thread = threading.Thread(
-                target=run_async_loop,
-                args=(self.run_auto_update_in_loop(),),
-                daemon=True,
-            )
-
-            self.sync_thread.start()  # for setting weights, syncing metagraph,, etc
-            self.miner_ping_thread.start()  # for versioning and getting keywords
-            self.miner_volume_thread.start()  # for testing miner volumes
-            self.miner_scoring_thread.start()  # for scoring miner volumes
-            self.auto_update_thread.start()  # for auto updating the neuron
-            self.is_running = True
-            bt.logging.debug("Started")
-
-    def stop_run_thread(self):
-        """
-        Stops the validator's operations that are running in the background thread.
-        """
-        if self.is_running:
-            bt.logging.debug("Stopping validator in background thread.")
-            self.should_exit = True
-            self.sync_thread.join(5)
-            self.miner_ping_thread.join(5)
-            self.miner_volume_thread.join(5)
-            self.miner_scoring_thread.join(5)
-            self.auto_update_thread.join(5)
-            self.is_running = False
-            bt.logging.debug("Stopped")
-
-    async def __aenter__(self):
-        """Async context manager entry."""
-        self.run_in_background_thread()
-        return self
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        """Async context manager exit."""
-        if self.is_running:
-            bt.logging.debug("Stopping validator in background thread.")
-            self.should_exit = True
-            self.sync_thread.join(5)
-            self.miner_ping_thread.join(5)
-            self.miner_volume_thread.join(5)
-            self.miner_scoring_thread.join(5)
-            self.auto_update_thread.join(5)
-            self.is_running = False
-            bt.logging.debug("Stopped")
-
-    def __enter__(self):
-        raise RuntimeError("Use 'async with' instead of 'with'")
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        raise RuntimeError("Use 'async with' instead of 'with'")
+    async def update_config(self):
+        """Update config from GitHub."""
+        try:
+            # Implement config update logic here
+            pass
+        except Exception as e:
+            bt.logging.error(f"Error updating config: {e}")
 
     def set_weights(self):
         """

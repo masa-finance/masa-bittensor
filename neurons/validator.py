@@ -18,6 +18,7 @@
 
 import bittensor as bt
 import asyncio
+import signal
 
 # Bittensor Validator Template:
 from masa.base.validator import BaseValidatorNeuron
@@ -28,6 +29,7 @@ class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super().__init__(config=config)
         self._is_initialized = False
+        self._stop_event = None
 
     @classmethod
     async def create(cls, config=None):
@@ -59,12 +61,30 @@ class Validator(BaseValidatorNeuron):
 
 
 async def main():
-    # Create and initialize the validator using the factory method
-    validator = await Validator.create()
+    # Create stop event for graceful shutdown
+    stop_event = asyncio.Event()
 
-    async with validator:  # Use async context manager
-        while True:
-            await asyncio.sleep(5)
+    # Handle signals for graceful shutdown
+    def signal_handler():
+        bt.logging.info("Received stop signal, initiating graceful shutdown...")
+        stop_event.set()
+
+    # Register signal handlers
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        asyncio.get_event_loop().add_signal_handler(sig, signal_handler)
+
+    try:
+        # Create and initialize the validator using the factory method
+        validator = await Validator.create()
+
+        async with validator:  # Use async context manager
+            # Wait for stop signal
+            await stop_event.wait()
+
+    except Exception as e:
+        bt.logging.error(f"Error in main loop: {e}")
+    finally:
+        bt.logging.info("Shutting down validator...")
 
 
 if __name__ == "__main__":
