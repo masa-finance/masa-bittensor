@@ -41,7 +41,7 @@ import re
 class Forwarder:
     def __init__(self, validator):
         self.validator = validator
-        self.lock = asyncio.Lock()  # Create lock in forwarder
+        self._lock = None  # Initialize lock as None
 
     async def forward_request(
         self,
@@ -60,7 +60,11 @@ class Forwarder:
             sequential: Whether to query miners sequentially
         """
         try:
-            async with self.lock:  # Use forwarder's lock
+            # Create lock if it doesn't exist
+            if self._lock is None:
+                self._lock = asyncio.Lock()
+
+            async with self._lock:  # Use forwarder's lock
                 # Create a new dendrite instance for this request
                 dendrite = bt.dendrite(wallet=self.validator.wallet)
                 try:
@@ -183,7 +187,7 @@ class Forwarder:
             sent_from=get_external_ip(), is_active=False, version=0
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
-        async with self.lock:  # Use forwarder's lock
+        async with self._lock:  # Use forwarder's lock
             dendrite = bt.dendrite(wallet=self.validator.wallet)
             try:
                 all_responses = []

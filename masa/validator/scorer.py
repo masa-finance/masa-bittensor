@@ -26,7 +26,7 @@ import asyncio
 class Scorer:
     def __init__(self, validator):
         self.validator = validator
-        self.lock = asyncio.Lock()  # Create lock in scorer
+        self._lock = None  # Initialize lock as None
 
     def add_volume(self, miner_uid, volume):
         """Add volume for a miner.
@@ -58,6 +58,10 @@ class Scorer:
 
     async def score_miner_volumes(self):
         try:
+            # Create lock if it doesn't exist
+            if self._lock is None:
+                self._lock = asyncio.Lock()
+
             volumes = self.validator.volumes
             bt.logging.debug(f"Processing volumes: {volumes}")
 
@@ -128,7 +132,7 @@ class Scorer:
             scores = torch.FloatTensor(rewards).to(self.validator.device)
             bt.logging.debug(f"Final scores tensor: {scores}")
 
-            async with self.lock:  # Use scorer's lock
+            async with self._lock:  # Use scorer's lock
                 self.validator.update_scores(scores, valid_miner_uids)
                 if self.validator.should_set_weights():
                     try:

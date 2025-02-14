@@ -368,17 +368,28 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
 
-            # Close the event loop
-            if self.loop and self.loop.is_running():
-                self.loop.stop()
-                self.loop.close()
+            # Join threads with timeout
+            if self.sync_thread and self.sync_thread.is_alive():
+                self.sync_thread.join(5)
+            if self.miner_ping_thread and self.miner_ping_thread.is_alive():
+                self.miner_ping_thread.join(5)
+            if self.miner_volume_thread and self.miner_volume_thread.is_alive():
+                self.miner_volume_thread.join(5)
+            if self.miner_scoring_thread and self.miner_scoring_thread.is_alive():
+                self.miner_scoring_thread.join(5)
+            if self.auto_update_thread and self.auto_update_thread.is_alive():
+                self.auto_update_thread.join(5)
 
-            # Join threads
-            self.sync_thread.join(5)
-            self.miner_ping_thread.join(5)
-            self.miner_volume_thread.join(5)
-            self.miner_scoring_thread.join(5)
-            self.auto_update_thread.join(5)
+            # Clean up any remaining dendrite sessions
+            if hasattr(self, "dendrite") and self.dendrite:
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        loop.create_task(self.dendrite.close_session())
+                    else:
+                        loop.run_until_complete(self.dendrite.close_session())
+                except Exception as e:
+                    bt.logging.warning(f"Error closing dendrite session: {e}")
 
             self.is_running = False
             bt.logging.debug("Stopped")
