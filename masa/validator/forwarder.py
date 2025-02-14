@@ -157,7 +157,9 @@ class Forwarder:
 
     async def ping_axons(self, current_block: int):
         request = PingAxonSynapse(
-            sent_from=get_external_ip(), is_active=False, version=0
+            sent_from=get_external_ip(),
+            is_active=False,
+            version=int("0"),  # Ensure version is an integer
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         all_responses = []

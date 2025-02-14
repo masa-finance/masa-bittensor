@@ -147,7 +147,7 @@ class BaseMinerNeuron(BaseNeuron):
             bt.logging.error(f"Failed to serve Axon with exception: {e}")
 
     async def run(self):
-        """Run the miner forever."""
+        """Run the validator forever."""
         while True:
             current_block = await self.block
             bt.logging.info(f"Syncing at block {current_block}")
@@ -166,6 +166,23 @@ class BaseMinerNeuron(BaseNeuron):
 
     def run_auto_update_in_loop(self):
         asyncio.run(self.run_auto_update())
+
+    def run_in_background_thread(self):
+        """
+        Starts the miner's operations in a separate background thread.
+        This is useful for non-blocking operations.
+        """
+        if not self.is_running:
+            bt.logging.debug("Starting miner in background thread.")
+            self.should_exit = False
+            self.thread = threading.Thread(target=self.run, daemon=True)
+            self.auto_update_thread = threading.Thread(
+                target=self.run_auto_update_in_loop, daemon=True
+            )
+            self.thread.start()
+            self.auto_update_thread.start()
+            self.is_running = True
+            bt.logging.debug("Started")
 
     async def sync(self):
         """
