@@ -95,18 +95,17 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.error(f"Error in main loop: {e}")
                 await asyncio.sleep(1)
 
-    async def __aenter__(self):
-        await self.run()
-        return self
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        pass
-
     def __enter__(self):
-        raise RuntimeError("Use 'async with' instead of 'with'")
+        raise RuntimeError("Use run() directly")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        raise RuntimeError("Use 'async with' instead of 'with'")
+        raise RuntimeError("Use run() directly")
+
+    async def __aenter__(self):
+        raise RuntimeError("Use run() directly")
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        raise RuntimeError("Use run() directly")
 
     async def initialize(self, config=None):
         """Async initialization method."""

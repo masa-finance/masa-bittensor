@@ -56,9 +56,7 @@ class Validator(BaseValidatorNeuron):
 
 async def main():
     validator = await Validator.create()
-    async with validator:
-        while True:
-            await asyncio.sleep(1)
+    await validator.run()
 
 
 if __name__ == "__main__":
