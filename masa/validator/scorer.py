@@ -45,8 +45,13 @@ class Scorer:
     async def score_miner_volumes(self):
         volumes = self.validator.volumes
 
+        if not volumes:
+            bt.logging.info("No volumes to score")
+            return JSONResponse(content=[])
+
+        window_size = min(self.validator.volume_window, len(volumes))
         miner_volumes = {}
-        for volume in volumes[-self.validator.volume_window :]:
+        for volume in volumes[-window_size:]:
             for miner_uid, vol in volume["miners"].items():
                 if miner_uid not in miner_volumes:
                     miner_volumes[miner_uid] = 0
