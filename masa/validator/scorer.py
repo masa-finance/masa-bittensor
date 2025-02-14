@@ -45,6 +45,7 @@ class Scorer:
 
     async def score_miner_volumes(self, current_block: int):
         try:
+            bt.logging.debug("Starting score_miner_volumes...")
             volumes = self.validator.volumes
 
             if not volumes:
@@ -141,6 +142,7 @@ class Scorer:
 
             try:
                 self.validator.update_scores(scores, valid_miner_uids)
+                bt.logging.debug("update_scores completed successfully")
             except Exception as e:
                 bt.logging.error(
                     f"Error updating scores: {e}, scores shape: {scores.shape}, uids length: {len(valid_miner_uids)}"
@@ -148,6 +150,8 @@ class Scorer:
                 return JSONResponse(content=[])
 
             self.validator.last_scoring_block = current_block
+            bt.logging.debug("score_miner_volumes completed successfully")
+
             if volumes:
                 try:
                     serializable_volumes = [

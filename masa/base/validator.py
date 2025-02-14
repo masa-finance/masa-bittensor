@@ -360,6 +360,7 @@ class BaseValidatorNeuron(BaseNeuron):
     def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""
         try:
+            bt.logging.debug("Starting update_scores...")
             # Check if rewards contains NaN values.
             if torch.isnan(rewards).any():
                 bt.logging.warning(f"NaN values detected in rewards: {rewards}")
@@ -426,14 +427,16 @@ class BaseValidatorNeuron(BaseNeuron):
                         list(self.tweets_by_uid[uid])[:100000]
                     )
 
+            bt.logging.debug("About to save state...")
             self.save_state()
+            bt.logging.debug("State saved, update_scores complete")
 
         except Exception as e:
             bt.logging.error(f"Error in update_scores: {str(e)}")
             bt.logging.debug(
                 f"Debug info - UIDs: {uids}, Rewards shape: {rewards.shape}, Scores shape: {self.scores.shape}, Metagraph size: {self.metagraph.n}"
             )
-            raise
+            raise  # Re-raise the exception to ensure it's properly handled
 
     def save_state(self):
         """Saves the state of the validator to a file."""
