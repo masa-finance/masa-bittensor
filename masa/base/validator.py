@@ -173,7 +173,13 @@ class BaseValidatorNeuron(BaseNeuron):
                 if blocks_since_last_check >= self.tempo / 50:
                     await self.scorer.score_miner_volumes()
             except Exception as e:
-                bt.logging.error(f"Error running miner scoring: {e}")
+                if (
+                    "cannot call recv while another thread is already running recv"
+                    in str(e)
+                ):
+                    bt.logging.warning(f"Non-critical dendrite concurrency issue: {e}")
+                else:
+                    bt.logging.warning(f"Non-critical error in miner scoring: {e}")
             await asyncio.sleep(self.block_time)
 
     async def run_auto_update(self):
