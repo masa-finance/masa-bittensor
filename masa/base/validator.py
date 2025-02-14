@@ -166,6 +166,26 @@ class BaseValidatorNeuron(BaseNeuron):
     async def healthcheck(self):
         """Run health check and auto-update."""
         try:
+            # Check if current endpoint is responsive
+            try:
+                await self.subtensor.get_current_block()
+            except Exception as e:
+                bt.logging.warning(
+                    f"Current endpoint {self.subtensor.chain_endpoint} failed: {e}"
+                )
+                # Try to switch to a working endpoint
+                connected = False
+                for endpoint in FINNEY_ENDPOINTS:
+                    if endpoint != self.subtensor.chain_endpoint:
+                        if await self.try_initialize_subtensor(endpoint):
+                            connected = True
+                            break
+
+                if not connected:
+                    bt.logging.error(
+                        "Failed to find working endpoint during health check"
+                    )
+
             # Fetch latest config from GitHub
             await self.update_config()
 
