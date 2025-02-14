@@ -173,34 +173,7 @@ class BaseValidatorNeuron(BaseNeuron):
             try:
                 await self.subtensor.get_current_block()
             except Exception as e:
-                bt.logging.warning(
-                    f"Current endpoint {self.subtensor.chain_endpoint} failed: {e}"
-                )
-                # Try to switch to a working endpoint
-                connected = False
-                try:
-                    for endpoint in FINNEY_ENDPOINTS:
-                        if endpoint != self.subtensor.chain_endpoint:
-                            try:
-                                if await self.try_initialize_subtensor(endpoint):
-                                    connected = True
-                                    bt.logging.success(
-                                        f"Successfully switched to endpoint: {endpoint}"
-                                    )
-                                    break
-                            except Exception as e:
-                                bt.logging.warning(
-                                    f"Failed to connect to endpoint {endpoint}: {e}"
-                                )
-                                continue
-                except Exception as e:
-                    bt.logging.error(f"Error during endpoint switching: {e}")
-
-                if not connected:
-                    bt.logging.error(
-                        "Failed to find working endpoint during health check"
-                    )
-                    # Don't raise here, let it try again next loop
+                bt.logging.error(f"Failed to get current block: {e}")
 
             # Fetch latest config from GitHub
             await self.update_config()
