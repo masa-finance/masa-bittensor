@@ -61,15 +61,14 @@ async def get_random_miner_uids(
         If `k` is larger than the number of available `uids`, set `k` to the number of
         available `uids`.
     """
-    dendrite = bt.dendrite(wallet=self.wallet)
-
     try:
         # Generic sanitation
         avail_uids = get_available_uids(self.metagraph)
         healthy_uids = remove_excluded_uids(avail_uids, exclude)
-        weights_version = self.subtensor.get_subnet_hyperparameters(
+        subnet_params = await self.subtensor.get_subnet_hyperparameters(
             self.config.netuid
-        ).weights_version
+        )
+        weights_version = subnet_params.weights_version
 
         version_checked_uids = [
             uid for uid in healthy_uids if self.versions[uid] >= weights_version
@@ -82,8 +81,6 @@ async def get_random_miner_uids(
     except Exception as e:
         bt.logging.error(f"Failed to get random miner uids: {e}")
         return None
-    finally:
-        dendrite.close_session()
 
 
 async def get_uncalled_miner_uids(
@@ -101,16 +98,15 @@ async def get_uncalled_miner_uids(
         If `k` is larger than the number of available `uids`, set `k` to the number of
         available `uids`.
     """
-    dendrite = bt.dendrite(wallet=self.wallet)
-
     try:
         if len(self.uncalled_uids) == 0:
             # Generic sanitation
             avail_uids = get_available_uids(self.metagraph)
             healthy_uids = remove_excluded_uids(avail_uids, exclude)
-            weights_version = self.subtensor.get_subnet_hyperparameters(
+            subnet_params = await self.subtensor.get_subnet_hyperparameters(
                 self.config.netuid
-            ).weights_version
+            )
+            weights_version = subnet_params.weights_version
             version_checked_uids = [
                 uid for uid in healthy_uids if self.versions[uid] >= weights_version
             ]
@@ -118,13 +114,12 @@ async def get_uncalled_miner_uids(
 
         k = min(k, len(self.uncalled_uids))
         random_sample = random.sample(list(self.uncalled_uids), k)
-        bt.logging.info(f"Calling uids: {random_sample}")
+        bt.logging.info(f"Selected {len(random_sample)} miners to query")
+        bt.logging.info(f"Selected UIDs: {random_sample}")
         self.uncalled_uids.difference_update(random_sample)
-        bt.logging.info(f"Remaining uids: {list(self.uncalled_uids)}")
+        bt.logging.debug(f"Remaining UIDs in pool: {list(self.uncalled_uids)}")
         uids = torch.tensor(random_sample)
         return uids
     except Exception as e:
         bt.logging.error(f"Failed to get uncalled miner uids: {e}")
         return None
-    finally:
-        dendrite.close_session()

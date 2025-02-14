@@ -3,14 +3,14 @@
 # Copyright © 2023 Masa
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
-# documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+# documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
 # and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
 # The above copyright notice and this permission notice shall be included in all copies or substantial portions of
 # the Software.
 
-# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
 # THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
@@ -23,7 +23,6 @@ import json
 import asyncio
 import aiohttp
 import argparse
-import threading
 import bittensor as bt
 
 from typing import List
@@ -50,13 +49,50 @@ class BaseValidatorNeuron(BaseNeuron):
         add_validator_args(cls, parser)
 
     def __init__(self, config=None):
+        self.versions = []
+        self.keywords = []
+        self.uncalled_uids = set()
+        self.volume_window = 6
+        self.tweets_by_uid = {}
+        self.volumes = []
+        self._is_initialized = False
+        self.first_run = True
         super().__init__(config=config)
+
+    async def run(self):
+        """Run the validator forever."""
+        while True:
+            current_block = await self.block
+            bt.logging.info(f"Syncing at block {current_block}")
+            # Sync the metagraph
+            # This is in neuron.py
+            # It will check registration
+            # Update the metagraph if needed
+            # Set weights if needed
+            await self.sync()
+            self.last_sync_block = current_block
+            # Get and score miner volumes
+            await self.forwarder.get_miners_volumes(current_block)
+            await self.scorer.score_miner_volumes(current_block)
+            # Quick health check
+            await self.healthcheck()
+
+    async def initialize(self, config=None):
+        """Async initialization method."""
+        if self._is_initialized:
+            return
+
+        # Initialize parent class async components
+        await super().initialize(config)
 
         self.forwarder = Forwarder(self)
         self.scorer = Scorer(self)
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
-        self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+        subnet_params = await self.subtensor.get_subnet_hyperparameters(
+            self.config.netuid
+        )
+        self.tempo = subnet_params.tempo
         self.block_time = 12
 
         self.last_sync_block = 0
@@ -64,11 +100,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_volume_block = 0
         self.last_scoring_block = 0
         self.last_healthcheck_block = 0
-
-        self.versions = []  # note, for storing uid versions
-        self.keywords = []  # note, for volume scoring queries
-        self.uncalled_uids = set()  # note, for volume scoring queries
-        self.volume_window = 6  # note, score volumes from last 6 tempos
+        self.last_weights_block = await self.block  # Set this to current block at init
 
         # load config file for subnet specific settings as default
         # note, every tempo we fetch the latest config file from github main branch
@@ -85,31 +117,18 @@ class BaseValidatorNeuron(BaseNeuron):
         self.scores = torch.zeros(
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
-        # Init sync with the network. Updates the metagraph.
-        self.sync()
+        bt.logging.info("Loading state...")
         self.load_state()
-
         # Serve axon to enable external connections.
         if not self.config.neuron.axon_off:
-            self.serve_axon()
+            await self.serve_axon()
         else:
             bt.logging.warning("axon off, not serving ip to chain.")
 
-        # Instantiate runners
-        self.should_exit: bool = False
-        self.is_running: bool = False
-        self.sync_thread: threading.Thread = None
-        self.miner_ping_thread: threading.Thread = None
-        self.miner_volume_thread: threading.Thread = None
-        self.miner_scoring_thread: threading.Thread = None
-        self.auto_update_thread: threading.Thread = None
-        self.lock = asyncio.Lock()
+        self._is_initialized = True
 
-        self.run_in_background_thread()
-
-    def serve_axon(self):
+    async def serve_axon(self):
         """Serve axon to enable external connections."""
-
         bt.logging.info("serving ip to chain...")
         try:
             self.axon = bt.axon(
@@ -117,7 +136,7 @@ class BaseValidatorNeuron(BaseNeuron):
             )
 
             try:
-                self.subtensor.serve_axon(
+                await self.subtensor.serve_axon(
                     netuid=self.config.netuid,
                     axon=self.axon,
                 )
@@ -126,178 +145,98 @@ class BaseValidatorNeuron(BaseNeuron):
                 )
             except Exception as e:
                 bt.logging.error(f"Failed to serve Axon with exception: {e}")
-                pass
 
         except Exception as e:
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
+
+    async def healthcheck(self):
+        """Run health check and auto-update."""
+        try:
+            # Check if current endpoint is responsive
+            try:
+                await self.subtensor.get_current_block()
+            except Exception as e:
+                bt.logging.error(f"Failed to get current block: {e}")
+
+            # Fetch latest config from GitHub
+            await self.update_config()
+
+        except Exception as e:
+            bt.logging.error(f"Error in health check: {e}")
+            # Don't raise, let it continue to next loop
+
+    async def update_config(self):
+        """Update config from GitHub."""
+        try:
+            # Implement config update logic here
             pass
+        except Exception as e:
+            bt.logging.error(f"Error updating config: {e}")
 
-    async def run_sync(self):
-        while not self.should_exit:
-            try:
-                blocks_since_last_check = self.block - self.last_sync_block
-                if blocks_since_last_check >= 6:
-                    self.sync()
-                    self.step += 1
-                    self.last_sync_block = self.block
-            except Exception as e:
-                bt.logging.error(f"Error running sync: {e}")
-            await asyncio.sleep(self.block_time)
+    async def should_set_weights(self) -> bool:
+        bt.logging.info("Checking if we should set weights")
+        # Skip if weights are disabled in config
+        if self.config.neuron.disable_set_weights:
+            bt.logging.info("❌ Weights disabled in config")
+            return False
 
-    async def run_miner_ping(self):
-        while not self.should_exit:
-            try:
-                blocks_since_last_check = self.block - self.last_healthcheck_block
-                blocks_to_wait = self.subnet_config.get("healthcheck").get("blocks")
-                if blocks_since_last_check >= blocks_to_wait:
-                    await self.forwarder.ping_axons()
-            except Exception as e:
-                bt.logging.error(f"Error running miner ping: {e}")
-            await asyncio.sleep(self.block_time)
+        # Count how many UIDs have non-zero scores
+        scored_uids = (self.scores > 0).sum().item()
+        if scored_uids < 150:
+            bt.logging.info(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
+            return False
 
-    async def run_miner_volume(self):
-        while not self.should_exit:
-            try:
-                blocks_since_last_check = self.block - self.last_volume_block
-                blocks_to_wait = self.subnet_config.get("synthetic").get("blocks")
-                if blocks_since_last_check >= blocks_to_wait:
-                    await self.forwarder.get_miners_volumes()
-            except Exception as e:
-                bt.logging.error(f"Error running miner volume: {e}")
-            await asyncio.sleep(self.block_time)
+        # Check if enough blocks have elapsed since last update
+        blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
+        bt.logging.info(f"Blocks elapsed since last update: {blocks_elapsed}")
 
-    async def run_miner_scoring(self):
-        while not self.should_exit:
-            try:
-                blocks_since_last_check = self.block - self.last_scoring_block
-                if blocks_since_last_check >= self.tempo / 50:
-                    await self.scorer.score_miner_volumes()
-            except Exception as e:
-                bt.logging.error(f"Error running miner scoring: {e}")
-            await asyncio.sleep(self.block_time)
-
-    async def run_auto_update(self):
-        while not self.should_exit:
-            try:
-                if self.config.neuron.auto_update:
-                    self.auto_update()
-            except Exception as e:
-                bt.logging.error(f"Error running auto update: {e}")
-            await asyncio.sleep(self.tempo * self.block_time)
-
-    def run_sync_in_loop(self):
-        asyncio.run(self.run_sync())
-
-    def run_miner_ping_in_loop(self):
-        asyncio.run(self.run_miner_ping())
-
-    def run_miner_volume_in_loop(self):
-        asyncio.run(self.run_miner_volume())
-
-    def run_miner_scoring_in_loop(self):
-        asyncio.run(self.run_miner_scoring())
-
-    def run_auto_update_in_loop(self):
-        asyncio.run(self.run_auto_update())
-
-    def run_in_background_thread(self):
-        """
-        Starts the validator's operations in a background thread upon entering the context.
-        This method facilitates the use of the validator in a 'with' statement.
-        """
-        if not self.is_running:
-            bt.logging.debug("Starting validator in background thread.")
-            self.should_exit = False
-            self.sync_thread = threading.Thread(
-                target=self.run_sync_in_loop, daemon=True
+        # Only allow setting weights if enough blocks elapsed
+        if blocks_elapsed <= 100 and not self.first_run:
+            bt.logging.info(
+                f"{blocks_elapsed} blocks elapsed since last weight setting"
             )
-            self.miner_ping_thread = threading.Thread(
-                target=self.run_miner_ping_in_loop, daemon=True
+            return False
+
+        if self.first_run:
+            bt.logging.info("✅ Initial weight setting")
+            self.first_run = False
+        else:
+            bt.logging.info(
+                f"✅ Will set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
             )
-            self.miner_volume_thread = threading.Thread(
-                target=self.run_miner_volume_in_loop, daemon=True
-            )
-            self.miner_scoring_thread = threading.Thread(
-                target=self.run_miner_scoring_in_loop, daemon=True
-            )
-            self.auto_update_thread = threading.Thread(
-                target=self.run_auto_update_in_loop, daemon=True
-            )
-            self.sync_thread.start()  # for setting weights, syncing metagraph,, etc
-            self.miner_ping_thread.start()  # for versioning and getting keywords
-            self.miner_volume_thread.start()  # for testing miner volumes
-            self.miner_scoring_thread.start()  # for scoring miner volumes
-            self.auto_update_thread.start()  # for auto updating the neuron
-            self.is_running = True
-            bt.logging.debug("Started")
 
-    def stop_run_thread(self):
-        """
-        Stops the validator's operations that are running in the background thread.
-        """
-        if self.is_running:
-            bt.logging.debug("Stopping validator in background thread.")
-            self.should_exit = True
-            self.sync_thread.join(5)
-            self.miner_ping_thread.join(5)
-            self.miner_volume_thread.join(5)
-            self.miner_scoring_thread.join(5)
-            self.auto_update_thread.join(5)
-            self.is_running = False
-            bt.logging.debug("Stopped")
+        return True
 
-    def __enter__(self):
-        self.run_in_background_thread()
-        return self
+    async def set_weights(self):
+        """Sets weights based on miner scores."""
+        bt.logging.debug("Starting weight setting process...")
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        """
-        Stops the validator's background operations upon exiting the context.
-        This method facilitates the use of the validator in a 'with' statement.
+        # Skip if we have no real scores yet
+        if torch.all(self.scores == 0):
+            bt.logging.warning("❌ No real scores yet, skipping weight setting")
+            return
 
-        Args:
-            exc_type: The type of the exception that caused the context to be exited.
-                      None if the context was exited without an exception.
-            exc_value: The instance of the exception that caused the context to be exited.
-                       None if the context was exited without an exception.
-            traceback: A traceback object encoding the stack trace.
-                       None if the context was exited without an exception.
-        """
-        if self.is_running:
-            bt.logging.debug("Stopping validator in background thread.")
-            self.should_exit = True
-            self.sync_thread.join(5)
-            self.miner_ping_thread.join(5)
-            self.miner_volume_thread.join(5)
-            self.miner_scoring_thread.join(5)
-            self.auto_update_thread.join(5)
-            self.is_running = False
-            bt.logging.debug("Stopped")
-
-    def set_weights(self):
-        """
-        Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
-        """
         # Check if self.scores contains any NaN values and log a warning if it does.
         if torch.isnan(self.scores).any():
             bt.logging.warning(
-                "Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
+                "❌ Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
+            return
 
-        # Calculate the average reward for each uid across non-zero values.
-        raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
-
+        # Use raw scores directly - let process_weights_for_netuid handle normalization
+        bt.logging.debug("Processing weights through subnet-specific logic...")
         (
             processed_weight_uids,
             processed_weights,
-        ) = process_weights_for_netuid(
+        ) = await process_weights_for_netuid(
             uids=self.metagraph.uids,
-            weights=raw_weights.to("cpu").numpy(),
+            weights=self.scores.to("cpu").numpy(),  # Pass raw scores
             netuid=self.config.netuid,
             subtensor=self.subtensor,
             metagraph=self.metagraph,
         )
 
+        bt.logging.debug("Converting weights to chain format...")
         (
             uint_uids,
             uint_weights,
@@ -305,25 +244,99 @@ class BaseValidatorNeuron(BaseNeuron):
             uids=processed_weight_uids, weights=processed_weights
         )
 
-        bt.logging.info(f"Setting weights: {uint_weights} for uids: {uint_uids}")
+        bt.logging.debug(f"Setting weights: {uint_weights} for uids: {uint_uids}")
 
-        # Set the weights on chain via our subtensor connection.
-        result, msg = self.subtensor.set_weights(
-            wallet=self.wallet,
-            netuid=self.config.netuid,
-            uids=uint_uids,
-            weights=uint_weights,
-            wait_for_finalization=False,
-            wait_for_inclusion=False,
-            version_key=self.spec_version,
-        )
+        # Create weight entry in the exact format needed
+        import datetime
+        import json
 
-        if result is True:
-            bt.logging.success("set_weights on chain successfully!")
-        else:
-            bt.logging.error("set_weights failed", msg)
+        # Convert weights to the format in scores.log
+        weights_list = [
+            {"uid": int(uid), "weight": float(weight * 65535)}  # Scale to u16::MAX
+            for uid, weight in zip(uint_uids, uint_weights)
+        ]
 
-    def resync_metagraph(self):
+        log_entry = {
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+            "netuid": self.config.netuid,
+            "hotkey": self.wallet.hotkey.ss58_address,
+            "weights": weights_list,
+        }
+
+        # Log to scores.log
+        log_file = os.path.join(self.config.neuron.full_path, "scores.log")
+        try:
+            with open(log_file, "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
+            bt.logging.debug(
+                f"Successfully logged weights for {len(uint_uids)} uids to {log_file}"
+            )
+            bt.logging.debug(
+                f"Weight stats - Min: {self.scores.min():.6f}, Max: {self.scores.max():.6f}, Mean: {self.scores.mean():.6f}"
+            )
+        except Exception as e:
+            bt.logging.error(f"❌ Failed to log weights: {e}")
+
+        try:
+            # Set weights on chain
+            result = await self.subtensor.set_weights(
+                netuid=self.config.netuid,
+                wallet=self.wallet,
+                uids=uint_uids,
+                weights=uint_weights,
+                version_key=self.spec_version,
+                wait_for_inclusion=True,
+                wait_for_finalization=False,
+            )
+
+            bt.logging.debug(f"Weight setting result type: {type(result)}")
+            bt.logging.debug(
+                f"Weight setting result attributes: {dir(result) if hasattr(result, '__dir__') else 'No attributes'}"
+            )
+            bt.logging.debug(f"Weight setting raw result: {result}")
+
+            # Check the response in detail
+            if result and hasattr(result, "success"):
+                if result.success:
+                    bt.logging.success(
+                        f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
+                        f"\n    - Transaction hash: {result.hash}"
+                        f"\n    - Block number: {result.block_number}"
+                        f"\n    - Block hash: {result.block_hash}"
+                    )
+                    self.last_weights_block = await self.block
+                else:
+                    bt.logging.error(
+                        f"❌ Failed to set weights on chain"
+                        f"\n    - Error: {result.error if hasattr(result, 'error') else 'Unknown error'}"
+                    )
+            elif isinstance(result, tuple) and len(result) == 2:
+                success, message = result
+                if not success and "too soon" in message.lower():
+                    bt.logging.info(f"⏳ Weight setting skipped - {message}")
+                    return
+                elif success:
+                    bt.logging.success(
+                        f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
+                    )
+                    self.last_weights_block = await self.block
+                else:
+                    bt.logging.error(f"❌ Failed to set weights: {message}")
+            elif result:
+                bt.logging.success(
+                    f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
+                )
+                self.last_weights_block = await self.block
+            else:
+                bt.logging.error(
+                    "❌ Failed to set weights on chain - No response from server"
+                )
+        except Exception as e:
+            bt.logging.error(f"❌ Failed to set weights on chain with error: {str(e)}")
+            if hasattr(e, "debug_info"):
+                bt.logging.debug(f"Debug info: {e.debug_info}")
+
+    async def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 
@@ -331,7 +344,7 @@ class BaseValidatorNeuron(BaseNeuron):
         previous_metagraph = copy.deepcopy(self.metagraph)
 
         # Sync the metagraph.
-        self.metagraph.sync(subtensor=self.subtensor)
+        await self.metagraph.sync(subtensor=self.subtensor)
 
         # Check if the metagraph axon info has changed.
         if previous_metagraph.axons == self.metagraph.axons:
@@ -340,9 +353,24 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.info(
             "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
         )
+
+        # Ensure scores tensor is large enough for the current metagraph
+        if len(self.scores) < self.metagraph.n:
+            bt.logging.info(
+                f"Expanding scores tensor to match metagraph size: {self.metagraph.n}"
+            )
+            new_scores = torch.zeros(self.metagraph.n, dtype=torch.float32).to(
+                self.device
+            )
+            new_scores[: len(self.scores)] = self.scores
+            self.scores = new_scores
+
         # Zero out all hotkeys that have been replaced.
         for uid, hotkey in enumerate(self.hotkeys):
-            if hotkey != self.metagraph.hotkeys[uid]:
+            if (
+                uid < len(self.metagraph.hotkeys)
+                and hotkey != self.metagraph.hotkeys[uid]
+            ):
                 self.scores[uid] = 0  # hotkey has been replaced
                 # Take the last 6 objects in the self.volumes list
                 recent_volumes = self.volumes[-self.volume_window :]
@@ -353,15 +381,6 @@ class BaseValidatorNeuron(BaseNeuron):
 
                 # Replace unique tweets by uid
                 self.tweets_by_uid[uid] = set()
-
-        # Check to see if the metagraph has changed size.
-        # If so, we need to add new hotkeys and moving averages.
-        if len(self.hotkeys) < len(self.metagraph.hotkeys):
-            # Update the size of the moving average scores.
-            new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
-            min_len = min(len(self.hotkeys), len(self.scores))
-            new_moving_average[:min_len] = self.scores[:min_len]
-            self.scores = new_moving_average
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
@@ -381,12 +400,12 @@ class BaseValidatorNeuron(BaseNeuron):
                         }
                         async with session.post(api_url, json=payload) as response:
                             if response.status == 200:
-                                bt.logging.success(
-                                    f"Successfully sent data to the protocol API for chunk starting at index {i}."
+                                bt.logging.info(
+                                    f"Data sent to protocol API for chunk {i}"
                                 )
                             else:
                                 bt.logging.error(
-                                    f"Failed to send data to the protocol API for chunk starting at index {i}: {response.status}"
+                                    f"Failed to send data to protocol API for chunk {i}: {response.status}"
                                 )
                         await asyncio.sleep(1)  # Wait for 1 second between requests
             except Exception as e:
@@ -398,84 +417,113 @@ class BaseValidatorNeuron(BaseNeuron):
                 "Tweets not exported, missing config --validator.export_url"
             )
 
-    def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
-        """Performs exponential moving average on the scores based on the rewards received from the miners."""
-
-        # Check if rewards contains NaN values.
-        if torch.isnan(rewards).any():
-            bt.logging.warning(f"NaN values detected in rewards: {rewards}")
-            # Replace any NaN values in rewards with 0.
-            rewards = torch.nan_to_num(rewards, 0)
-
-        # Check if `uids` is already a tensor and clone it to avoid the warning.
-        if isinstance(uids, torch.Tensor):
-            uids_tensor = uids.clone().detach()
-        else:
-            uids_tensor = torch.tensor(uids).to(self.device)
-
-        # Ensure that the uids_tensor and rewards have the same length
-        if len(uids_tensor) != len(rewards):
-            raise ValueError("The length of uids_tensor and rewards must be the same.")
-
-        # Ensure self.scores has the required length to accommodate all uids in uids_tensor
-        max_uid = uids_tensor.max().item()
-        if max_uid >= self.scores.size(0):
-            new_size = max_uid + 1
-            new_scores = torch.zeros(new_size).to(self.device)
-            new_scores[: self.scores.size(0)] = self.scores
-            self.scores = new_scores
-
-        # Compute forward pass rewards, assumes uids are mutually exclusive.
-        # shape: [ metagraph.n ]
-        scattered_rewards: torch.FloatTensor = self.scores.scatter(
-            0, uids_tensor, rewards
-        ).to(self.device)
-
-        bt.logging.info(f"Scattered rewards: {rewards}")
-
-        # Update scores with rewards produced by this step.
-        # shape: [ metagraph.n ]
-
-        alpha: float = self.config.neuron.moving_average_alpha
-        self.scores: torch.FloatTensor = alpha * scattered_rewards + (
-            1 - alpha
-        ) * self.scores.to(self.device)
-
-        bt.logging.info(f"Updated moving averages: {self.scores}")
-
-        # Limit the number of tweet IDs stored per UID to 100,000
-        for uid in uids:
-            if len(self.tweets_by_uid[uid]) > 100000:
-                self.tweets_by_uid[uid] = set(list(self.tweets_by_uid[uid])[:100000])
-
-        self.save_state()
-
-    def save_state(self):
+    async def save_state(self):
         """Saves the state of the validator to a file."""
-        bt.logging.info("Saving validator state.")
+        bt.logging.info("Starting to save validator state...")
 
-        # Save the state of the validator to file.
-        torch.save(
-            {
+        try:
+            state_dict = {
                 "step": self.step,
                 "scores": self.scores,
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
-                # "tweets_by_uid": self.tweets_by_uid,
-            },
-            self.config.neuron.full_path + "/state.pt",
-        )
+                "tweets_by_uid": self.tweets_by_uid,
+            }
+
+            save_path = self.config.neuron.full_path + "/state.pt"
+            temp_path = save_path + ".tmp"
+
+            # Use asyncio to run blocking operations in a thread pool
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: torch.save(state_dict, temp_path)
+            )
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: os.replace(temp_path, save_path)
+            )
+
+            bt.logging.info(f"Successfully saved state to {save_path}")
+
+        except Exception as e:
+            bt.logging.error(f"Failed to save state: {str(e)}")
+            # Continue execution even if save fails
+            pass
+
+    async def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
+        """Performs exponential moving average on the scores based on the rewards received from the miners."""
+        try:
+            # Check if rewards contains NaN values.
+            if torch.isnan(rewards).any():
+                bt.logging.warning(f"NaN values detected in rewards: {rewards}")
+                # Replace any NaN values in rewards with 0.
+                rewards = torch.nan_to_num(rewards, 0)
+
+            # Check if `uids` is already a tensor and clone it to avoid the warning.
+            if isinstance(uids, torch.Tensor):
+                uids_tensor = uids.clone().detach()
+            else:
+                uids_tensor = torch.tensor(uids).to(self.device)
+
+            # Ensure that the uids_tensor and rewards have the same length
+            if len(uids_tensor) != len(rewards):
+                raise ValueError(
+                    "The length of uids_tensor and rewards must be the same."
+                )
+
+            # Get the maximum UID value needed
+            max_uid_needed = max(max(uids), self.metagraph.n - 1)
+            current_size = len(self.scores)
+
+            # If we need to expand the scores tensor
+            if max_uid_needed >= current_size:
+                new_size = max(max_uid_needed + 1, self.metagraph.n)
+                bt.logging.info(
+                    f"Expanding scores tensor from size {current_size} to {new_size}"
+                )
+                new_scores = torch.zeros(new_size, dtype=torch.float32).to(self.device)
+                new_scores[:current_size] = self.scores
+                self.scores = new_scores
+
+            # Create a zero tensor for scattered rewards with the same size as scores
+            scattered_rewards = torch.zeros_like(self.scores)
+
+            # Scatter the rewards into the zero tensor
+            scattered_rewards.scatter_(0, uids_tensor, rewards)
+
+            # Only update scores for UIDs we've actually scored this round
+            alpha: float = self.config.neuron.moving_average_alpha
+            mask = torch.zeros_like(self.scores, dtype=torch.bool)
+            mask[uids_tensor] = True
+            self.scores[mask] = (
+                alpha * scattered_rewards[mask] + (1 - alpha) * self.scores[mask]
+            )
+
+            # Limit the number of tweet IDs stored per UID to 100,000
+            for uid in uids:
+                if uid not in self.tweets_by_uid:
+                    self.tweets_by_uid[uid] = set()
+                elif len(self.tweets_by_uid[uid]) > 100000:
+                    self.tweets_by_uid[uid] = set(
+                        list(self.tweets_by_uid[uid])[:100000]
+                    )
+
+            await self.save_state()
+
+        except Exception as e:
+            bt.logging.error(f"Error in update_scores: {str(e)}")
+            raise
 
     def load_state(self):
-        """Loads the state of the validator from a file."""
+        """Loads the state of the validator from a file and rebuilds scores from scores.log if needed."""
         bt.logging.info("Loading validator state.")
 
-        # Load the state of the validator from file.
+        # Load the state of the validator from file
         state_path = self.config.neuron.full_path + "/state.pt"
+        scores_log_path = os.path.join(self.config.neuron.full_path, "scores.log")
+
         if os.path.isfile(state_path):
             state = torch.load(state_path, map_location=torch.device("cpu"))
             self.step = dict(state).get("step", 0)
-            self.scores = dict(state).get("scores", [])
+            self.scores = dict(state).get("scores", torch.zeros(self.metagraph.n))
             self.hotkeys = dict(state).get("hotkeys", [])
             self.volumes = dict(state).get("volumes", [])
             self.tweets_by_uid = dict(state).get("tweets_by_uid", {})
@@ -486,5 +534,41 @@ class BaseValidatorNeuron(BaseNeuron):
             self.volumes = []
             self.tweets_by_uid = {}
             bt.logging.warning(
-                f"State file not found at {state_path}. Skipping state load."
+                f"State file not found at {state_path}. Attempting to rebuild from scores.log"
             )
+
+        # If we have no scores or very few non-zero scores, try to rebuild from scores.log
+        non_zero_scores = (self.scores > 0).sum().item()
+        if (
+            os.path.isfile(scores_log_path)
+            and non_zero_scores < len(self.metagraph.hotkeys) * 0.5
+        ):
+            bt.logging.info(f"Attempting to rebuild scores from {scores_log_path}")
+            try:
+                with open(scores_log_path, "r") as f:
+                    # Read the last line of scores.log
+                    for line in f:
+                        try:
+                            entry = json.loads(line.strip())
+                            if entry["netuid"] == self.config.netuid:
+                                last_weights = entry["weights"]
+                                # Convert weights back to scores (undo the u16::MAX scaling)
+                                new_scores = torch.zeros(self.metagraph.n)
+                                for weight in last_weights:
+                                    uid = weight["uid"]
+                                    if uid < len(new_scores):
+                                        new_scores[uid] = weight["weight"] / 65535.0
+
+                                if (new_scores > 0).sum().item() > non_zero_scores:
+                                    bt.logging.info(
+                                        f"Rebuilt scores from scores.log with {(new_scores > 0).sum().item()} non-zero scores"
+                                    )
+                                    self.scores = new_scores
+                        except json.JSONDecodeError:
+                            continue
+            except Exception as e:
+                bt.logging.error(f"Failed to rebuild scores from scores.log: {e}")
+
+        bt.logging.info(
+            f"Loaded state with {(self.scores > 0).sum().item()}/{len(self.scores)} non-zero scores"
+        )

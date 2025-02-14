@@ -32,7 +32,7 @@ class TwitterFollowersSynapse(bt.Synapse):
 class PingAxonSynapse(bt.Synapse):
     sent_from: Optional[str]
     is_active: Optional[bool]
-    version: Optional[int]
+    version: Optional[Any]
 
-    def deserialize(self) -> int:
+    def deserialize(self) -> Any:
         return self.version
