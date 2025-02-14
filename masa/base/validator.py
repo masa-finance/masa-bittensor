@@ -131,13 +131,11 @@ class BaseValidatorNeuron(BaseNeuron):
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
 
-        # Load state and increment step
+        # Load state and check if we have enough scored UIDs to set weights
         self.load_state()
-        self.step += 1  # Increment step after loading state to allow weight setting
-
-        # Set weights if we have enough scored UIDs
-        if await self.should_set_weights():
-            bt.logging.info("Setting initial weights after loading state")
+        scored_uids = (self.scores > 0).sum().item()
+        if scored_uids >= 150:
+            bt.logging.info(f"Setting initial weights with {scored_uids} scored UIDs")
             await self.set_weights()
             self.last_weights_block = await self.block
 
@@ -195,7 +193,7 @@ class BaseValidatorNeuron(BaseNeuron):
         except Exception as e:
             bt.logging.error(f"Error updating config: {e}")
 
-    async def should_set_weights(self) -> bool:
+    async def should_set_weights(self, force: bool = False) -> bool:
         # Skip if weights are disabled in config
         if self.config.neuron.disable_set_weights:
             bt.logging.debug("Weight setting disabled in config")
@@ -213,19 +211,21 @@ class BaseValidatorNeuron(BaseNeuron):
             )
             return False
 
-        # Check if enough blocks have elapsed since last update
-        blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
-        if blocks_elapsed <= 100:  # Set weights every 100 blocks
-            if (
-                self.last_weights_block > 0
-            ):  # Only show waiting message if not first run
-                bt.logging.debug(
-                    f"Only {blocks_elapsed} blocks elapsed since last weight setting, waiting for 100"
-                )
-            return False
+        # Skip block elapsed check if force=True (used during initialization)
+        if not force:
+            # Check if enough blocks have elapsed since last update
+            blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
+            if blocks_elapsed <= 100:  # Set weights every 100 blocks
+                if (
+                    self.last_weights_block > 0
+                ):  # Only show waiting message if not first run
+                    bt.logging.debug(
+                        f"Only {blocks_elapsed} blocks elapsed since last weight setting, waiting for 100"
+                    )
+                return False
 
         bt.logging.info(
-            f"✅ Will set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
+            f"✅ Will set weights: {scored_uids} scored UIDs{' (forced)' if force else ''}"
         )
         return True
 
