@@ -165,7 +165,8 @@ class BaseMinerNeuron(BaseNeuron):
             await asyncio.sleep(self.tempo * 12)  # note, 12 seconds per block
 
     def run_auto_update_in_loop(self):
-        asyncio.run(self.run_auto_update())
+        pass
+        # asyncio.run(self.run_auto_update())
 
     def run_in_background_thread(self):
         """
