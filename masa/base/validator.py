@@ -303,12 +303,8 @@ class BaseValidatorNeuron(BaseNeuron):
         except Exception as e:
             bt.logging.error(f"❌ Failed to log weights: {e}")
 
-        # NOTE: Weight setting on chain disabled for now while we analyze scoring
-        bt.logging.warning(
-            "⚠️ Weight setting on chain is currently disabled while analyzing scoring"
-        )
         try:
-            # Set weights on chain (standard bittensor approach)
+            # Set weights on chain
             result = await self.subtensor.set_weights(
                 netuid=self.config.netuid,
                 wallet=self.wallet,
