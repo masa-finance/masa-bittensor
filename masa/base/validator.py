@@ -131,12 +131,9 @@ class BaseValidatorNeuron(BaseNeuron):
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
 
-        # Load state before syncing
+        # Load state and increment step
         self.load_state()
         self.step += 1  # Increment step after loading state to allow weight setting
-
-        # Init sync with the network. Updates the metagraph.
-        await self.sync()
 
         # Serve axon to enable external connections.
         if not self.config.neuron.axon_off:
