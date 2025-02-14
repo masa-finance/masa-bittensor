@@ -172,18 +172,38 @@ class BaseNeuron(ABC):
         ) > self.config.neuron.epoch_length
 
     async def should_set_weights(self) -> bool:
-        # Don't set weights on initialization.
-        if self.step == 0:
-            return False
-
-        # Check if enough epoch blocks have elapsed since the last epoch.
+        # Skip if weights are disabled in config
         if self.config.neuron.disable_set_weights:
+            bt.logging.debug("Weight setting disabled in config")
             return False
 
-        # Define appropriate logic for when set weights.
-        return (
-            await self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"  # don't set weights if you're a miner
+        # Skip if we're a miner
+        if self.neuron_type == "MinerNeuron":
+            return False
+
+        # Count how many UIDs have non-zero scores
+        scored_uids = (self.scores > 0).sum().item()
+        if scored_uids < 150:
+            bt.logging.info(
+                f"Not enough scored UIDs ({scored_uids} < 150) to set weights"
+            )
+            return False
+
+        # Check if enough blocks have elapsed since last update
+        blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
+        if blocks_elapsed <= 100:  # Set weights every 100 blocks
+            if (
+                self.last_weights_block > 0
+            ):  # Only show waiting message if not first run
+                bt.logging.debug(
+                    f"Only {blocks_elapsed} blocks elapsed since last weight setting, waiting for 100"
+                )
+            return False
+
+        bt.logging.info(
+            f"✅ Will set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
+        )
+        return True
 
     def auto_update(self):
         url = "https://api.github.com/repos/masa-finance/masa-bittensor/releases/latest"
