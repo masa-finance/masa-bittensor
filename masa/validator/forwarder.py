@@ -348,8 +348,63 @@ class Forwarder:
                     self.validator.tweets_by_uid[uid_int] = {
                         tweet["Tweet"]["ID"] for tweet in valid_tweets
                     }
+<<<<<<< Updated upstream
                     self.validator.scorer.add_volume(
                         uid_int, len(valid_tweets), current_block
+=======
+                    for resp in all_responses
+                    if "Tweet" in resp and "ID" in resp["Tweet"]
+                }.values()
+            )
+
+            if unique_tweets_response is not None:
+                # note, first spot check this payload, ensuring a random tweet is valid
+                random_tweet = dict(random.choice(unique_tweets_response)).get(
+                    "Tweet", {}
+                )
+
+                is_valid = TweetValidator().validate_tweet(
+                    random_tweet.get("ID"),
+                    random_tweet.get("Name"),
+                    random_tweet.get("Username"),
+                    random_tweet.get("Text"),
+                    random_tweet.get("Timestamp"),
+                    random_tweet.get("Hashtags"),
+                )
+
+                await asyncio.sleep(1)  # Simple 1 second delay between validations
+
+                query_words = (
+                    self.normalize_whitespace(random_keyword.replace('"', ""))
+                    .strip()
+                    .lower()
+                    .split()
+                )
+
+                fields_to_check = [
+                    self.normalize_whitespace(random_tweet.get("Text", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Name", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Username", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
+                    .strip()
+                    .lower(),
+                ]
+
+                query_in_tweet = all(
+                    any(word in field for field in fields_to_check)
+                    for word in query_words
+                )
+
+                if not query_in_tweet:
+                    bt.logging.warning(
+                        f"Query: {random_keyword} is not in the tweet: {fields_to_check}"
+>>>>>>> Stashed changes
                     )
                     bt.logging.success(
                         f"Miner {uid_int} produced {len(valid_tweets)} valid new tweets"
