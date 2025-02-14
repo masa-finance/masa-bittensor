@@ -224,7 +224,7 @@ class BaseValidatorNeuron(BaseNeuron):
             return
 
         # Use raw scores directly - let process_weights_for_netuid handle normalization
-        bt.logging.debug("Processing weights through subnet-specific logic...")
+        bt.logging.info(f"🛰️ Setting weights on {self.config.subtensor.network} ...")
         (
             processed_weight_uids,
             processed_weights,
@@ -268,10 +268,10 @@ class BaseValidatorNeuron(BaseNeuron):
         try:
             with open(log_file, "a") as f:
                 f.write(json.dumps(log_entry) + "\n")
-            bt.logging.debug(
+            bt.logging.info(
                 f"Successfully logged weights for {len(uint_uids)} uids to {log_file}"
             )
-            bt.logging.debug(
+            bt.logging.info(
                 f"Weight stats - Min: {self.scores.min():.6f}, Max: {self.scores.max():.6f}, Mean: {self.scores.mean():.6f}"
             )
         except Exception as e:
@@ -295,8 +295,28 @@ class BaseValidatorNeuron(BaseNeuron):
             )
             bt.logging.debug(f"Weight setting raw result: {result}")
 
-            # Check the response in detail
-            if result and hasattr(result, "success"):
+            # Handle different result types
+            if not result:
+                bt.logging.error(
+                    "❌ Failed to set weights on chain - No response from server"
+                )
+                return
+
+            # Handle tuple response (success, message)
+            if isinstance(result, tuple) and len(result) == 2:
+                success, message = result
+                if not success:
+                    bt.logging.info(f"Weight setting response: {message}")
+                    return
+
+                bt.logging.success(
+                    f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
+                )
+                self.last_weights_block = await self.block
+                return
+
+            # Handle object response with success attribute
+            if hasattr(result, "success"):
                 if result.success:
                     bt.logging.success(
                         f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
@@ -306,31 +326,18 @@ class BaseValidatorNeuron(BaseNeuron):
                     )
                     self.last_weights_block = await self.block
                 else:
+                    error_msg = getattr(result, "error", "Unknown error")
                     bt.logging.error(
-                        f"❌ Failed to set weights on chain"
-                        f"\n    - Error: {result.error if hasattr(result, 'error') else 'Unknown error'}"
+                        f"❌ Failed to set weights on chain\n    - Error: {error_msg}"
                     )
-            elif isinstance(result, tuple) and len(result) == 2:
-                success, message = result
-                if not success and "too soon" in message.lower():
-                    bt.logging.info(f"⏳ Weight setting skipped - {message}")
-                    return
-                elif success:
-                    bt.logging.success(
-                        f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
-                    )
-                    self.last_weights_block = await self.block
-                else:
-                    bt.logging.error(f"❌ Failed to set weights: {message}")
-            elif result:
-                bt.logging.success(
-                    f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
-                )
-                self.last_weights_block = await self.block
-            else:
-                bt.logging.error(
-                    "❌ Failed to set weights on chain - No response from server"
-                )
+                return
+
+            # Handle any other successful result type
+            bt.logging.success(
+                f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
+            )
+            self.last_weights_block = await self.block
+
         except Exception as e:
             bt.logging.error(f"❌ Failed to set weights on chain with error: {str(e)}")
             if hasattr(e, "debug_info"):
