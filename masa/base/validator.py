@@ -437,19 +437,46 @@ class BaseValidatorNeuron(BaseNeuron):
 
     def save_state(self):
         """Saves the state of the validator to a file."""
-        bt.logging.info("Saving validator state.")
+        bt.logging.info("Starting to save validator state...")
 
-        # Save the state of the validator to file.
-        torch.save(
-            {
+        try:
+            bt.logging.debug("Preparing state dictionary...")
+            state_dict = {
                 "step": self.step,
                 "scores": self.scores,
                 "hotkeys": self.hotkeys,
                 "volumes": self.volumes,
-                # "tweets_by_uid": self.tweets_by_uid,
-            },
-            self.config.neuron.full_path + "/state.pt",
-        )
+                "tweets_by_uid": self.tweets_by_uid,
+            }
+            bt.logging.debug("State dictionary prepared successfully")
+
+            bt.logging.debug(
+                f"State contains: step={self.step}, scores shape={self.scores.shape}, "
+                f"hotkeys len={len(self.hotkeys)}, volumes len={len(self.volumes)}, "
+                f"tweets_by_uid entries={len(self.tweets_by_uid)}"
+            )
+
+            save_path = self.config.neuron.full_path + "/state.pt"
+            temp_path = save_path + ".tmp"
+
+            bt.logging.debug(f"Saving to temporary file: {temp_path}")
+            torch.save(state_dict, temp_path)
+            bt.logging.debug("Temporary file saved successfully")
+
+            bt.logging.debug(f"Replacing old state file: {save_path}")
+            os.replace(temp_path, save_path)
+            bt.logging.debug("File replacement completed")
+
+            bt.logging.info(f"Successfully saved state to {save_path}")
+
+        except Exception as e:
+            bt.logging.error(f"Failed to save state with error: {str(e)}")
+            bt.logging.error(f"Error type: {type(e)}")
+            import traceback
+
+            bt.logging.error(f"Traceback: {traceback.format_exc()}")
+            # Continue execution even if save fails
+            pass
 
     def load_state(self):
         """Loads the state of the validator from a file and rebuilds scores from scores.log if needed."""
