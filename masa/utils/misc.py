@@ -88,23 +88,6 @@ def _ttl_hash_gen(seconds: int):
 
 
 # 12 seconds updating block.
-@ttl_cache(maxsize=1, ttl=12)
 async def ttl_get_block(self) -> int:
-    """
-    Retrieves the current block number from the blockchain. This method is cached with a time-to-live (TTL)
-    of 12 seconds, meaning that it will only refresh the block number from the blockchain at most every 12 seconds,
-    reducing the number of calls to the underlying blockchain interface.
-
-    Returns:
-        int: The current block number on the blockchain.
-
-    This method is useful for applications that need to access the current block number frequently and can
-    tolerate a delay of up to 12 seconds for the latest information. By using a cache with TTL, the method
-    efficiently reduces the workload on the blockchain interface.
-
-    Example:
-        current_block = ttl_get_block(self)
-
-    Note: self here is the miner or validator instance
-    """
+    """Get the current block number."""
     return await self.subtensor.get_current_block()
