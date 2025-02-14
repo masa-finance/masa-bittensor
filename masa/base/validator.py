@@ -49,8 +49,9 @@ class BaseValidatorNeuron(BaseNeuron):
         super().add_args(parser)
         add_validator_args(cls, parser)
 
-    def __init__(self):
+    def __init__(self, config=None):
         # Initialize instance variables
+        self.config = config
         self.should_exit = False
         self.is_running = False
         self.sync_thread = None
@@ -66,14 +67,15 @@ class BaseValidatorNeuron(BaseNeuron):
         self.tweets_by_uid = {}
         self.volumes = []
         self._is_initialized = False
+        super().__init__()  # Call parent's __init__ without config
 
     async def initialize(self, config=None):
         """Async initialization method."""
         if self._is_initialized:
             return
 
-        # Initialize parent class
-        await super().__init__(config=config)
+        # Initialize parent class async components
+        await super().initialize(config)
 
         self.forwarder = Forwarder(self)
         self.scorer = Scorer(self)

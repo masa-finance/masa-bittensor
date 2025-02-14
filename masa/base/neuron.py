@@ -61,7 +61,22 @@ class BaseNeuron(ABC):
     def block(self):
         return ttl_get_block(self)
 
-    async def __init__(self, config=None):
+    def __init__(self, config=None):
+        """Synchronous initialization of basic attributes."""
+        self.config = None
+        self.device = None
+        self.wallet = None
+        self.subtensor = None
+        self.metagraph = None
+        self.uid = None
+        self.step = 0
+        self._is_initialized = False
+
+    async def initialize(self, config=None):
+        """Asynchronous initialization of network components."""
+        if self._is_initialized:
+            return
+
         base_config = copy.deepcopy(config or BaseNeuron.config())
         self.config = self.config()
         self.config.merge(base_config)
@@ -112,6 +127,7 @@ class BaseNeuron(ABC):
             f"Running neuron on subnet: {self.config.netuid} with uid {self.uid} using network: {self.subtensor.chain_endpoint}"
         )
         self.step = 0
+        self._is_initialized = True
 
     async def sync(self):
         """

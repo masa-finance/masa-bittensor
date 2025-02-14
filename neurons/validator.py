@@ -25,12 +25,13 @@ from masa.api.server import API
 
 
 class Validator(BaseValidatorNeuron):
-    def __init__(self):
+    def __init__(self, config=None):
+        super().__init__(config=config)
         self._is_initialized = False
 
     @classmethod
     async def create(cls, config=None):
-        self = cls()
+        self = cls(config=config)
         await self.initialize(config)
         return self
 
@@ -39,7 +40,7 @@ class Validator(BaseValidatorNeuron):
             return
 
         # Initialize parent class
-        await super().__init__(config=config)
+        await super().initialize(config)
 
         # Initialize API if enabled
         if (
