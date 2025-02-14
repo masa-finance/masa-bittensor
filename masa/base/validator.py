@@ -61,39 +61,34 @@ class BaseValidatorNeuron(BaseNeuron):
     async def run(self):
         """Run the validator forever."""
         while True:
-            try:
-                current_block = await self.block
+            current_block = await self.block
 
-                if current_block - self.last_sync_block > self.tempo:
-                    bt.logging.info(f"Syncing at block {current_block}")
-                    await self.sync()
-                    self.last_sync_block = current_block
+            if current_block - self.last_sync_block > self.tempo:
+                bt.logging.info(f"Syncing at block {current_block}")
+                await self.sync()
+                self.last_sync_block = current_block
 
-                if current_block - self.last_tempo_block > self.tempo:
-                    bt.logging.info(f"Pinging miners at block {current_block}")
-                    await self.forwarder.ping_axons()
-                    self.last_tempo_block = current_block
+            if current_block - self.last_tempo_block > self.tempo:
+                bt.logging.info(f"Pinging miners at block {current_block}")
+                await self.forwarder.ping_axons()
+                self.last_tempo_block = current_block
 
-                if current_block - self.last_volume_block > self.tempo:
-                    bt.logging.info(f"Getting miner volumes at block {current_block}")
-                    await self.forwarder.get_miners_volumes()
-                    self.last_volume_block = current_block
+            if current_block - self.last_volume_block > self.tempo:
+                bt.logging.info(f"Getting miner volumes at block {current_block}")
+                await self.forwarder.get_miners_volumes()
+                self.last_volume_block = current_block
 
-                if current_block - self.last_scoring_block > self.tempo:
-                    bt.logging.info(f"Scoring miner volumes at block {current_block}")
-                    await self.scorer.score_miner_volumes()
-                    self.last_scoring_block = current_block
+            if current_block - self.last_scoring_block > self.tempo:
+                bt.logging.info(f"Scoring miner volumes at block {current_block}")
+                await self.scorer.score_miner_volumes()
+                self.last_scoring_block = current_block
 
-                if current_block - self.last_healthcheck_block > self.tempo:
-                    bt.logging.info(f"Running health check at block {current_block}")
-                    await self.healthcheck()
-                    self.last_healthcheck_block = current_block
+            if current_block - self.last_healthcheck_block > self.tempo:
+                bt.logging.info(f"Running health check at block {current_block}")
+                await self.healthcheck()
+                self.last_healthcheck_block = current_block
 
-                await asyncio.sleep(1)
-
-            except Exception as e:
-                bt.logging.error(f"Error in main loop: {e}")
-                await asyncio.sleep(1)
+            await asyncio.sleep(1)
 
     async def initialize(self, config=None):
         """Async initialization method."""
