@@ -104,7 +104,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_volume_block = 0
         self.last_scoring_block = 0
         self.last_healthcheck_block = 0
-        self.last_weights_block = 0
+        self.last_weights_block = await self.block  # Set this to current block at init
 
         # load config file for subnet specific settings as default
         # note, every tempo we fetch the latest config file from github main branch
