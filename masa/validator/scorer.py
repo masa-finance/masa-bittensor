@@ -120,7 +120,14 @@ class Scorer:
                     except Exception as e:
                         bt.logging.error(f"Failed to set weights: {e}")
 
-            self.validator.last_scoring_block = self.validator.subtensor.block
+            try:
+                current_block = self.validator.subtensor.get_current_block()
+                self.validator.last_scoring_block = current_block
+            except Exception as e:
+                bt.logging.error(f"Error getting current block: {e}")
+                # Use a fallback method or skip block update
+                pass
+
             if volumes:
                 serializable_volumes = [
                     {
@@ -134,7 +141,7 @@ class Scorer:
             return JSONResponse(content=[])
         except Exception as e:
             bt.logging.error(f"Error in score_miner_volumes: {str(e)}")
-            bt.logging.error(f"Full error details:", exc_info=True)
+            bt.logging.error("Full error details:", exc_info=True)
             return JSONResponse(content=[])
 
     def calculate_similarity_percentage(self, response_embedding, source_embedding):

@@ -140,18 +140,32 @@ class BaseValidatorNeuron(BaseNeuron):
                 blocks_since_last_check = self.block - self.last_sync_block
                 if blocks_since_last_check >= 6:
                     async with self.lock:
-                        # Sync the metagraph
-                        self.metagraph.sync(subtensor=self.subtensor)
-                        # Update hotkeys and moving averages if needed
-                        self.resync_metagraph()
-                        # Update step and last sync block
-                        self.step += 1
-                        self.last_sync_block = self.block
-                        # Save state after successful sync
-                        self.save_state()
+                        try:
+                            # Sync the metagraph
+                            self.metagraph.sync(subtensor=self.subtensor)
+                            # Update hotkeys and moving averages if needed
+                            self.resync_metagraph()
+                            # Update step and last sync block
+                            self.step += 1
+                            self.last_sync_block = self.block
+                            # Save state after successful sync
+                            self.save_state()
+                        except Exception as e:
+                            bt.logging.error(f"Error during sync operation: {e}")
+                            bt.logging.debug("Full sync error details:", exc_info=True)
+                            # Try to recover metagraph state
+                            try:
+                                self.metagraph = bt.metagraph(
+                                    netuid=self.config.netuid,
+                                    network=self.config.subtensor.network,
+                                    sync=False,
+                                )
+                                self.metagraph.sync(subtensor=self.subtensor)
+                            except Exception as e2:
+                                bt.logging.error(f"Failed to recover metagraph: {e2}")
             except Exception as e:
-                bt.logging.error(f"Error running sync: {e}")
-                bt.logging.debug("Full sync error details:", exc_info=True)
+                bt.logging.error(f"Error in run_sync loop: {e}")
+                bt.logging.debug("Full error details:", exc_info=True)
             await asyncio.sleep(self.block_time)
 
     async def run_miner_ping(self):
@@ -337,42 +351,46 @@ class BaseValidatorNeuron(BaseNeuron):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 
-        # Copies state of metagraph before syncing.
-        previous_metagraph = copy.deepcopy(self.metagraph)
+        try:
+            # Copies state of metagraph before syncing.
+            previous_metagraph = copy.deepcopy(self.metagraph)
 
-        # Check if the metagraph axon info has changed.
-        if previous_metagraph.axons == self.metagraph.axons:
-            return
+            # Check if the metagraph axon info has changed.
+            if previous_metagraph.axons == self.metagraph.axons:
+                return
 
-        bt.logging.info(
-            "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
-        )
-        # Zero out all hotkeys that have been replaced.
-        for uid, hotkey in enumerate(self.hotkeys):
-            if hotkey != self.metagraph.hotkeys[uid]:
-                self.scores[uid] = 0  # hotkey has been replaced
-                # Take the last 6 objects in the self.volumes list
-                recent_volumes = self.volumes[-self.volume_window :]
-                # Replace all instances of miners[uid] and set their values to 0
-                for volume in recent_volumes:
-                    if str(uid) in volume["miners"]:
-                        volume["miners"][str(uid)] = 0
+            bt.logging.info(
+                "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
+            )
+            # Zero out all hotkeys that have been replaced.
+            for uid, hotkey in enumerate(self.hotkeys):
+                if hotkey != self.metagraph.hotkeys[uid]:
+                    self.scores[uid] = 0  # hotkey has been replaced
+                    # Take the last 6 objects in the self.volumes list
+                    recent_volumes = self.volumes[-self.volume_window :]
+                    # Replace all instances of miners[uid] and set their values to 0
+                    for volume in recent_volumes:
+                        if str(uid) in volume.get("miners", {}):
+                            volume["miners"][str(uid)] = 0
 
-                # Replace unique tweets by uid
-                if uid in self.tweets_by_uid:
-                    self.tweets_by_uid[uid] = set()
+                    # Replace unique tweets by uid
+                    if uid in self.tweets_by_uid:
+                        self.tweets_by_uid[uid] = set()
 
-        # Check to see if the metagraph has changed size.
-        # If so, we need to add new hotkeys and moving averages.
-        if len(self.hotkeys) < len(self.metagraph.hotkeys):
-            # Update the size of the moving average scores.
-            new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
-            min_len = min(len(self.hotkeys), len(self.scores))
-            new_moving_average[:min_len] = self.scores[:min_len]
-            self.scores = new_moving_average
+            # Check to see if the metagraph has changed size.
+            # If so, we need to add new hotkeys and moving averages.
+            if len(self.hotkeys) < len(self.metagraph.hotkeys):
+                # Update the size of the moving average scores.
+                new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
+                min_len = min(len(self.hotkeys), len(self.scores))
+                new_moving_average[:min_len] = self.scores[:min_len]
+                self.scores = new_moving_average
 
-        # Update the hotkeys.
-        self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+            # Update the hotkeys.
+            self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+        except Exception as e:
+            bt.logging.error(f"Error in resync_metagraph: {e}")
+            bt.logging.debug("Full error details:", exc_info=True)
 
     async def export_tweets(self, tweets: List[dict], query: str):
         """Exports tweets to a specified API in chunks of 1000."""
