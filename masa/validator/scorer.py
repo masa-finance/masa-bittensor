@@ -38,7 +38,7 @@ class Scorer:
         try:
             # Ensure miner_uid is an integer
             uid = int(miner_uid)
-            current_block = self.validator.subtensor.block
+            current_block = self.validator.get_current_block()
             tempo = current_block // self.validator.tempo
 
             if (
@@ -137,7 +137,7 @@ class Scorer:
                         bt.logging.error(f"Failed to set weights: {e}")
 
             try:
-                current_block = self.validator.subtensor.get_current_block()
+                current_block = self.validator.get_current_block()
                 self.validator.last_scoring_block = current_block
             except Exception as e:
                 bt.logging.error(f"Error getting current block: {e}")

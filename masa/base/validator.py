@@ -52,6 +52,9 @@ class BaseValidatorNeuron(BaseNeuron):
     def __init__(self, config=None):
         super().__init__(config=config)
 
+        # Create connection lock
+        self._connection_lock = threading.Lock()
+
         self.forwarder = Forwarder(self)
         self.scorer = Scorer(self)
 
@@ -133,14 +136,29 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
             pass
 
+    def get_current_block(self):
+        """Thread-safe method to get current block"""
+        with self._connection_lock:
+            return self.subtensor.get_current_block()
+
+    def sync_metagraph(self):
+        """Thread-safe method to sync metagraph"""
+        with self._connection_lock:
+            self.metagraph.sync(subtensor=self.subtensor)
+
+    def get_subnet_hyperparameters(self):
+        """Thread-safe method to get subnet hyperparameters"""
+        with self._connection_lock:
+            return self.subtensor.get_subnet_hyperparameters(self.config.netuid)
+
     async def run_sync(self):
         while not self.should_exit:
             try:
                 blocks_since_last_check = self.block - self.last_sync_block
                 if blocks_since_last_check >= 6:
                     try:
-                        # Sync the metagraph
-                        self.metagraph.sync(subtensor=self.subtensor)
+                        # Use thread-safe method
+                        self.sync_metagraph()
                         # Update hotkeys and moving averages if needed
                         self.resync_metagraph()
                         # Update step and last sync block
@@ -153,12 +171,13 @@ class BaseValidatorNeuron(BaseNeuron):
                         bt.logging.debug("Full sync error details:", exc_info=True)
                         # Try to recover metagraph state
                         try:
-                            self.metagraph = bt.metagraph(
-                                netuid=self.config.netuid,
-                                network=self.config.subtensor.network,
-                                sync=False,
-                            )
-                            self.metagraph.sync(subtensor=self.subtensor)
+                            with self._connection_lock:
+                                self.metagraph = bt.metagraph(
+                                    netuid=self.config.netuid,
+                                    network=self.config.subtensor.network,
+                                    sync=False,
+                                )
+                                self.metagraph.sync(subtensor=self.subtensor)
                         except Exception as e2:
                             bt.logging.error(f"Failed to recover metagraph: {e2}")
             except Exception as e:

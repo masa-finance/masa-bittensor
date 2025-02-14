@@ -183,30 +183,41 @@ class Forwarder:
             sent_from=get_external_ip(), is_active=False, version=0
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
-        dendrite = bt.dendrite(wallet=self.validator.wallet)
-        all_responses = []
-        for i in range(0, len(self.validator.metagraph.axons), sample_size):
-            batch = self.validator.metagraph.axons[i : i + sample_size]
-            batch_responses = await dendrite(
-                batch,
-                request,
-                deserialize=False,
-                timeout=self.validator.subnet_config.get("healthcheck").get("timeout"),
-            )
-            all_responses.extend(batch_responses)
+        async with self.lock:  # Use forwarder's lock
+            dendrite = bt.dendrite(wallet=self.validator.wallet)
+            try:
+                all_responses = []
+                for i in range(0, len(self.validator.metagraph.axons), sample_size):
+                    batch = self.validator.metagraph.axons[i : i + sample_size]
+                    batch_responses = await dendrite(
+                        batch,
+                        request,
+                        deserialize=False,
+                        timeout=self.validator.subnet_config.get("healthcheck").get(
+                            "timeout"
+                        ),
+                    )
+                    all_responses.extend(batch_responses)
 
-        self.validator.versions = [response.version for response in all_responses]
-        bt.logging.info(f"Miner Versions: {self.validator.versions}")
-        self.validator.last_healthcheck_block = self.validator.subtensor.block
-        return [
-            {
-                "status_code": response.dendrite.status_code,
-                "status_message": response.dendrite.status_message,
-                "version": response.version,
-                "uid": all_responses.index(response),
-            }
-            for response in all_responses
-        ]
+                self.validator.versions = [
+                    response.version for response in all_responses
+                ]
+                bt.logging.info(f"Miner Versions: {self.validator.versions}")
+                self.validator.last_healthcheck_block = (
+                    self.validator.get_current_block()
+                )
+                return [
+                    {
+                        "status_code": response.dendrite.status_code,
+                        "status_message": response.dendrite.status_message,
+                        "version": response.version,
+                        "uid": all_responses.index(response),
+                    }
+                    for response in all_responses
+                ]
+            finally:
+                if dendrite:
+                    await dendrite.close_session()
 
     async def fetch_twitter_queries(self):
         try:
@@ -272,15 +283,15 @@ class Forwarder:
 
     def check_tempo(self) -> bool:
         if self.validator.last_tempo_block == 0:
-            self.validator.last_tempo_block = self.validator.subtensor.block
+            self.validator.last_tempo_block = self.validator.get_current_block()
             return True
 
         tempo = self.validator.tempo
         blocks_since_last_check = (
-            self.validator.subtensor.block - self.validator.last_tempo_block
+            self.validator.get_current_block() - self.validator.last_tempo_block
         )
         if blocks_since_last_check >= tempo:
-            self.validator.last_tempo_block = self.validator.subtensor.block
+            self.validator.last_tempo_block = self.validator.get_current_block()
             return True
         else:
             return False
