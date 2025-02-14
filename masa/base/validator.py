@@ -105,6 +105,9 @@ class BaseValidatorNeuron(BaseNeuron):
         self.miner_volume_thread: threading.Thread = None
         self.miner_scoring_thread: threading.Thread = None
         self.auto_update_thread: threading.Thread = None
+
+        # Create event loop and lock for each thread
+        self.loop = asyncio.new_event_loop()
         self.lock = asyncio.Lock()
 
         self.run_in_background_thread()
@@ -210,18 +213,23 @@ class BaseValidatorNeuron(BaseNeuron):
             await asyncio.sleep(self.tempo * self.block_time)
 
     def run_sync_in_loop(self):
+        asyncio.set_event_loop(self.loop)
         asyncio.run(self.run_sync())
 
     def run_miner_ping_in_loop(self):
+        asyncio.set_event_loop(self.loop)
         asyncio.run(self.run_miner_ping())
 
     def run_miner_volume_in_loop(self):
+        asyncio.set_event_loop(self.loop)
         asyncio.run(self.run_miner_volume())
 
     def run_miner_scoring_in_loop(self):
+        asyncio.set_event_loop(self.loop)
         asyncio.run(self.run_miner_scoring())
 
     def run_auto_update_in_loop(self):
+        asyncio.set_event_loop(self.loop)
         asyncio.run(self.run_auto_update())
 
     def run_in_background_thread(self):

@@ -27,20 +27,32 @@ class Scorer:
         self.validator = validator
 
     def add_volume(self, miner_uid, volume):
-        current_block = self.validator.subtensor.block  # Get the current block number
-        tempo = (
-            current_block // self.validator.tempo
-        )  # Group blocks by tempo, or roughly 72 minutes
+        """Add volume for a miner.
 
-        if not self.validator.volumes or self.validator.volumes[-1]["tempo"] != tempo:
-            self.validator.volumes.append({"tempo": tempo, "miners": {}})
-            self.validator.volumes = self.validator.volumes[
-                -self.validator.volume_window :
-            ]
+        Args:
+            miner_uid: Integer UID of the miner
+            volume: Volume to add
+        """
+        try:
+            # Ensure miner_uid is an integer
+            uid = int(miner_uid)
+            current_block = self.validator.subtensor.block
+            tempo = current_block // self.validator.tempo
 
-        if miner_uid not in self.validator.volumes[-1]["miners"]:
-            self.validator.volumes[-1]["miners"][miner_uid] = 0
-        self.validator.volumes[-1]["miners"][miner_uid] += volume
+            if (
+                not self.validator.volumes
+                or self.validator.volumes[-1]["tempo"] != tempo
+            ):
+                self.validator.volumes.append({"tempo": tempo, "miners": {}})
+                self.validator.volumes = self.validator.volumes[
+                    -self.validator.volume_window :
+                ]
+
+            if uid not in self.validator.volumes[-1]["miners"]:
+                self.validator.volumes[-1]["miners"][uid] = 0
+            self.validator.volumes[-1]["miners"][uid] += float(volume)
+        except (ValueError, TypeError) as e:
+            bt.logging.warning(f"Invalid miner_uid {miner_uid} or volume {volume}: {e}")
 
     async def score_miner_volumes(self):
         try:
@@ -56,6 +68,8 @@ class Scorer:
                 bt.logging.debug(f"Processing volume entry: {volume}")
                 miners_dict = volume.get("miners", {})
                 bt.logging.debug(f"Miners dict: {miners_dict}")
+
+                # Process each miner's volume
                 for miner_uid, vol in miners_dict.items():
                     try:
                         uid = int(miner_uid)
@@ -125,7 +139,6 @@ class Scorer:
                 self.validator.last_scoring_block = current_block
             except Exception as e:
                 bt.logging.error(f"Error getting current block: {e}")
-                # Use a fallback method or skip block update
                 pass
 
             if volumes:
