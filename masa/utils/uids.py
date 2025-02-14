@@ -67,9 +67,10 @@ async def get_random_miner_uids(
         # Generic sanitation
         avail_uids = get_available_uids(self.metagraph)
         healthy_uids = remove_excluded_uids(avail_uids, exclude)
-        weights_version = self.subtensor.get_subnet_hyperparameters(
+        subnet_params = await self.subtensor.get_subnet_hyperparameters(
             self.config.netuid
-        ).weights_version
+        )
+        weights_version = subnet_params.weights_version
 
         version_checked_uids = [
             uid for uid in healthy_uids if self.versions[uid] >= weights_version
@@ -108,9 +109,10 @@ async def get_uncalled_miner_uids(
             # Generic sanitation
             avail_uids = get_available_uids(self.metagraph)
             healthy_uids = remove_excluded_uids(avail_uids, exclude)
-            weights_version = self.subtensor.get_subnet_hyperparameters(
+            subnet_params = await self.subtensor.get_subnet_hyperparameters(
                 self.config.netuid
-            ).weights_version
+            )
+            weights_version = subnet_params.weights_version
             version_checked_uids = [
                 uid for uid in healthy_uids if self.versions[uid] >= weights_version
             ]
