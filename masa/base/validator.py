@@ -233,23 +233,35 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.warning("❌ No real scores yet, skipping weight setting")
             return
 
+        # Check if self.scores contains any NaN values and log a warning if it does.
         if torch.isnan(self.scores).any():
             bt.logging.warning(
                 "❌ Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
             return
 
-        # Normalize scores to weights
-        weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
-        bt.logging.info(f"Normalized weights sum: {weights.sum()}")
+        # Calculate the average reward for each uid across non-zero values.
+        raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
 
-        # Convert to chain format
-        uint_uids, uint_weights = (
-            bt.utils.weight_utils.convert_weights_and_uids_for_emit(
-                uids=self.metagraph.uids,
-                weights=weights.to("cpu").numpy(),
-            )
+        (
+            processed_weight_uids,
+            processed_weights,
+        ) = process_weights_for_netuid(
+            uids=self.metagraph.uids,
+            weights=raw_weights.to("cpu").numpy(),
+            netuid=self.config.netuid,
+            subtensor=self.subtensor,
+            metagraph=self.metagraph,
         )
+
+        (
+            uint_uids,
+            uint_weights,
+        ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
+            uids=processed_weight_uids, weights=processed_weights
+        )
+
+        bt.logging.info(f"Setting weights: {uint_weights} for uids: {uint_uids}")
 
         # Create weight entry in the exact format needed
         import datetime
