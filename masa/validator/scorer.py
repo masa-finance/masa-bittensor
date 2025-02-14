@@ -20,11 +20,13 @@ import bittensor as bt
 import torch
 import scipy.stats as stats
 from fastapi.responses import JSONResponse
+import asyncio
 
 
 class Scorer:
     def __init__(self, validator):
         self.validator = validator
+        self.lock = asyncio.Lock()  # Create lock in scorer
 
     def add_volume(self, miner_uid, volume):
         """Add volume for a miner.
@@ -126,7 +128,7 @@ class Scorer:
             scores = torch.FloatTensor(rewards).to(self.validator.device)
             bt.logging.debug(f"Final scores tensor: {scores}")
 
-            async with self.validator.lock:
+            async with self.lock:  # Use scorer's lock
                 self.validator.update_scores(scores, valid_miner_uids)
                 if self.validator.should_set_weights():
                     try:

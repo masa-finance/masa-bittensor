@@ -41,6 +41,7 @@ import re
 class Forwarder:
     def __init__(self, validator):
         self.validator = validator
+        self.lock = asyncio.Lock()  # Create lock in forwarder
 
     async def forward_request(
         self,
@@ -59,70 +60,75 @@ class Forwarder:
             sequential: Whether to query miners sequentially
         """
         try:
-            # Create a new dendrite instance for this request
-            dendrite = bt.dendrite(wallet=self.validator.wallet)
-            try:
-                responses = []
-                successful_uids = []
+            async with self.lock:  # Use forwarder's lock
+                # Create a new dendrite instance for this request
+                dendrite = bt.dendrite(wallet=self.validator.wallet)
+                try:
+                    responses = []
+                    successful_uids = []
 
-                # Get miner UIDs based on sample size
-                if sample_size:
-                    miner_uids = await get_random_miner_uids(
-                        self.validator, sample_size
-                    )
-                else:
-                    miner_uids = await get_uncalled_miner_uids(
-                        self.validator, 10
-                    )  # Default to 10 if not specified
+                    # Get miner UIDs based on sample size
+                    if sample_size:
+                        miner_uids = await get_random_miner_uids(
+                            self.validator, sample_size
+                        )
+                    else:
+                        miner_uids = await get_uncalled_miner_uids(
+                            self.validator, 10
+                        )  # Default to 10 if not specified
 
-                if miner_uids is None:
-                    bt.logging.warning("No valid miner UIDs found")
-                    return [], []
+                    if miner_uids is None:
+                        bt.logging.warning("No valid miner UIDs found")
+                        return [], []
 
-                # Query miners either sequentially or concurrently
-                if sequential:
-                    for uid in miner_uids:
-                        try:
-                            response = await dendrite(
-                                self.validator.metagraph.axons[uid],
-                                request,
-                                deserialize=True,
-                                timeout=timeout,
-                            )
-                            if response is not None and isinstance(response, dict):
-                                responses.append(response)
-                                successful_uids.append(uid)
-                        except Exception as e:
-                            bt.logging.debug(f"Error querying miner {uid}: {str(e)}")
-                        await asyncio.sleep(
-                            1
-                        )  # Small delay between sequential requests
-                else:
+                    # Query miners either sequentially or concurrently
+                    if sequential:
+                        for uid in miner_uids:
+                            try:
+                                response = await dendrite(
+                                    self.validator.metagraph.axons[uid],
+                                    request,
+                                    deserialize=True,
+                                    timeout=timeout,
+                                )
+                                if response is not None and isinstance(response, dict):
+                                    responses.append(response)
+                                    successful_uids.append(uid)
+                            except Exception as e:
+                                bt.logging.debug(
+                                    f"Error querying miner {uid}: {str(e)}"
+                                )
+                            await asyncio.sleep(
+                                1
+                            )  # Small delay between sequential requests
+                    else:
 
-                    async def query_miner(uid):
-                        try:
-                            response = await dendrite(
-                                self.validator.metagraph.axons[uid],
-                                request,
-                                deserialize=True,
-                                timeout=timeout,
-                            )
-                            if response is not None and isinstance(response, dict):
-                                responses.append(response)
-                                successful_uids.append(uid)
-                        except Exception as e:
-                            bt.logging.debug(f"Error querying miner {uid}: {str(e)}")
+                        async def query_miner(uid):
+                            try:
+                                response = await dendrite(
+                                    self.validator.metagraph.axons[uid],
+                                    request,
+                                    deserialize=True,
+                                    timeout=timeout,
+                                )
+                                if response is not None and isinstance(response, dict):
+                                    responses.append(response)
+                                    successful_uids.append(uid)
+                            except Exception as e:
+                                bt.logging.debug(
+                                    f"Error querying miner {uid}: {str(e)}"
+                                )
 
-                    await asyncio.gather(
-                        *(query_miner(uid) for uid in miner_uids),
-                        return_exceptions=True,
-                    )
+                        await asyncio.gather(
+                            *(query_miner(uid) for uid in miner_uids),
+                            return_exceptions=True,
+                        )
 
-                return responses, successful_uids
-            finally:
-                # Always close the dendrite session
-                if dendrite:
-                    await dendrite.close_session()
+                    return responses, successful_uids
+                finally:
+                    # Always close the dendrite session
+                    if dendrite:
+                        await dendrite.close_session()
 
         except Exception as e:
             bt.logging.error(f"Error in forward_request: {str(e)}")
