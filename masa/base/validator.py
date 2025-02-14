@@ -95,18 +95,6 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.error(f"Error in main loop: {e}")
                 await asyncio.sleep(1)
 
-    def __enter__(self):
-        raise RuntimeError("Use run() directly")
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        raise RuntimeError("Use run() directly")
-
-    async def __aenter__(self):
-        raise RuntimeError("Use run() directly")
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        raise RuntimeError("Use run() directly")
-
     async def initialize(self, config=None):
         """Async initialization method."""
         if self._is_initialized:
@@ -152,15 +140,14 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Serve axon to enable external connections.
         if not self.config.neuron.axon_off:
-            self.serve_axon()
+            await self.serve_axon()
         else:
             bt.logging.warning("axon off, not serving ip to chain.")
 
         self._is_initialized = True
 
-    def serve_axon(self):
+    async def serve_axon(self):
         """Serve axon to enable external connections."""
-
         bt.logging.info("serving ip to chain...")
         try:
             self.axon = bt.axon(
@@ -168,7 +155,7 @@ class BaseValidatorNeuron(BaseNeuron):
             )
 
             try:
-                self.subtensor.serve_axon(
+                await self.subtensor.serve_axon(
                     netuid=self.config.netuid,
                     axon=self.axon,
                 )
@@ -177,11 +164,9 @@ class BaseValidatorNeuron(BaseNeuron):
                 )
             except Exception as e:
                 bt.logging.error(f"Failed to serve Axon with exception: {e}")
-                pass
 
         except Exception as e:
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
-            pass
 
     async def healthcheck(self):
         """Run health check and auto-update."""
@@ -202,23 +187,16 @@ class BaseValidatorNeuron(BaseNeuron):
         except Exception as e:
             bt.logging.error(f"Error updating config: {e}")
 
-    def set_weights(self):
-        """
-        Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
-        """
-        # Check if self.scores contains any NaN values and log a warning if it does.
+    async def set_weights(self):
+        """Sets the validator weights to the metagraph hotkeys based on the scores."""
         if torch.isnan(self.scores).any():
             bt.logging.warning(
                 "Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
 
-        # Calculate the average reward for each uid across non-zero values.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
 
-        (
-            processed_weight_uids,
-            processed_weights,
-        ) = process_weights_for_netuid(
+        processed_weight_uids, processed_weights = process_weights_for_netuid(
             uids=self.metagraph.uids,
             weights=raw_weights.to("cpu").numpy(),
             netuid=self.config.netuid,
@@ -226,17 +204,15 @@ class BaseValidatorNeuron(BaseNeuron):
             metagraph=self.metagraph,
         )
 
-        (
-            uint_uids,
-            uint_weights,
-        ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
-            uids=processed_weight_uids, weights=processed_weights
+        uint_uids, uint_weights = (
+            bt.utils.weight_utils.convert_weights_and_uids_for_emit(
+                uids=processed_weight_uids, weights=processed_weights
+            )
         )
 
         bt.logging.info(f"Setting weights: {uint_weights} for uids: {uint_uids}")
 
-        # Set the weights on chain via our subtensor connection.
-        result, msg = self.subtensor.set_weights(
+        result = await self.subtensor.set_weights(
             wallet=self.wallet,
             netuid=self.config.netuid,
             uids=uint_uids,
@@ -246,10 +222,10 @@ class BaseValidatorNeuron(BaseNeuron):
             version_key=self.spec_version,
         )
 
-        if result is True:
+        if result.success:
             bt.logging.success("set_weights on chain successfully!")
         else:
-            bt.logging.error("set_weights failed", msg)
+            bt.logging.error(f"set_weights failed: {result.error_message}")
 
     async def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
