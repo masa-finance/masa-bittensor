@@ -190,29 +190,29 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.info("VALIDATOR NEURON should_set_weights called")
         # Skip if weights are disabled in config
         if self.config.neuron.disable_set_weights:
-            bt.logging.debug("Weight setting disabled in config")
+            bt.logging.info("❌ Weights disabled in config")
             return False
 
         # Skip if we're a miner
         if self.neuron_type == "MinerNeuron":
+            bt.logging.info("❌ We are a miner")
             return False
 
         # Count how many UIDs have non-zero scores
         scored_uids = (self.scores > 0).sum().item()
         if scored_uids < 150:
-            bt.logging.info(
-                f"Not enough scored UIDs ({scored_uids} < 150) to set weights"
-            )
+            bt.logging.info(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
             return False
 
         # Check if enough blocks have elapsed since last update
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
+        bt.logging.info(f"Blocks elapsed since last update: {blocks_elapsed}")
         if blocks_elapsed <= 100:  # Set weights every 100 blocks
             if (
                 self.last_weights_block > 0
             ):  # Only show waiting message if not first run
-                bt.logging.debug(
-                    f"Only {blocks_elapsed} blocks elapsed since last weight setting, waiting for 100"
+                bt.logging.info(
+                    f"❌ Only {blocks_elapsed} blocks elapsed since last weight setting"
                 )
             return False
 
