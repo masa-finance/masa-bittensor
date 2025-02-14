@@ -141,7 +141,13 @@ class BaseValidatorNeuron(BaseNeuron):
                     self.step += 1
                     self.last_sync_block = self.block
             except Exception as e:
-                bt.logging.error(f"Error running sync: {e}")
+                if (
+                    "cannot call recv while another thread is already running recv"
+                    in str(e)
+                ):
+                    bt.logging.warning(f"Non-critical dendrite concurrency issue: {e}")
+                else:
+                    bt.logging.error(f"Error running sync: {e}")
             await asyncio.sleep(self.block_time)
 
     async def run_miner_ping(self):
