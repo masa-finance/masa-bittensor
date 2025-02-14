@@ -56,6 +56,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.tweets_by_uid = {}
         self.volumes = []
         self._is_initialized = False
+        self.first_run = True
         super().__init__(config=config)
 
     async def run(self):
@@ -197,8 +198,9 @@ class BaseValidatorNeuron(BaseNeuron):
             )
             return False
 
-        if self.metagraph.last_update[self.uid] == 0:
+        if self.first_run:
             bt.logging.info("✅ Initial weight setting")
+            self.first_run = False
         else:
             bt.logging.info(
                 f"✅ Will set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
