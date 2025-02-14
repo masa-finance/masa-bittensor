@@ -50,6 +50,22 @@ class BaseValidatorNeuron(BaseNeuron):
         add_validator_args(cls, parser)
 
     async def __init__(self, config=None):
+        # Initialize instance variables before super().__init__
+        self.should_exit = False
+        self.is_running = False
+        self.sync_thread = None
+        self.miner_ping_thread = None
+        self.miner_volume_thread = None
+        self.miner_scoring_thread = None
+        self.auto_update_thread = None
+        self.lock = None
+        self.versions = []  # note, for storing uid versions
+        self.keywords = []  # note, for volume scoring queries
+        self.uncalled_uids = set()  # note, for volume scoring queries
+        self.volume_window = 6  # note, score volumes from last 6 tempos
+        self.tweets_by_uid = {}
+        self.volumes = []
+
         await super().__init__(config=config)
 
         self.forwarder = Forwarder(self)
@@ -64,11 +80,6 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_volume_block = 0
         self.last_scoring_block = 0
         self.last_healthcheck_block = 0
-
-        self.versions = []  # note, for storing uid versions
-        self.keywords = []  # note, for volume scoring queries
-        self.uncalled_uids = set()  # note, for volume scoring queries
-        self.volume_window = 6  # note, score volumes from last 6 tempos
 
         # load config file for subnet specific settings as default
         # note, every tempo we fetch the latest config file from github main branch
@@ -96,15 +107,6 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.warning("axon off, not serving ip to chain.")
 
         # Instantiate runners
-        self.should_exit: bool = False
-        self.is_running: bool = False
-        self.sync_thread: threading.Thread = None
-        self.miner_ping_thread: threading.Thread = None
-        self.miner_volume_thread: threading.Thread = None
-        self.miner_scoring_thread: threading.Thread = None
-        self.auto_update_thread: threading.Thread = None
-        self.lock = asyncio.Lock()
-
         self.run_in_background_thread()
 
     def serve_axon(self):
@@ -258,23 +260,13 @@ class BaseValidatorNeuron(BaseNeuron):
             self.is_running = False
             bt.logging.debug("Stopped")
 
-    def __enter__(self):
+    async def __aenter__(self):
+        """Async context manager entry."""
         self.run_in_background_thread()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        """
-        Stops the validator's background operations upon exiting the context.
-        This method facilitates the use of the validator in a 'with' statement.
-
-        Args:
-            exc_type: The type of the exception that caused the context to be exited.
-                      None if the context was exited without an exception.
-            exc_value: The instance of the exception that caused the context to be exited.
-                       None if the context was exited without an exception.
-            traceback: A traceback object encoding the stack trace.
-                       None if the context was exited without an exception.
-        """
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        """Async context manager exit."""
         if self.is_running:
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
@@ -285,6 +277,12 @@ class BaseValidatorNeuron(BaseNeuron):
             self.auto_update_thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
+
+    def __enter__(self):
+        raise RuntimeError("Use 'async with' instead of 'with'")
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        raise RuntimeError("Use 'async with' instead of 'with'")
 
     def set_weights(self):
         """
