@@ -150,11 +150,12 @@ class BaseValidatorNeuron(BaseNeuron):
     async def run_sync(self):
         while not self.should_exit:
             try:
-                blocks_since_last_check = self.block - self.last_sync_block
+                current_block = await self.block
+                blocks_since_last_check = current_block - self.last_sync_block
                 if blocks_since_last_check >= 6:
-                    self.sync()
+                    await self.sync()
                     self.step += 1
-                    self.last_sync_block = self.block
+                    self.last_sync_block = current_block
             except Exception as e:
                 if (
                     "cannot call recv while another thread is already running recv"
@@ -168,10 +169,12 @@ class BaseValidatorNeuron(BaseNeuron):
     async def run_miner_ping(self):
         while not self.should_exit:
             try:
-                blocks_since_last_check = self.block - self.last_healthcheck_block
+                current_block = await self.block
+                blocks_since_last_check = current_block - self.last_healthcheck_block
                 blocks_to_wait = self.subnet_config.get("healthcheck").get("blocks")
                 if blocks_since_last_check >= blocks_to_wait:
                     await self.forwarder.ping_axons()
+                    self.last_healthcheck_block = current_block
             except Exception as e:
                 bt.logging.error(f"Error running miner ping: {e}")
             await asyncio.sleep(self.block_time)
@@ -179,10 +182,12 @@ class BaseValidatorNeuron(BaseNeuron):
     async def run_miner_volume(self):
         while not self.should_exit:
             try:
-                blocks_since_last_check = self.block - self.last_volume_block
+                current_block = await self.block
+                blocks_since_last_check = current_block - self.last_volume_block
                 blocks_to_wait = self.subnet_config.get("synthetic").get("blocks")
                 if blocks_since_last_check >= blocks_to_wait:
                     await self.forwarder.get_miners_volumes()
+                    self.last_volume_block = current_block
             except Exception as e:
                 bt.logging.error(f"Error running miner volume: {e}")
             await asyncio.sleep(self.block_time)
@@ -190,9 +195,11 @@ class BaseValidatorNeuron(BaseNeuron):
     async def run_miner_scoring(self):
         while not self.should_exit:
             try:
-                blocks_since_last_check = self.block - self.last_scoring_block
+                current_block = await self.block
+                blocks_since_last_check = current_block - self.last_scoring_block
                 if blocks_since_last_check >= self.tempo / 50:
                     await self.scorer.score_miner_volumes()
+                    self.last_scoring_block = current_block
             except Exception as e:
                 if (
                     "cannot call recv while another thread is already running recv"
@@ -212,20 +219,25 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.error(f"Error running auto update: {e}")
             await asyncio.sleep(self.tempo * self.block_time)
 
-    def run_sync_in_loop(self):
-        asyncio.run(self.run_sync())
+    async def run_sync_in_loop(self):
+        """Run sync loop in asyncio event loop."""
+        await self.run_sync()
 
-    def run_miner_ping_in_loop(self):
-        asyncio.run(self.run_miner_ping())
+    async def run_miner_ping_in_loop(self):
+        """Run miner ping loop in asyncio event loop."""
+        await self.run_miner_ping()
 
-    def run_miner_volume_in_loop(self):
-        asyncio.run(self.run_miner_volume())
+    async def run_miner_volume_in_loop(self):
+        """Run miner volume loop in asyncio event loop."""
+        await self.run_miner_volume()
 
-    def run_miner_scoring_in_loop(self):
-        asyncio.run(self.run_miner_scoring())
+    async def run_miner_scoring_in_loop(self):
+        """Run miner scoring loop in asyncio event loop."""
+        await self.run_miner_scoring()
 
-    def run_auto_update_in_loop(self):
-        asyncio.run(self.run_auto_update())
+    async def run_auto_update_in_loop(self):
+        """Run auto update loop in asyncio event loop."""
+        await self.run_auto_update()
 
     def run_in_background_thread(self):
         """
@@ -235,21 +247,38 @@ class BaseValidatorNeuron(BaseNeuron):
         if not self.is_running:
             bt.logging.debug("Starting validator in background thread.")
             self.should_exit = False
+
+            # Create event loop for each thread
+            def run_async_loop(coro):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(coro)
+                loop.close()
+
             self.sync_thread = threading.Thread(
-                target=self.run_sync_in_loop, daemon=True
+                target=run_async_loop, args=(self.run_sync_in_loop(),), daemon=True
             )
             self.miner_ping_thread = threading.Thread(
-                target=self.run_miner_ping_in_loop, daemon=True
+                target=run_async_loop,
+                args=(self.run_miner_ping_in_loop(),),
+                daemon=True,
             )
             self.miner_volume_thread = threading.Thread(
-                target=self.run_miner_volume_in_loop, daemon=True
+                target=run_async_loop,
+                args=(self.run_miner_volume_in_loop(),),
+                daemon=True,
             )
             self.miner_scoring_thread = threading.Thread(
-                target=self.run_miner_scoring_in_loop, daemon=True
+                target=run_async_loop,
+                args=(self.run_miner_scoring_in_loop(),),
+                daemon=True,
             )
             self.auto_update_thread = threading.Thread(
-                target=self.run_auto_update_in_loop, daemon=True
+                target=run_async_loop,
+                args=(self.run_auto_update_in_loop(),),
+                daemon=True,
             )
+
             self.sync_thread.start()  # for setting weights, syncing metagraph,, etc
             self.miner_ping_thread.start()  # for versioning and getting keywords
             self.miner_volume_thread.start()  # for testing miner volumes

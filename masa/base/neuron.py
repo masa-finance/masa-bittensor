@@ -58,8 +58,9 @@ class BaseNeuron(ABC):
     spec_version: int = spec_version
 
     @property
-    def block(self):
-        return ttl_get_block(self)
+    async def block(self):
+        """Get the current block number."""
+        return await ttl_get_block(self)
 
     def __init__(self, config=None):
         """Synchronous initialization of basic attributes."""
@@ -166,7 +167,7 @@ class BaseNeuron(ABC):
         Check if enough epoch blocks have elapsed since the last checkpoint to sync.
         """
         return (
-            self.block - self.metagraph.last_update[self.uid]
+            await self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length
 
     async def should_set_weights(self) -> bool:
@@ -180,7 +181,7 @@ class BaseNeuron(ABC):
 
         # Define appropriate logic for when set weights.
         return (
-            self.block - self.metagraph.last_update[self.uid]
+            await self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length and self.neuron_type != "MinerNeuron"  # don't set weights if you're a miner
 
     def auto_update(self):
