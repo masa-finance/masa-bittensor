@@ -57,6 +57,8 @@ class Scorer:
                 for volume in volumes[-window_size:]:
                     bt.logging.debug(f"Processing volume: {volume}")
                     for miner_uid_str, vol in volume["miners"].items():
+                        # Ensure consistent string keys
+                        miner_uid_str = str(miner_uid_str)
                         if miner_uid_str not in miner_volumes:
                             miner_volumes[miner_uid_str] = 0
                         miner_volumes[miner_uid_str] += vol
@@ -98,7 +100,9 @@ class Scorer:
                 else:
                     rewards = [
                         self.kurtosis_based_score(
-                            miner_volumes[str(uid)], mean_volume, std_dev_volume
+                            miner_volumes[str(uid)],  # Convert UID to string for lookup
+                            mean_volume,
+                            std_dev_volume,
                         )
                         for uid in valid_miner_uids
                     ]
@@ -123,7 +127,9 @@ class Scorer:
                     serializable_volumes = [
                         {
                             "uid": uid,
-                            "volume": float(miner_volumes[str(uid)]),
+                            "volume": float(
+                                miner_volumes[str(uid)]
+                            ),  # Convert UID to string for lookup
                             "score": rewards[valid_miner_uids.index(uid)],
                         }
                         for uid in valid_miner_uids
