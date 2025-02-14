@@ -26,8 +26,7 @@ class Scorer:
     def __init__(self, validator):
         self.validator = validator
 
-    def add_volume(self, miner_uid, volume):
-        current_block = self.validator.subtensor.block  # Get the current block number
+    def add_volume(self, miner_uid, volume, current_block):
         tempo = (
             current_block // self.validator.tempo
         )  # Group blocks by tempo, or roughly 72 minutes

@@ -322,7 +322,9 @@ class Forwarder:
                 self.validator.tweets_by_uid[uid_int] = {
                     tweet["Tweet"]["ID"] for tweet in valid_tweets
                 }
-                self.validator.scorer.add_volume(uid_int, len(valid_tweets))
+                self.validator.scorer.add_volume(
+                    uid_int, len(valid_tweets), current_block
+                )
                 bt.logging.success(
                     f"Miner {uid_int} produced {len(valid_tweets)} valid new tweets"
                 )
@@ -331,7 +333,7 @@ class Forwarder:
                 new_tweet_ids = {tweet["Tweet"]["ID"] for tweet in valid_tweets}
                 updates = new_tweet_ids - existing_tweet_ids
                 self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
-                self.validator.scorer.add_volume(uid_int, len(updates))
+                self.validator.scorer.add_volume(uid_int, len(updates), current_block)
                 bt.logging.success(
                     f"Miner {uid_int} produced {len(updates)} new tweets, with a total of {len(self.validator.tweets_by_uid[uid_int])}."
                 )
