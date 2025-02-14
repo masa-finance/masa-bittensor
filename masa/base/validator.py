@@ -71,11 +71,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
             # Weight setting (every 100 blocks, ~20 minutes)
             if current_block - self.last_weights_block > 100:
-                # Load state before checking weights
-                self.load_state()
-                if (
-                    await self.should_set_weights()
-                ):  # Only set weights if conditions are met
+                if await self.should_set_weights():
                     bt.logging.info(f"Setting weights at block {current_block}")
                     await self.set_weights()
                     self.last_weights_block = current_block
@@ -137,6 +133,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Load state before syncing
         self.load_state()
+        self.step += 1  # Increment step after loading state to allow weight setting
 
         # Init sync with the network. Updates the metagraph.
         await self.sync()
