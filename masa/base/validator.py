@@ -194,7 +194,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # Only allow setting weights if enough blocks elapsed
         if blocks_elapsed <= 100 and not self.first_run:
             bt.logging.info(
-                f"❌ Only {blocks_elapsed} blocks elapsed since last update"
+                f"{blocks_elapsed} blocks elapsed since last weight setting"
             )
             return False
 
