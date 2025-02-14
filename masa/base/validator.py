@@ -135,6 +135,12 @@ class BaseValidatorNeuron(BaseNeuron):
         self.load_state()
         self.step += 1  # Increment step after loading state to allow weight setting
 
+        # Set weights if we have enough scored UIDs
+        if await self.should_set_weights():
+            bt.logging.info("Setting initial weights after loading state")
+            await self.set_weights()
+            self.last_weights_block = await self.block
+
         # Serve axon to enable external connections.
         if not self.config.neuron.axon_off:
             await self.serve_axon()
