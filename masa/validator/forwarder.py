@@ -17,6 +17,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
+import torch
 from typing import Any, List, Tuple
 from datetime import datetime, UTC, timedelta
 import aiohttp
