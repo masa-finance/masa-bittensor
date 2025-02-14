@@ -49,8 +49,8 @@ class BaseValidatorNeuron(BaseNeuron):
         super().add_args(parser)
         add_validator_args(cls, parser)
 
-    def __init__(self, config=None):
-        super().__init__(config=config)
+    async def __init__(self, config=None):
+        await super().__init__(config=config)
 
         self.forwarder = Forwarder(self)
         self.scorer = Scorer(self)
