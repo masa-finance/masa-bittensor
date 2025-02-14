@@ -67,7 +67,7 @@ class BaseNeuron(ABC):
         """Synchronous initialization of basic attributes."""
         base_config = copy.deepcopy(config or self.config())
         # Set the chain endpoint before anything else
-        base_config.subtensor.chain_endpoint = "wss://entrypoint-finney.masa.ai"
+        base_config.subtensor.network = "wss://entrypoint-finney.masa.ai"
         self.config = base_config
         self.device = None
         self.wallet = None
