@@ -297,6 +297,12 @@ class BaseValidatorNeuron(BaseNeuron):
                 wait_for_finalization=False,
             )
 
+            bt.logging.debug(f"Weight setting result type: {type(result)}")
+            bt.logging.debug(
+                f"Weight setting result attributes: {dir(result) if hasattr(result, '__dir__') else 'No attributes'}"
+            )
+            bt.logging.debug(f"Weight setting raw result: {result}")
+
             # Check the response in detail
             if result and hasattr(result, "success"):
                 if result.success:
