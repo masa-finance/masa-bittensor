@@ -193,22 +193,13 @@ class BaseValidatorNeuron(BaseNeuron):
         if blocks_elapsed <= self.config.neuron.epoch_length:
             return False
 
-        # Count how many miners we have scores for
-        non_zero_scores = (self.scores > 0).sum().item()
-        total_miners = len(self.metagraph.hotkeys)
-        score_coverage = non_zero_scores / total_miners if total_miners > 0 else 0
-
-        # We want at least 80% of miners to have scores before setting weights
-        MIN_COVERAGE = 0.8
-        if score_coverage < MIN_COVERAGE:
-            bt.logging.info(
-                f"Not enough miner coverage for weight setting: {non_zero_scores}/{total_miners} miners scored ({score_coverage:.1%})"
-            )
+        # Don't set weights until we have some real volume data
+        if not self.volumes:
+            bt.logging.info("No volume data yet, waiting for first scoring round")
             return False
 
         bt.logging.info(
-            f"Should set weights: {blocks_elapsed} blocks elapsed > {self.config.neuron.epoch_length} epoch length "
-            f"with {non_zero_scores}/{total_miners} miners scored ({score_coverage:.1%})"
+            f"Should set weights: {blocks_elapsed} blocks elapsed > {self.config.neuron.epoch_length} epoch length"
         )
         return True
 
@@ -416,9 +407,13 @@ class BaseValidatorNeuron(BaseNeuron):
             )
             bt.logging.info(f"Scattered rewards: {rewards}")
 
-            # Update scores with rewards produced by this step.
+            # Only update scores for UIDs we've actually scored this round
             alpha: float = self.config.neuron.moving_average_alpha
-            self.scores = alpha * scattered_rewards + (1 - alpha) * self.scores
+            mask = torch.zeros_like(self.scores, dtype=torch.bool)
+            mask[uids_tensor] = True
+            self.scores[mask] = (
+                alpha * scattered_rewards[mask] + (1 - alpha) * self.scores[mask]
+            )
 
             bt.logging.info(f"Updated moving averages: {self.scores}")
 
