@@ -144,9 +144,16 @@ class Forwarder:
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         all_responses = []
+        total_axons = len(self.validator.metagraph.axons)
+        successful_pings = 0
+        failed_pings = 0
+
+        bt.logging.info(
+            f"Starting to ping {total_axons} axons in batches of {sample_size}"
+        )
 
         async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
-            for i in range(0, len(self.validator.metagraph.axons), sample_size):
+            for i in range(0, total_axons, sample_size):
                 batch = self.validator.metagraph.axons[i : i + sample_size]
                 batch_responses = await dendrite(
                     batch,
@@ -158,12 +165,38 @@ class Forwarder:
                 )
                 all_responses.extend(batch_responses)
 
+                # Count successes and failures for this batch
+                batch_success = sum(1 for r in batch_responses if r.version > 0)
+                batch_failed = len(batch_responses) - batch_success
+                successful_pings += batch_success
+                failed_pings += batch_failed
+
+                # Progress update every batch
+                progress = min(100, (i + len(batch)) * 100 // total_axons)
+                bt.logging.info(
+                    f"Ping progress: {progress}% | "
+                    f"Success: {successful_pings} | "
+                    f"Failed: {failed_pings}"
+                )
+
         self.validator.versions = [response.version for response in all_responses]
-        # Log version summary at INFO level
+
+        # Log final summary at INFO level with more details
+        version_counts = {}
+        for v in self.validator.versions:
+            if v > 0:
+                version_counts[v] = version_counts.get(v, 0) + 1
+
         bt.logging.info(
-            f"Miner Version Summary: {self._summarize_versions(self.validator.versions)}"
+            f"📊 Ping Summary:\n"
+            f"    Total Axons: {total_axons}\n"
+            f"    Successful: {successful_pings} ({successful_pings * 100 / total_axons:.1f}%)\n"
+            f"    Failed: {failed_pings} ({failed_pings * 100 / total_axons:.1f}%)\n"
+            f"    Version Distribution: "
+            + ", ".join(f"v{v}: {count}" for v, count in sorted(version_counts.items()))
         )
-        # Log detailed version list at DEBUG level
+
+        # Keep detailed version list at DEBUG level
         bt.logging.debug(f"Detailed Miner Versions: {self.validator.versions}")
 
         self.validator.last_healthcheck_block = current_block
