@@ -62,7 +62,15 @@ class BaseValidatorNeuron(BaseNeuron):
         """Run the validator forever."""
         while True:
             current_block = await self.block
-            bt.logging.debug(f"Run loop at block {current_block}")
+            bt.logging.info(
+                f"Block: {current_block}, "
+                f"Tempo: {self.tempo}, "
+                f"Last sync: {self.last_sync_block}, "
+                f"Last tempo: {self.last_tempo_block}, "
+                f"Last volume: {self.last_volume_block}, "
+                f"Last scoring: {self.last_scoring_block}, "
+                f"Last health: {self.last_healthcheck_block}"
+            )
 
             if current_block - self.last_sync_block > self.tempo:
                 bt.logging.info(f"Syncing at block {current_block}")
