@@ -182,6 +182,28 @@ class BaseValidatorNeuron(BaseNeuron):
         except Exception as e:
             bt.logging.error(f"Error updating config: {e}")
 
+    async def should_set_weights(self) -> bool:
+        # Don't set weights on initialization.
+        if self.step == 0:
+            return False
+
+        # Check if enough epoch blocks have elapsed since the last epoch.
+        if self.config.neuron.disable_set_weights:
+            bt.logging.debug("Weight setting disabled by config")
+            return False
+
+        # Define appropriate logic for when set weights.
+        blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
+        should_set = (
+            blocks_elapsed > self.config.neuron.epoch_length
+            and self.neuron_type != "MinerNeuron"
+        )
+        if should_set:
+            bt.logging.info(
+                f"Should set weights: {blocks_elapsed} blocks elapsed > {self.config.neuron.epoch_length} epoch length"
+            )
+        return should_set
+
     async def set_weights(self):
         """Logs the weights we would set based on miner scores."""
         # Skip if we have no real scores yet
@@ -197,6 +219,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Normalize scores to weights
         weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
+        bt.logging.info(f"Normalized weights sum: {weights.sum()}")
 
         # Convert to chain format
         uint_uids, uint_weights = (
@@ -229,6 +252,9 @@ class BaseValidatorNeuron(BaseNeuron):
             with open(log_file, "a") as f:
                 f.write(json.dumps(log_entry) + "\n")
             bt.logging.info(f"Logged weights for {len(uint_uids)} uids to {log_file}")
+            bt.logging.debug(
+                f"Weight stats - Min: {weights.min():.6f}, Max: {weights.max():.6f}, Mean: {weights.mean():.6f}"
+            )
         except Exception as e:
             bt.logging.error(f"Failed to log weights: {e}")
 
