@@ -51,11 +51,15 @@ class Scorer:
 
         window_size = min(self.validator.volume_window, len(volumes))
         miner_volumes = {}
-        for volume in volumes[-window_size:]:
-            for miner_uid, vol in volume["miners"].items():
-                if miner_uid not in miner_volumes:
-                    miner_volumes[miner_uid] = 0
-                miner_volumes[miner_uid] += vol
+        try:
+            for volume in volumes[-window_size:]:
+                for miner_uid, vol in volume["miners"].items():
+                    if miner_uid not in miner_volumes:
+                        miner_volumes[miner_uid] = 0
+                    miner_volumes[miner_uid] += vol
+        except Exception as e:
+            bt.logging.warning(f"Non-critical error while processing volumes: {e}")
+            # Continue processing with whatever volumes we have
 
         valid_miner_uids = list(miner_volumes.keys())
 
@@ -80,12 +84,15 @@ class Scorer:
             ]
         scores = torch.FloatTensor(rewards).to(self.validator.device)
 
-        self.validator.update_scores(scores, valid_miner_uids)
-        if self.validator.should_set_weights():
-            try:
-                self.validator.set_weights()
-            except Exception as e:
-                bt.logging.error(f"Failed to set weights: {e}")
+        try:
+            self.validator.update_scores(scores, valid_miner_uids)
+            if self.validator.should_set_weights():
+                try:
+                    self.validator.set_weights()
+                except Exception as e:
+                    bt.logging.error(f"Failed to set weights: {e}")
+        except Exception as e:
+            bt.logging.warning(f"Non-critical error while updating scores: {e}")
 
         self.validator.last_scoring_block = self.validator.subtensor.block
         if volumes:
