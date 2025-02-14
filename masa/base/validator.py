@@ -50,8 +50,7 @@ class BaseValidatorNeuron(BaseNeuron):
         add_validator_args(cls, parser)
 
     def __init__(self, config=None):
-        # Initialize instance variables
-        self.config = config
+        # Initialize instance variables before parent init
         self.should_exit = False
         self.is_running = False
         self.sync_thread = None
@@ -67,7 +66,9 @@ class BaseValidatorNeuron(BaseNeuron):
         self.tweets_by_uid = {}
         self.volumes = []
         self._is_initialized = False
-        super().__init__()  # Call parent's __init__ without config
+
+        # Call parent's __init__ with config
+        super().__init__(config=config)
 
     async def initialize(self, config=None):
         """Async initialization method."""

@@ -63,7 +63,8 @@ class BaseNeuron(ABC):
 
     def __init__(self, config=None):
         """Synchronous initialization of basic attributes."""
-        self.config = None
+        base_config = copy.deepcopy(config or self.config())
+        self.config = base_config
         self.device = None
         self.wallet = None
         self.subtensor = None
@@ -77,9 +78,6 @@ class BaseNeuron(ABC):
         if self._is_initialized:
             return
 
-        base_config = copy.deepcopy(config or BaseNeuron.config())
-        self.config = self.config()
-        self.config.merge(base_config)
         self.check_config(self.config)
 
         # Set up logging with the provided configuration and directory.

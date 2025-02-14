@@ -31,6 +31,10 @@ class Validator(BaseValidatorNeuron):
 
     @classmethod
     async def create(cls, config=None):
+        # Get config if not provided
+        if config is None:
+            config = cls.config()
+
         self = cls(config=config)
         await self.initialize(config)
         return self
