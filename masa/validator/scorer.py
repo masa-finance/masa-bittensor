@@ -142,32 +142,31 @@ class Scorer:
 
             try:
                 await self.validator.update_scores(scores, valid_miner_uids)
+                self.validator.last_scoring_block = current_block
+                bt.logging.debug("score_miner_volumes completed successfully")
+
+                if volumes:
+                    try:
+                        serializable_volumes = [
+                            {
+                                "uid": uid,
+                                "volume": float(miner_volumes[str(uid)]),
+                                "score": rewards[valid_miner_uids.index(uid)],
+                            }
+                            for uid in valid_miner_uids
+                        ]
+                        return JSONResponse(content=serializable_volumes)
+                    except Exception as e:
+                        bt.logging.error(
+                            f"Error serializing volumes: {e}, data: {miner_volumes}, rewards: {rewards}, uids: {valid_miner_uids}"
+                        )
+                        return JSONResponse(content=[])
+                return JSONResponse(content=[])
             except Exception as e:
                 bt.logging.error(
                     f"Error updating scores: {e}, scores shape: {scores.shape}, uids length: {len(valid_miner_uids)}"
                 )
                 return JSONResponse(content=[])
-
-            self.validator.last_scoring_block = current_block
-            bt.logging.debug("score_miner_volumes completed successfully")
-
-            if volumes:
-                try:
-                    serializable_volumes = [
-                        {
-                            "uid": uid,
-                            "volume": float(miner_volumes[str(uid)]),
-                            "score": rewards[valid_miner_uids.index(uid)],
-                        }
-                        for uid in valid_miner_uids
-                    ]
-                    return JSONResponse(content=serializable_volumes)
-                except Exception as e:
-                    bt.logging.error(
-                        f"Error serializing volumes: {e}, data: {miner_volumes}, rewards: {rewards}, uids: {valid_miner_uids}"
-                    )
-                    return JSONResponse(content=[])
-            return JSONResponse(content=[])
         except Exception as e:
             bt.logging.error(f"Critical error in score_miner_volumes: {e}")
             return JSONResponse(content=[])
