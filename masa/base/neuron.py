@@ -33,8 +33,8 @@ load_dotenv()
 
 # Define fallback endpoints
 FINNEY_ENDPOINTS = [
-    "wss://entrypoint-finney.masa.ai",  # Testing this endpoint first
-    "wss://finney.opentensor.ai:443",
+    "wss://entrypoint-finney.masa.ai",  # Primary Masa endpoint
+    "wss://finney.opentensor.ai:443",  # Fallback endpoints
     "wss://archive.finney.opentensor.ai:443",
     "wss://entrypoint-finney.opentensor.ai:443",
     "wss://bittensor.tokenized.ai:443",
