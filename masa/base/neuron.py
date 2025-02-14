@@ -31,15 +31,6 @@ from masa import __spec_version__ as spec_version
 # Load the .env file for each neuron that tries to run the code
 load_dotenv()
 
-# Define fallback endpoints
-FINNEY_ENDPOINTS = [
-    "wss://entrypoint-finney.masa.ai",  # Testing this endpoint first
-    "wss://finney.opentensor.ai:443",
-    "wss://archive.finney.opentensor.ai:443",
-    "wss://entrypoint-finney.opentensor.ai:443",
-    "wss://bittensor.tokenized.ai:443",
-]
-
 
 class BaseNeuron(ABC):
     """
@@ -84,20 +75,6 @@ class BaseNeuron(ABC):
         self.step = 0
         self._is_initialized = False
 
-    async def try_initialize_subtensor(self, endpoint: str) -> bool:
-        """Try to initialize subtensor with a specific endpoint."""
-        try:
-            self.config.subtensor.chain_endpoint = endpoint
-            self.subtensor = bt.AsyncSubtensor(config=self.config)
-            await self.subtensor.initialize()
-            # Test the connection by getting current block
-            await self.subtensor.get_current_block()
-            bt.logging.success(f"Successfully connected to endpoint: {endpoint}")
-            return True
-        except Exception as e:
-            bt.logging.error(f"Failed to connect to endpoint {endpoint}: {e}")
-            return False
-
     async def initialize(self, config=None):
         """Asynchronous initialization of network components."""
         if self._is_initialized:
@@ -124,23 +101,10 @@ class BaseNeuron(ABC):
 
         self.wallet = bt.wallet(config=self.config)
 
-        # Try the configured endpoint first
-        original_endpoint = self.config.subtensor.chain_endpoint
-        if await self.try_initialize_subtensor(original_endpoint):
-            bt.logging.success(f"Using configured endpoint: {original_endpoint}")
-        else:
-            # Try fallback endpoints
-            bt.logging.info("Trying fallback endpoints...")
-            connected = False
-            for endpoint in FINNEY_ENDPOINTS:
-                if endpoint != original_endpoint:  # Skip if we already tried this one
-                    if await self.try_initialize_subtensor(endpoint):
-                        connected = True
-                        break
-
-            if not connected:
-                bt.logging.error("Failed to connect to any endpoints")
-                raise Exception("Could not connect to any Bittensor endpoints")
+        # Set the chain endpoint to Masa's endpoint
+        self.config.subtensor.chain_endpoint = "wss://entrypoint-finney.masa.ai"
+        self.subtensor = bt.AsyncSubtensor(config=self.config)
+        await self.subtensor.initialize()
 
         self.metagraph = await self.subtensor.metagraph(self.config.netuid)
 

@@ -17,7 +17,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
-from typing import Any
+from typing import Any, List, Tuple
 from datetime import datetime, UTC, timedelta
 import aiohttp
 import json
@@ -468,3 +468,40 @@ class Forwarder:
 
     def normalize_whitespace(self, s: str) -> str:
         return " ".join(s.split())
+
+    def format_tweet_url(self, tweet_id: str) -> str:
+        """Format a tweet ID as an x.com URL."""
+        return f"https://x.com/i/web/status/{tweet_id}"
+
+    async def process_response(self, uid: int, response: Any) -> None:
+        """Process a single miner's response."""
+        try:
+            # Spot check validation
+            if await self.validate_spot_check(uid, response):
+                bt.logging.info(f"Miner {uid} passed spot check")
+
+                # Process tweet counts
+                if len(response.get("tweets", [])) > 0:
+                    new_tweets = len(
+                        [t for t in response["tweets"] if self.is_new_tweet(t)]
+                    )
+                    total_tweets = len(response["tweets"])
+
+                    if new_tweets == total_tweets:
+                        bt.logging.info(f"Miner {uid} produced {new_tweets} new tweets")
+                    else:
+                        bt.logging.info(
+                            f"Miner {uid} produced {new_tweets} new tweets (total: {total_tweets})"
+                        )
+
+                    # Log sample tweet URL at debug level
+                    if response["tweets"]:
+                        sample_tweet = response["tweets"][0]
+                        bt.logging.debug(
+                            f"Sample tweet from miner {uid}: {self.format_tweet_url(sample_tweet['id'])}"
+                        )
+            else:
+                bt.logging.warning(f"Miner {uid} failed spot check")
+
+        except Exception as e:
+            bt.logging.error(f"Error processing response from miner {uid}: {e}")
