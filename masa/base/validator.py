@@ -348,8 +348,8 @@ class BaseValidatorNeuron(BaseNeuron):
                 recent_volumes = self.volumes[-self.volume_window :]
                 # Replace all instances of miners[uid] and set their values to 0
                 for volume in recent_volumes:
-                    if uid in volume["miners"]:
-                        volume["miners"][uid] = 0
+                    if str(uid) in volume["miners"]:
+                        volume["miners"][str(uid)] = 0
 
                 # Replace unique tweets by uid
                 self.tweets_by_uid[uid] = set()
