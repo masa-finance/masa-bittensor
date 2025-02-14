@@ -106,9 +106,6 @@ class BaseValidatorNeuron(BaseNeuron):
         self.miner_scoring_thread: threading.Thread = None
         self.auto_update_thread: threading.Thread = None
 
-        # Create a lock for thread synchronization
-        self.lock = asyncio.Lock()
-
         self.run_in_background_thread()
 
     def serve_axon(self):
@@ -141,30 +138,29 @@ class BaseValidatorNeuron(BaseNeuron):
             try:
                 blocks_since_last_check = self.block - self.last_sync_block
                 if blocks_since_last_check >= 6:
-                    async with self.lock:
+                    try:
+                        # Sync the metagraph
+                        self.metagraph.sync(subtensor=self.subtensor)
+                        # Update hotkeys and moving averages if needed
+                        self.resync_metagraph()
+                        # Update step and last sync block
+                        self.step += 1
+                        self.last_sync_block = self.block
+                        # Save state after successful sync
+                        self.save_state()
+                    except Exception as e:
+                        bt.logging.error(f"Error during sync operation: {e}")
+                        bt.logging.debug("Full sync error details:", exc_info=True)
+                        # Try to recover metagraph state
                         try:
-                            # Sync the metagraph
+                            self.metagraph = bt.metagraph(
+                                netuid=self.config.netuid,
+                                network=self.config.subtensor.network,
+                                sync=False,
+                            )
                             self.metagraph.sync(subtensor=self.subtensor)
-                            # Update hotkeys and moving averages if needed
-                            self.resync_metagraph()
-                            # Update step and last sync block
-                            self.step += 1
-                            self.last_sync_block = self.block
-                            # Save state after successful sync
-                            self.save_state()
-                        except Exception as e:
-                            bt.logging.error(f"Error during sync operation: {e}")
-                            bt.logging.debug("Full sync error details:", exc_info=True)
-                            # Try to recover metagraph state
-                            try:
-                                self.metagraph = bt.metagraph(
-                                    netuid=self.config.netuid,
-                                    network=self.config.subtensor.network,
-                                    sync=False,
-                                )
-                                self.metagraph.sync(subtensor=self.subtensor)
-                            except Exception as e2:
-                                bt.logging.error(f"Failed to recover metagraph: {e2}")
+                        except Exception as e2:
+                            bt.logging.error(f"Failed to recover metagraph: {e2}")
             except Exception as e:
                 bt.logging.error(f"Error in run_sync loop: {e}")
                 bt.logging.debug("Full error details:", exc_info=True)
@@ -215,7 +211,14 @@ class BaseValidatorNeuron(BaseNeuron):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(self.run_sync())
+            # Create a new lock in this event loop
+            lock = asyncio.Lock()
+
+            async def run_with_lock():
+                async with lock:
+                    await self.run_sync()
+
+            loop.run_until_complete(run_with_lock())
         finally:
             loop.close()
 
@@ -223,7 +226,14 @@ class BaseValidatorNeuron(BaseNeuron):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(self.run_miner_ping())
+            # Create a new lock in this event loop
+            lock = asyncio.Lock()
+
+            async def run_with_lock():
+                async with lock:
+                    await self.run_miner_ping()
+
+            loop.run_until_complete(run_with_lock())
         finally:
             loop.close()
 
@@ -231,7 +241,14 @@ class BaseValidatorNeuron(BaseNeuron):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(self.run_miner_volume())
+            # Create a new lock in this event loop
+            lock = asyncio.Lock()
+
+            async def run_with_lock():
+                async with lock:
+                    await self.run_miner_volume()
+
+            loop.run_until_complete(run_with_lock())
         finally:
             loop.close()
 
@@ -239,7 +256,14 @@ class BaseValidatorNeuron(BaseNeuron):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(self.run_miner_scoring())
+            # Create a new lock in this event loop
+            lock = asyncio.Lock()
+
+            async def run_with_lock():
+                async with lock:
+                    await self.run_miner_scoring()
+
+            loop.run_until_complete(run_with_lock())
         finally:
             loop.close()
 
@@ -247,7 +271,14 @@ class BaseValidatorNeuron(BaseNeuron):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(self.run_auto_update())
+            # Create a new lock in this event loop
+            lock = asyncio.Lock()
+
+            async def run_with_lock():
+                async with lock:
+                    await self.run_auto_update()
+
+            loop.run_until_complete(run_with_lock())
         finally:
             loop.close()
 
