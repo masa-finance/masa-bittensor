@@ -71,6 +71,8 @@ class BaseValidatorNeuron(BaseNeuron):
 
             # Weight setting (every 100 blocks, ~20 minutes)
             if current_block - self.last_weights_block > 100:
+                # Load state before checking weights
+                self.load_state()
                 if (
                     await self.should_set_weights()
                 ):  # Only set weights if conditions are met
@@ -132,9 +134,12 @@ class BaseValidatorNeuron(BaseNeuron):
         self.scores = torch.zeros(
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
+
+        # Load state before syncing
+        self.load_state()
+
         # Init sync with the network. Updates the metagraph.
         await self.sync()
-        self.load_state()
 
         # Serve axon to enable external connections.
         if not self.config.neuron.axon_off:
