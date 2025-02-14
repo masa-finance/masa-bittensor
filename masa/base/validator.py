@@ -228,30 +228,35 @@ class BaseValidatorNeuron(BaseNeuron):
         scored_uids = (self.scores > 0).sum().item()
         if scored_uids < 150:
             bt.logging.info(
-                f"Not enough scored UIDs ({scored_uids} < 200) to set weights"
+                f"Not enough scored UIDs ({scored_uids} < 150) to set weights"
             )
             return False
 
         # Check if enough blocks have elapsed since last update
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
         if blocks_elapsed <= 100:  # Set weights every 100 blocks
+            bt.logging.debug(
+                f"Only {blocks_elapsed} blocks elapsed since last weight setting, waiting for 100"
+            )
             return False
 
         bt.logging.info(
-            f"Should set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
+            f"✅ Will set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
         )
         return True
 
     async def set_weights(self):
-        """Logs the weights we would set based on miner scores."""
+        """Sets weights based on miner scores."""
+        bt.logging.info("Starting weight setting process...")
+
         # Skip if we have no real scores yet
         if torch.all(self.scores == 0):
-            bt.logging.info("No real scores yet, skipping weight setting")
+            bt.logging.warning("❌ No real scores yet, skipping weight setting")
             return
 
         if torch.isnan(self.scores).any():
             bt.logging.warning(
-                "Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
+                "❌ Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
             return
 
@@ -289,31 +294,38 @@ class BaseValidatorNeuron(BaseNeuron):
         try:
             with open(log_file, "a") as f:
                 f.write(json.dumps(log_entry) + "\n")
-            bt.logging.info(f"Logged weights for {len(uint_uids)} uids to {log_file}")
+            bt.logging.success(
+                f"✅ Successfully logged weights for {len(uint_uids)} uids to {log_file}"
+            )
             bt.logging.debug(
                 f"Weight stats - Min: {weights.min():.6f}, Max: {weights.max():.6f}, Mean: {weights.mean():.6f}"
             )
         except Exception as e:
-            bt.logging.error(f"Failed to log weights: {e}")
+            bt.logging.error(f"❌ Failed to log weights: {e}")
 
         # NOTE: Weight setting on chain disabled for now while we analyze scoring
-        # try:
-        #     # Set weights on chain (standard bittensor approach)
-        #     result = await self.subtensor.set_weights(
-        #         netuid = self.config.netuid,
-        #         wallet = self.wallet,
-        #         uids = uint_uids,
-        #         weights = uint_weights,
-        #         version_key = self.spec_version,
-        #         wait_for_inclusion = False,
-        #         wait_for_finalization = False,
-        #     )
-        #     if result:
-        #         bt.logging.success(f"Successfully set weights on chain for {len(uint_uids)} uids")
-        #     else:
-        #         bt.logging.error("Failed to set weights on chain")
-        # except Exception as e:
-        #     bt.logging.error(f"Failed to set weights on chain with error: {e}")
+        bt.logging.warning(
+            "⚠️ Weight setting on chain is currently disabled while analyzing scoring"
+        )
+        try:
+            # Set weights on chain (standard bittensor approach)
+            result = await self.subtensor.set_weights(
+                netuid=self.config.netuid,
+                wallet=self.wallet,
+                uids=uint_uids,
+                weights=uint_weights,
+                version_key=self.spec_version,
+                wait_for_inclusion=False,
+                wait_for_finalization=False,
+            )
+            if result:
+                bt.logging.success(
+                    f"✅ Successfully set weights on chain for {len(uint_uids)} uids"
+                )
+            else:
+                bt.logging.error("❌ Failed to set weights on chain")
+        except Exception as e:
+            bt.logging.error(f"❌ Failed to set weights on chain with error: {e}")
 
     async def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
