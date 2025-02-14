@@ -67,19 +67,15 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Starting validator background tasks.")
             self.should_exit = False
 
-            # Define all background tasks
-            background_tasks = [
-                self.run_sync(),
-                self.run_miner_ping(),
-                self.run_miner_volume(),
-                self.run_miner_scoring(),
-                self.run_auto_update(),
+            # Create tasks directly - NO INTERMEDIATE LISTS
+            self._background_tasks = [
+                asyncio.create_task(self.run_sync()),
+                asyncio.create_task(self.run_miner_ping()),
+                asyncio.create_task(self.run_miner_volume()),
+                asyncio.create_task(self.run_miner_scoring()),
+                asyncio.create_task(self.run_auto_update()),
             ]
 
-            # Create all tasks at once
-            self._background_tasks = [
-                asyncio.create_task(task) for task in background_tasks
-            ]
             self.is_running = True
             bt.logging.debug("Started background tasks")
 
