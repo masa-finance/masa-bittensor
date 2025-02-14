@@ -71,9 +71,12 @@ class BaseValidatorNeuron(BaseNeuron):
 
             # Weight setting (every 100 blocks, ~20 minutes)
             if current_block - self.last_weights_block > 100:
-                bt.logging.info(f"Setting weights at block {current_block}")
-                await self.set_weights()
-                self.last_weights_block = current_block
+                if (
+                    await self.should_set_weights()
+                ):  # Only set weights if conditions are met
+                    bt.logging.info(f"Setting weights at block {current_block}")
+                    await self.set_weights()
+                    self.last_weights_block = current_block
 
             # Continuous operations - run every loop
             try:
@@ -235,9 +238,12 @@ class BaseValidatorNeuron(BaseNeuron):
         # Check if enough blocks have elapsed since last update
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
         if blocks_elapsed <= 100:  # Set weights every 100 blocks
-            bt.logging.debug(
-                f"Only {blocks_elapsed} blocks elapsed since last weight setting, waiting for 100"
-            )
+            if (
+                self.last_weights_block > 0
+            ):  # Only show waiting message if not first run
+                bt.logging.debug(
+                    f"Only {blocks_elapsed} blocks elapsed since last weight setting, waiting for 100"
+                )
             return False
 
         bt.logging.info(
