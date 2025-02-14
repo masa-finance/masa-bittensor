@@ -38,9 +38,11 @@ class Scorer:
                 -self.validator.volume_window :
             ]
 
-        if miner_uid not in self.validator.volumes[-1]["miners"]:
-            self.validator.volumes[-1]["miners"][miner_uid] = 0
-        self.validator.volumes[-1]["miners"][miner_uid] += volume
+        # Convert miner_uid to string for consistent storage
+        miner_uid_str = str(miner_uid)
+        if miner_uid_str not in self.validator.volumes[-1]["miners"]:
+            self.validator.volumes[-1]["miners"][miner_uid_str] = 0
+        self.validator.volumes[-1]["miners"][miner_uid_str] += volume
 
     async def score_miner_volumes(self):
         volumes = self.validator.volumes
@@ -53,15 +55,16 @@ class Scorer:
         miner_volumes = {}
         try:
             for volume in volumes[-window_size:]:
-                for miner_uid, vol in volume["miners"].items():
-                    if miner_uid not in miner_volumes:
-                        miner_volumes[miner_uid] = 0
-                    miner_volumes[miner_uid] += vol
+                for miner_uid_str, vol in volume["miners"].items():
+                    if miner_uid_str not in miner_volumes:
+                        miner_volumes[miner_uid_str] = 0
+                    miner_volumes[miner_uid_str] += vol
         except Exception as e:
             bt.logging.warning(f"Non-critical error while processing volumes: {e}")
             # Continue processing with whatever volumes we have
 
-        valid_miner_uids = list(miner_volumes.keys())
+        # Convert string UIDs to integers for scoring
+        valid_miner_uids = [int(uid) for uid in miner_volumes.keys()]
 
         if not miner_volumes:
             self.validator.save_state()
@@ -78,7 +81,7 @@ class Scorer:
         else:
             rewards = [
                 self.kurtosis_based_score(
-                    miner_volumes[uid], mean_volume, std_dev_volume
+                    miner_volumes[str(uid)], mean_volume, std_dev_volume
                 )
                 for uid in valid_miner_uids
             ]
@@ -98,11 +101,11 @@ class Scorer:
         if volumes:
             serializable_volumes = [
                 {
-                    "uid": int(miner_uid),
-                    "volume": float(miner_volumes[miner_uid]),
-                    "score": rewards[valid_miner_uids.index(miner_uid)],
+                    "uid": uid,
+                    "volume": float(miner_volumes[str(uid)]),
+                    "score": rewards[valid_miner_uids.index(uid)],
                 }
-                for miner_uid in valid_miner_uids
+                for uid in valid_miner_uids
             ]
             return JSONResponse(content=serializable_volumes)
         return JSONResponse(content=[])
