@@ -117,6 +117,7 @@ class BaseNeuron(ABC):
             self.config.netuid
         )
         weights_version = subnet_params.weights_version
+
         if self.spec_version < weights_version:
             bt.logging.warning(
                 f"🟡 Code is outdated based on subnet requirements!  Required: {weights_version}, Current: {self.spec_version}.  Please update your code to the latest release!"

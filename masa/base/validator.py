@@ -82,7 +82,10 @@ class BaseValidatorNeuron(BaseNeuron):
         self.scorer = Scorer(self)
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
-        self.tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+        subnet_params = await self.subtensor.get_subnet_hyperparameters(
+            self.config.netuid
+        )
+        self.tempo = subnet_params.tempo
         self.block_time = 12
 
         self.last_sync_block = 0
