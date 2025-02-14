@@ -49,8 +49,6 @@ class BaseValidatorNeuron(BaseNeuron):
         add_validator_args(cls, parser)
 
     def __init__(self, config=None):
-        self.should_exit = False
-        self.is_running = False
         self.versions = []
         self.keywords = []
         self.uncalled_uids = set()
@@ -61,11 +59,8 @@ class BaseValidatorNeuron(BaseNeuron):
         super().__init__(config=config)
 
     async def run(self):
-        """Single loop to handle all validator operations."""
-        self.is_running = True
-        self.should_exit = False
-
-        while not self.should_exit:
+        """Run the validator forever."""
+        while True:
             try:
                 current_block = await self.block
 
@@ -100,14 +95,12 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.error(f"Error in main loop: {e}")
                 await asyncio.sleep(1)
 
-        self.is_running = False
-
     async def __aenter__(self):
         await self.run()
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
-        self.should_exit = True
+        pass
 
     def __enter__(self):
         raise RuntimeError("Use 'async with' instead of 'with'")
