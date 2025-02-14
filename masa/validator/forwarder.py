@@ -37,6 +37,34 @@ from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
 import re
 
+from masa.utils.weights import process_weights_for_netuid
+
+
+class QuietTweetValidator:
+    """Wrapper around TweetValidator that controls logging output."""
+
+    def __init__(self):
+        self._validator = TweetValidator()
+
+    def validate_tweet(self, tweet_id, name, username, text, timestamp, hashtags):
+        """Validate tweet but only log the URL and success/failure."""
+        try:
+            is_valid = self._validator.validate_tweet(
+                tweet_id, name, username, text, timestamp, hashtags
+            )
+            if is_valid:
+                bt.logging.debug(
+                    f"Tweet validation successful: https://x.com/i/status/{tweet_id}"
+                )
+            else:
+                bt.logging.debug(
+                    f"Tweet validation failed: https://x.com/i/status/{tweet_id}"
+                )
+            return is_valid
+        except Exception as e:
+            bt.logging.error(f"Tweet validation error for {tweet_id}: {str(e)}")
+            return False
+
 
 class Forwarder:
     def __init__(self, validator):
@@ -270,9 +298,7 @@ class Forwarder:
         )
 
         all_valid_tweets = []
-        validator = (
-            TweetValidator()
-        )  # Create a single validator instance to reuse guest token
+        validator = QuietTweetValidator()
 
         for response, uid in zip(responses, miner_uids):
             try:
