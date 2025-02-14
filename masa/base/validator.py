@@ -73,7 +73,6 @@ class BaseValidatorNeuron(BaseNeuron):
         self.volumes = []  # Initialize volumes as empty list
 
         # load config file for subnet specific settings as default
-        # note, every tempo we fetch the latest config file from github main branch
         with open("config.json", "r") as config_file:
             config = json.load(config_file)
             network = (
@@ -83,10 +82,11 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.info(f"Loaded subnet config: {subnet_config}")
             self.subnet_config = subnet_config
 
-        self.dendrite = bt.dendrite(wallet=self.wallet)
+        self.dendrite = None  # Initialize dendrite as None
         self.scores = torch.zeros(
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
+
         # Init sync with the network. Updates the metagraph.
         self.sync()
         self.load_state()
@@ -106,8 +106,9 @@ class BaseValidatorNeuron(BaseNeuron):
         self.miner_scoring_thread: threading.Thread = None
         self.auto_update_thread: threading.Thread = None
 
-        # Create event loop and lock for each thread
+        # Create a single event loop for all async operations
         self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.lock = asyncio.Lock()
 
         self.run_in_background_thread()
@@ -213,24 +214,19 @@ class BaseValidatorNeuron(BaseNeuron):
             await asyncio.sleep(self.tempo * self.block_time)
 
     def run_sync_in_loop(self):
-        asyncio.set_event_loop(self.loop)
-        asyncio.run(self.run_sync())
+        self.loop.run_until_complete(self.run_sync())
 
     def run_miner_ping_in_loop(self):
-        asyncio.set_event_loop(self.loop)
-        asyncio.run(self.run_miner_ping())
+        self.loop.run_until_complete(self.run_miner_ping())
 
     def run_miner_volume_in_loop(self):
-        asyncio.set_event_loop(self.loop)
-        asyncio.run(self.run_miner_volume())
+        self.loop.run_until_complete(self.run_miner_volume())
 
     def run_miner_scoring_in_loop(self):
-        asyncio.set_event_loop(self.loop)
-        asyncio.run(self.run_miner_scoring())
+        self.loop.run_until_complete(self.run_miner_scoring())
 
     def run_auto_update_in_loop(self):
-        asyncio.set_event_loop(self.loop)
-        asyncio.run(self.run_auto_update())
+        self.loop.run_until_complete(self.run_auto_update())
 
     def run_in_background_thread(self):
         """
@@ -298,11 +294,19 @@ class BaseValidatorNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
+
+            # Close the event loop
+            if self.loop and self.loop.is_running():
+                self.loop.stop()
+                self.loop.close()
+
+            # Join threads
             self.sync_thread.join(5)
             self.miner_ping_thread.join(5)
             self.miner_volume_thread.join(5)
             self.miner_scoring_thread.join(5)
             self.auto_update_thread.join(5)
+
             self.is_running = False
             bt.logging.debug("Stopped")
 
