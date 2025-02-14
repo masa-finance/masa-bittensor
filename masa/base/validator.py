@@ -210,48 +210,40 @@ class BaseValidatorNeuron(BaseNeuron):
         import datetime
 
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = {
-            "timestamp": timestamp,
-            "uids": uint_uids.tolist(),
-            "weights": uint_weights.tolist(),
-        }
 
-        # Log to file
-        import json
-        import os
-
-        log_file = os.path.join(self.config.neuron.full_path, "weight_logs.json")
-
+        # Log to scores.log
+        log_file = os.path.join(self.config.neuron.full_path, "scores.log")
         try:
-            # Read existing logs if file exists
-            if os.path.exists(log_file):
-                with open(log_file, "r") as f:
-                    logs = json.load(f)
-            else:
-                logs = []
-
-            # Append new log
-            logs.append(log_entry)
-
-            # Write back to file
-            with open(log_file, "w") as f:
-                json.dump(logs, f, indent=2)
+            with open(log_file, "a") as f:
+                f.write(f"\n=== Weight Update at {timestamp} ===\n")
+                for uid, weight in zip(uint_uids, uint_weights):
+                    f.write(f"UID: {uid}, Weight: {weight:.6f}\n")
+                f.write(f"Total UIDs: {len(uint_uids)}\n")
+                f.write(f"Sum of weights: {sum(uint_weights):.6f}\n")
+                f.write("=" * 50 + "\n")
 
             bt.logging.info(f"Logged weights for {len(uint_uids)} uids to {log_file}")
-
         except Exception as e:
             bt.logging.error(f"Failed to log weights: {e}")
 
         # NOTE: Weight setting on chain disabled for now while we analyze scoring
-        # result = await self.subtensor.set_weights(
-        #     wallet=self.wallet,
-        #     netuid=self.config.netuid,
-        #     uids=uint_uids,
-        #     weights=uint_weights,
-        #     wait_for_finalization=False,
-        #     wait_for_inclusion=False,
-        #     version_key=self.spec_version,
-        # )
+        # try:
+        #     # Set weights on chain (standard bittensor approach)
+        #     result = await self.subtensor.set_weights(
+        #         netuid = self.config.netuid,
+        #         wallet = self.wallet,
+        #         uids = uint_uids,
+        #         weights = uint_weights,
+        #         version_key = self.spec_version,
+        #         wait_for_inclusion = False,
+        #         wait_for_finalization = False,
+        #     )
+        #     if result:
+        #         bt.logging.success(f"Successfully set weights on chain for {len(uint_uids)} uids")
+        #     else:
+        #         bt.logging.error("Failed to set weights on chain")
+        # except Exception as e:
+        #     bt.logging.error(f"Failed to set weights on chain with error: {e}")
 
     async def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""

@@ -90,11 +90,6 @@ class Scorer:
 
             try:
                 self.validator.update_scores(scores, valid_miner_uids)
-                if self.validator.should_set_weights():
-                    try:
-                        self.validator.set_weights()
-                    except Exception as e:
-                        bt.logging.error(f"Failed to set weights: {e}")
             except Exception as e:
                 bt.logging.warning(f"Non-critical error while updating scores: {e}")
 
