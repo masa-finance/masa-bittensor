@@ -61,8 +61,6 @@ async def get_random_miner_uids(
         If `k` is larger than the number of available `uids`, set `k` to the number of
         available `uids`.
     """
-    dendrite = bt.dendrite(wallet=self.wallet)
-
     try:
         # Generic sanitation
         avail_uids = get_available_uids(self.metagraph)
@@ -83,8 +81,6 @@ async def get_random_miner_uids(
     except Exception as e:
         bt.logging.error(f"Failed to get random miner uids: {e}")
         return None
-    finally:
-        dendrite.close_session()
 
 
 async def get_uncalled_miner_uids(
@@ -102,8 +98,6 @@ async def get_uncalled_miner_uids(
         If `k` is larger than the number of available `uids`, set `k` to the number of
         available `uids`.
     """
-    dendrite = bt.dendrite(wallet=self.wallet)
-
     try:
         if len(self.uncalled_uids) == 0:
             # Generic sanitation
@@ -128,5 +122,3 @@ async def get_uncalled_miner_uids(
     except Exception as e:
         bt.logging.error(f"Failed to get uncalled miner uids: {e}")
         return None
-    finally:
-        dendrite.close_session()
