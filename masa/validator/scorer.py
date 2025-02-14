@@ -20,80 +20,169 @@ import bittensor as bt
 import torch
 import scipy.stats as stats
 from fastapi.responses import JSONResponse
+import traceback
+import sys
 
 
 class Scorer:
     def __init__(self, validator):
         self.validator = validator
 
-    def add_volume(self, miner_uid, volume):
-        current_block = self.validator.subtensor.block  # Get the current block number
-        tempo = (
-            current_block // self.validator.tempo
-        )  # Group blocks by tempo, or roughly 72 minutes
+    def add_volume(self, miner_uid, volume, current_block):
+        try:
+            tempo = (
+                current_block // self.validator.tempo
+            )  # Group blocks by tempo, or roughly 72 minutes
 
-        if not self.validator.volumes or self.validator.volumes[-1]["tempo"] != tempo:
-            self.validator.volumes.append({"tempo": tempo, "miners": {}})
-            self.validator.volumes = self.validator.volumes[
-                -self.validator.volume_window :
-            ]
+            if (
+                not self.validator.volumes
+                or self.validator.volumes[-1]["tempo"] != tempo
+            ):
+                self.validator.volumes.append({"tempo": tempo, "miners": {}})
+                self.validator.volumes = self.validator.volumes[
+                    -self.validator.volume_window :
+                ]
 
-        if miner_uid not in self.validator.volumes[-1]["miners"]:
-            self.validator.volumes[-1]["miners"][miner_uid] = 0
-        self.validator.volumes[-1]["miners"][miner_uid] += volume
+            # Always store miner_uid as string in volumes
+            miner_uid_str = str(miner_uid)
+            if miner_uid_str not in self.validator.volumes[-1]["miners"]:
+                self.validator.volumes[-1]["miners"][miner_uid_str] = 0
+            self.validator.volumes[-1]["miners"][miner_uid_str] += volume
+        except Exception:
+            bt.logging.error(f"Exception in add_volume:\n{traceback.format_exc()}")
+            raise
 
-    async def score_miner_volumes(self):
-        volumes = self.validator.volumes
+    async def score_miner_volumes(self, current_block: int):
+        try:
+            bt.logging.debug("Starting score_miner_volumes...")
+            volumes = self.validator.volumes
 
-        miner_volumes = {}
-        for volume in volumes[-self.validator.volume_window :]:
-            for miner_uid, vol in volume["miners"].items():
-                if miner_uid not in miner_volumes:
-                    miner_volumes[miner_uid] = 0
-                miner_volumes[miner_uid] += vol
+            if not volumes:
+                bt.logging.info("No volumes to score")
+                return JSONResponse(content=[])
 
-        valid_miner_uids = list(miner_volumes.keys())
+            window_size = min(self.validator.volume_window, len(volumes))
+            miner_volumes = {}
 
-        if not miner_volumes:
-            self.validator.save_state()
-            return JSONResponse(content=[])
-
-        mean_volume = sum(miner_volumes.values()) / len(miner_volumes)
-        std_dev_volume = (
-            sum((x - mean_volume) ** 2 for x in miner_volumes.values())
-            / len(miner_volumes)
-        ) ** 0.5
-
-        if len(miner_volumes) == 1:
-            rewards = [1]
-        else:
-            rewards = [
-                self.kurtosis_based_score(
-                    miner_volumes[uid], mean_volume, std_dev_volume
-                )
-                for uid in valid_miner_uids
-            ]
-        scores = torch.FloatTensor(rewards).to(self.validator.device)
-
-        self.validator.update_scores(scores, valid_miner_uids)
-        if self.validator.should_set_weights():
+            # Process volumes and aggregate miner data
             try:
-                self.validator.set_weights()
-            except Exception as e:
-                bt.logging.error(f"Failed to set weights: {e}")
+                for volume in volumes[-window_size:]:
+                    bt.logging.debug(f"Processing volume from tempo {volume['tempo']}")
+                    for miner_uid_str, vol in volume["miners"].items():
+                        # Ensure consistent string keys
+                        miner_uid_str = str(miner_uid_str)
+                        if miner_uid_str not in miner_volumes:
+                            miner_volumes[miner_uid_str] = 0
+                        miner_volumes[miner_uid_str] += vol
+            except Exception:
+                bt.logging.error(
+                    f"Exception processing volumes:\n{traceback.format_exc()}"
+                )
+                return JSONResponse(content=[])
 
-        self.validator.last_scoring_block = self.validator.subtensor.block
-        if volumes:
-            serializable_volumes = [
-                {
-                    "uid": int(miner_uid),
-                    "volume": float(miner_volumes[miner_uid]),
-                    "score": rewards[valid_miner_uids.index(miner_uid)],
-                }
-                for miner_uid in valid_miner_uids
-            ]
-            return JSONResponse(content=serializable_volumes)
-        return JSONResponse(content=[])
+            bt.logging.debug(f"Aggregated miner volumes: {miner_volumes}")
+
+            try:
+                # Convert string UIDs to integers for scoring
+                valid_miner_uids = []
+                for uid_str in miner_volumes.keys():
+                    try:
+                        uid_int = int(uid_str)
+                        if uid_int < len(
+                            self.validator.scores
+                        ):  # Ensure UID is in valid range
+                            valid_miner_uids.append(uid_int)
+                        else:
+                            bt.logging.warning(
+                                f"UID {uid_int} is out of range, skipping"
+                            )
+                    except ValueError:
+                        bt.logging.warning(f"Invalid UID format: {uid_str}, skipping")
+
+                bt.logging.debug(f"Valid miner UIDs for scoring: {valid_miner_uids}")
+            except Exception:
+                bt.logging.error(
+                    f"Exception validating UIDs:\n{traceback.format_exc()}"
+                )
+                return JSONResponse(content=[])
+
+            if not valid_miner_uids:
+                bt.logging.warning("No valid miner UIDs to score")
+                return JSONResponse(content=[])
+
+            try:
+                mean_volume = sum(miner_volumes.values()) / len(miner_volumes)
+                std_dev_volume = (
+                    sum((x - mean_volume) ** 2 for x in miner_volumes.values())
+                    / len(miner_volumes)
+                ) ** 0.5
+                bt.logging.debug(
+                    f"Volume statistics - Mean: {mean_volume:.2f}, StdDev: {std_dev_volume:.2f}"
+                )
+            except Exception:
+                bt.logging.error(
+                    f"Exception calculating statistics:\n{traceback.format_exc()}"
+                )
+                return JSONResponse(content=[])
+
+            try:
+                if len(valid_miner_uids) == 1:
+                    rewards = [1]
+                else:
+                    rewards = []
+                    for uid in valid_miner_uids:
+                        volume = miner_volumes[
+                            str(uid)
+                        ]  # Convert UID to string for lookup
+                        reward = self.kurtosis_based_score(
+                            volume, mean_volume, std_dev_volume
+                        )
+                        rewards.append(reward)
+                        bt.logging.debug(
+                            f"UID {uid}: volume={volume}, reward={reward:.4f}"
+                        )
+
+                scores = torch.FloatTensor(rewards).to(self.validator.device)
+            except Exception:
+                bt.logging.error(
+                    f"Exception calculating rewards:\n{traceback.format_exc()}"
+                )
+                return JSONResponse(content=[])
+
+            try:
+                bt.logging.debug("Calling update_scores...")
+                await self.validator.update_scores(scores, valid_miner_uids)
+                bt.logging.debug("update_scores completed")
+                self.validator.last_scoring_block = current_block
+                bt.logging.debug("score_miner_volumes completed successfully")
+
+                if volumes:
+                    try:
+                        serializable_volumes = [
+                            {
+                                "uid": uid,
+                                "volume": float(miner_volumes[str(uid)]),
+                                "score": rewards[valid_miner_uids.index(uid)],
+                            }
+                            for uid in valid_miner_uids
+                        ]
+                        return JSONResponse(content=serializable_volumes)
+                    except Exception:
+                        bt.logging.error(
+                            f"Exception serializing volumes:\n{traceback.format_exc()}"
+                        )
+                        return JSONResponse(content=[])
+                return JSONResponse(content=[])
+            except Exception:
+                bt.logging.error(
+                    f"Exception in update_scores:\n{traceback.format_exc()}"
+                )
+                return JSONResponse(content=[])
+        except Exception:
+            bt.logging.error(
+                f"Critical exception in score_miner_volumes:\n{traceback.format_exc()}"
+            )
+            return JSONResponse(content=[])
 
     def calculate_similarity_percentage(self, response_embedding, source_embedding):
         cosine_similarity = torch.nn.functional.cosine_similarity(

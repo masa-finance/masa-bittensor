@@ -2,14 +2,14 @@
 # Copyright © 2024 Opentensor Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
-# documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+# documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
 # and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 #
 # The above copyright notice and this permission notice shall be included in all copies or substantial portions of
 # the Software.
 #
-# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
 # THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
@@ -86,7 +86,7 @@ def normalize_max_weight(
 
 
 # The community uses / bittensor does not
-def process_weights_for_netuid(
+async def process_weights_for_netuid(
     uids: Union[NDArray[np.int64], "torch.Tensor"],
     weights: Union[NDArray[np.float32], "torch.Tensor"],
     netuid: int,
@@ -112,15 +112,9 @@ def process_weights_for_netuid(
         Union[tuple["torch.Tensor", "torch.FloatTensor"], tuple[NDArray[np.int64], NDArray[np.float32]]]: tuple containing the array of user IDs and the corresponding normalized weights. The data type of the return matches the type of the input weights (NumPy or PyTorch).
     """
 
-    # logging.debug("process_weights_for_netuid()")
-    # logging.debug("weights", *weights)
-    # logging.debug("netuid", netuid)
-    # logging.debug("subtensor", subtensor)
-    # logging.debug("metagraph", metagraph)
-
     # Get latest metagraph from chain if metagraph is None.
     if metagraph is None:
-        metagraph = subtensor.metagraph(netuid)
+        metagraph = await subtensor.metagraph(netuid)
 
     # Cast weights to floats.
     if use_torch():
@@ -133,8 +127,8 @@ def process_weights_for_netuid(
     # Network configuration parameters from an subtensor.
     # These parameters determine the range of acceptable weights for each neuron.
     quantile = exclude_quantile / U16_MAX
-    min_allowed_weights = subtensor.min_allowed_weights(netuid=netuid)
-    max_weight_limit = subtensor.max_weight_limit(netuid=netuid)
+    min_allowed_weights = await subtensor.min_allowed_weights(netuid=netuid)
+    max_weight_limit = await subtensor.max_weight_limit(netuid=netuid)
     logging.debug("quantile", quantile)
     logging.debug("min_allowed_weights", min_allowed_weights)
     logging.debug("max_weight_limit", max_weight_limit)
@@ -155,7 +149,6 @@ def process_weights_for_netuid(
             if use_torch()
             else np.ones((metagraph.n), dtype=np.int64) / metagraph.n
         )
-        # logging.debug("final_weights", final_weights)
         final_weights_count = (
             torch.tensor(list(range(len(final_weights))))
             if use_torch()
@@ -171,14 +164,12 @@ def process_weights_for_netuid(
         logging.warning(
             "No non-zero weights less then min allowed weight, returning all ones."
         )
-        # ( const ): Should this be np.zeros( ( metagraph.n ) ) to reset everyone to build up weight?
         weights = (
             torch.ones((metagraph.n)).to(metagraph.n) * 1e-5
             if use_torch()
             else np.ones((metagraph.n), dtype=np.int64) * 1e-5
         )  # creating minimum even non-zero weights
         weights[non_zero_weight_idx] += non_zero_weights
-        # logging.debug("final_weights", *weights)
         normalized_weights = normalize_max_weight(x=weights, limit=max_weight_limit)
         nw_arange = (
             torch.tensor(list(range(len(normalized_weights))))
@@ -186,8 +177,6 @@ def process_weights_for_netuid(
             else np.arange(len(normalized_weights))
         )
         return nw_arange, normalized_weights
-
-    # logging.debug("non_zero_weights", *non_zero_weights)
 
     # Compute the exclude quantile and find the weights in the lowest quantile
     max_exclude = max(0, len(non_zero_weights) - min_allowed_weights) / len(
@@ -206,13 +195,10 @@ def process_weights_for_netuid(
     # Exclude all weights below the allowed quantile.
     non_zero_weight_uids = non_zero_weight_uids[lowest_quantile <= non_zero_weights]
     non_zero_weights = non_zero_weights[lowest_quantile <= non_zero_weights]
-    # logging.debug("non_zero_weight_uids", *non_zero_weight_uids)
-    # logging.debug("non_zero_weights", *non_zero_weights)
 
     # Normalize weights and return.
     normalized_weights = normalize_max_weight(
         x=non_zero_weights, limit=max_weight_limit
     )
-    # logging.debug("final_weights", normalized_weights)
 
     return non_zero_weight_uids, normalized_weights
