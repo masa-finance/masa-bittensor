@@ -18,9 +18,7 @@
 
 import bittensor as bt
 import asyncio
-import signal
 
-# Bittensor Validator Template:
 from masa.base.validator import BaseValidatorNeuron
 from masa.api.server import API
 
@@ -29,11 +27,9 @@ class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super().__init__(config=config)
         self._is_initialized = False
-        self._stop_event = None
 
     @classmethod
     async def create(cls, config=None):
-        # Get config if not provided
         if config is None:
             config = cls.config()
 
@@ -45,46 +41,24 @@ class Validator(BaseValidatorNeuron):
         if self._is_initialized:
             return
 
-        # Initialize parent class
         await super().initialize(config)
 
-        # Initialize API if enabled
         if (
             hasattr(self.config, "enable_validator_api")
             and self.config.enable_validator_api
         ):
             self.API = API(self)
             bt.logging.info("Validator API initialized.")
-        bt.logging.info("Validator initialized with config: {}".format(config))
 
+        bt.logging.info("Validator initialized with config: {}".format(config))
         self._is_initialized = True
 
 
 async def main():
-    # Create stop event for graceful shutdown
-    stop_event = asyncio.Event()
-
-    # Handle signals for graceful shutdown
-    def signal_handler():
-        bt.logging.info("Received stop signal, initiating graceful shutdown...")
-        stop_event.set()
-
-    # Register signal handlers
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        asyncio.get_event_loop().add_signal_handler(sig, signal_handler)
-
-    try:
-        # Create and initialize the validator using the factory method
-        validator = await Validator.create()
-
-        async with validator:  # Use async context manager
-            # Wait for stop signal
-            await stop_event.wait()
-
-    except Exception as e:
-        bt.logging.error(f"Error in main loop: {e}")
-    finally:
-        bt.logging.info("Shutting down validator...")
+    validator = await Validator.create()
+    async with validator:
+        while True:
+            await asyncio.sleep(1)
 
 
 if __name__ == "__main__":
