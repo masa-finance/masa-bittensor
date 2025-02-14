@@ -131,11 +131,13 @@ class BaseValidatorNeuron(BaseNeuron):
             self.metagraph.n, dtype=torch.float32, device=self.device
         )
 
-        # Load state and check if we have enough scored UIDs to set weights
+        # Load state and increment step
         self.load_state()
-        scored_uids = (self.scores > 0).sum().item()
-        if scored_uids >= 150:
-            bt.logging.info(f"Setting initial weights with {scored_uids} scored UIDs")
+        self.step += 1  # Increment step after loading state to allow weight setting
+
+        # Set weights if we have enough scored UIDs
+        if await self.should_set_weights():
+            bt.logging.info("Setting initial weights after loading state")
             await self.set_weights()
             self.last_weights_block = await self.block
 
@@ -218,11 +220,13 @@ class BaseValidatorNeuron(BaseNeuron):
                 self.last_weights_block > 0
             ):  # Only show waiting message if not first run
                 bt.logging.debug(
-                    f"Only {blocks_elapsed} blocks elapsed since last weight setting"
+                    f"Only {blocks_elapsed} blocks elapsed since last weight setting, waiting for 100"
                 )
             return False
 
-        bt.logging.info(f"Will set weights with {scored_uids} scored UIDs")
+        bt.logging.info(
+            f"✅ Will set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
+        )
         return True
 
     async def set_weights(self):
