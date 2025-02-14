@@ -20,6 +20,7 @@ import torch
 import asyncio
 import threading
 import argparse
+import traceback
 
 import bittensor as bt
 
@@ -120,6 +121,7 @@ class BaseMinerNeuron(BaseNeuron):
 
         # miners have to serve their axon
         await self.serve_axon()
+        self.axon.start()
         self._is_initialized = True
 
     def handle_recent_tweets_wrapper(
@@ -146,12 +148,28 @@ class BaseMinerNeuron(BaseNeuron):
             bt.logging.error(f"Failed to serve Axon with exception: {e}")
 
     async def run(self):
-        """Run the validator forever."""
-        while True:
-            current_block = await self.block
-            bt.logging.info(f"Syncing at block {current_block}")
-            await self.sync()
-            self.last_sync_block = current_block
+        """Run the miner forever."""
+        current_block = await self.block
+        bt.logging.info(f"Miner starting at block: {current_block}")
+
+        try:
+            while not self.should_exit:
+                last_update = await self.metagraph.last_update[self.uid]
+                while current_block - last_update < self.config.neuron.epoch_length:
+                    await asyncio.sleep(1)
+                    if self.should_exit:
+                        break
+
+                await self.sync()
+                self.step += 1
+
+        except KeyboardInterrupt:
+            self.axon.stop()
+            bt.logging.success("Miner killed by keyboard interrupt.")
+            exit()
+
+        except Exception:
+            bt.logging.error(traceback.format_exc())
 
     # note, runs every tempo
     async def run_auto_update(self):

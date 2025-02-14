@@ -197,6 +197,7 @@ class Forwarder:
                 )
 
         self.validator.versions = [response.version for response in all_responses]
+        bt.logging.info(f"Miner versions: {self.validator.versions}")
 
         # Log final summary at INFO level with more details
         version_counts = {}
