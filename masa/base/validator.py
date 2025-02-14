@@ -106,9 +106,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.miner_scoring_thread: threading.Thread = None
         self.auto_update_thread: threading.Thread = None
 
-        # Create a single event loop for all async operations
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
+        # Create a lock for thread synchronization
         self.lock = asyncio.Lock()
 
         self.run_in_background_thread()
@@ -214,19 +212,44 @@ class BaseValidatorNeuron(BaseNeuron):
             await asyncio.sleep(self.tempo * self.block_time)
 
     def run_sync_in_loop(self):
-        self.loop.run_until_complete(self.run_sync())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self.run_sync())
+        finally:
+            loop.close()
 
     def run_miner_ping_in_loop(self):
-        self.loop.run_until_complete(self.run_miner_ping())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self.run_miner_ping())
+        finally:
+            loop.close()
 
     def run_miner_volume_in_loop(self):
-        self.loop.run_until_complete(self.run_miner_volume())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self.run_miner_volume())
+        finally:
+            loop.close()
 
     def run_miner_scoring_in_loop(self):
-        self.loop.run_until_complete(self.run_miner_scoring())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self.run_miner_scoring())
+        finally:
+            loop.close()
 
     def run_auto_update_in_loop(self):
-        self.loop.run_until_complete(self.run_auto_update())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self.run_auto_update())
+        finally:
+            loop.close()
 
     def run_in_background_thread(self):
         """
