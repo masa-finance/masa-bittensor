@@ -71,13 +71,29 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Starting validator background tasks.")
             self.should_exit = False
 
-            # Create all background tasks
+            # Define task functions that create new coroutines each time
+            async def sync_task():
+                await self.run_sync()
+
+            async def miner_ping_task():
+                await self.run_miner_ping()
+
+            async def miner_volume_task():
+                await self.run_miner_volume()
+
+            async def miner_scoring_task():
+                await self.run_miner_scoring()
+
+            async def auto_update_task():
+                await self.run_auto_update()
+
+            # Create all background tasks with new coroutines
             self._background_tasks = [
-                asyncio.create_task(self.run_sync()),
-                asyncio.create_task(self.run_miner_ping()),
-                asyncio.create_task(self.run_miner_volume()),
-                asyncio.create_task(self.run_miner_scoring()),
-                asyncio.create_task(self.run_auto_update()),
+                asyncio.create_task(sync_task()),
+                asyncio.create_task(miner_ping_task()),
+                asyncio.create_task(miner_volume_task()),
+                asyncio.create_task(miner_scoring_task()),
+                asyncio.create_task(auto_update_task()),
             ]
 
             self.is_running = True
