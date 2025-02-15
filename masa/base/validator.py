@@ -118,7 +118,7 @@ class BaseValidatorNeuron(BaseNeuron):
         if not self.config.neuron.axon_off:
             await self.serve_axon()
         else:
-            bt.logging.warning("axon off, not serving ip to chain.")
+            bt.logging.info("🥷 Axon off, not serving ip to chain.")
 
         self._is_initialized = True
 
