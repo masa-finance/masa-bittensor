@@ -10,8 +10,8 @@ ifeq ($(NETWORK),test)
     SUBTENSOR_CHAIN = network test
     NETUID = 165
 else ifeq ($(NETWORK),main)
-    SUBTENSOR_CHAIN = network main
-#    SUBTENSOR_CHAIN = network wss://entrypoint-finney.masa.ai
+#    SUBTENSOR_CHAIN = network main
+    SUBTENSOR_CHAIN = network wss://entrypoint-finney.masa.ai
     NETUID = 42
 else
     $(error Invalid network specified. Use NETWORK=test or NETWORK=main)
