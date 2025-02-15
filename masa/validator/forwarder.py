@@ -378,6 +378,11 @@ class Forwarder:
                             validation_error = "Unable to connect to Twitter API"
                             is_valid = False
                             break
+                        elif "ServerDisconnectedError" in str(e):
+                            bt.logging.debug(f"Server disconnection details: {str(e)}")
+                            validation_error = "Server disconnected"
+                            is_valid = False
+                            break
                         else:
                             # Only log non-rate-limit errors at error level
                             bt.logging.debug(f"Validation error details: {str(e)}")
@@ -447,13 +452,13 @@ class Forwarder:
                         bt.logging.info(
                             f"❓ Tweet validation skipped (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
+                    elif validation_error == "Server disconnected":
+                        bt.logging.info(
+                            f"📡 Tweet validation incomplete (server disconnected): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        )
                     elif validation_error and "Unable to connect" in validation_error:
                         bt.logging.info(
                             f"🌐 Tweet validation incomplete (connection error): {self.format_tweet_url(random_tweet.get('ID'))}"
-                        )
-                    elif validation_error:
-                        bt.logging.info(
-                            f"❌ Tweet validation failed ({validation_error}): {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
                     else:
                         bt.logging.info(
