@@ -58,6 +58,11 @@ class SilentOutput:
 class Forwarder:
     def __init__(self, validator):
         self.validator = validator
+        # Add state for pending validations
+        if not hasattr(self.validator, "pending_validations"):
+            self.validator.pending_validations = (
+                {}
+            )  # uid -> {tweet_id -> {tweet_data, attempts, last_attempt}}
 
     async def forward_request(
         self,
@@ -260,6 +265,9 @@ class Forwarder:
             self.validator.keywords = ["crypto", "btc", "eth"]
 
     async def get_miners_volumes(self, current_block: int):
+        # First try to revalidate any pending tweets
+        await self.retry_pending_validations(current_block)
+
         if len(self.validator.versions) == 0:
             bt.logging.info("🔍 Pinging axons to get miner versions...")
             return await self.ping_axons(current_block)
@@ -448,7 +456,7 @@ class Forwarder:
                         f"Tweet timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
-                # note, they passed the spot check!
+                # Modified validation result handling
                 if is_valid and query_in_tweet and is_since_date_requested:
                     bt.logging.info(
                         f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
@@ -457,30 +465,43 @@ class Forwarder:
                         if tweet:
                             valid_tweets.append(tweet)
                 else:
-                    if validation_error == "Rate limited":
-                        bt.logging.info(
-                            f"❓ Tweet validation skipped (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
-                        )
-                        # Consider the tweet valid if we hit rate limits
+                    # Add to pending validation if it's a connection issue or rate limit
+                    if validation_error in [
+                        "Rate limited",
+                        "Server disconnected",
+                        "Unable to connect to Twitter API",
+                    ]:
+                        uid_int = int(uid)
+                        if uid_int not in self.validator.pending_validations:
+                            self.validator.pending_validations[uid_int] = {}
+
+                        # Add all tweets to pending validation
                         for tweet in unique_tweets_response:
-                            if tweet:
-                                valid_tweets.append(tweet)
-                    elif validation_error == "Server disconnected":
-                        bt.logging.info(
-                            f"📡 Tweet validation incomplete (server disconnected): {self.format_tweet_url(random_tweet.get('ID'))}"
-                        )
-                        # Consider the tweet valid if we can't connect
-                        for tweet in unique_tweets_response:
-                            if tweet:
-                                valid_tweets.append(tweet)
-                    elif validation_error and "Unable to connect" in validation_error:
-                        bt.logging.info(
-                            f"🌐 Tweet validation incomplete (connection error): {self.format_tweet_url(random_tweet.get('ID'))}"
-                        )
-                        # Consider the tweet valid if we can't connect
-                        for tweet in unique_tweets_response:
-                            if tweet:
-                                valid_tweets.append(tweet)
+                            tweet_id = tweet["Tweet"]["ID"]
+                            if (
+                                tweet_id
+                                not in self.validator.pending_validations[uid_int]
+                            ):
+                                self.validator.pending_validations[uid_int][
+                                    tweet_id
+                                ] = {
+                                    "tweet": tweet["Tweet"],
+                                    "attempts": 0,
+                                    "last_attempt": current_block,
+                                }
+
+                        if validation_error == "Rate limited":
+                            bt.logging.info(
+                                f"❓ Tweet validation pending (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
+                            )
+                        elif validation_error == "Server disconnected":
+                            bt.logging.info(
+                                f"📡 Tweet validation pending (server disconnected): {self.format_tweet_url(random_tweet.get('ID'))}"
+                            )
+                        else:
+                            bt.logging.info(
+                                f"🌐 Tweet validation pending (connection error): {self.format_tweet_url(random_tweet.get('ID'))}"
+                            )
                     else:
                         bt.logging.info(
                             f"❌ Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
@@ -604,3 +625,99 @@ class Forwarder:
         except Exception as e:
             bt.logging.error(f"Error in spot check for miner {uid}: {e}")
             return False
+
+    async def retry_pending_validations(self, current_block: int):
+        """Retry validation for pending tweets."""
+        if not self.validator.pending_validations:
+            return
+
+        bt.logging.info(
+            f"🔄 Retrying validation for {len(self.validator.pending_validations)} miners' tweets"
+        )
+
+        validator = None
+        with SilentOutput():
+            validator = TweetValidator()
+
+        for uid, pending_tweets in list(self.validator.pending_validations.items()):
+            valid_tweets = []
+            for tweet_id, tweet_data in list(pending_tweets.items()):
+                # Skip if we tried too recently
+                blocks_since_last_attempt = current_block - tweet_data.get(
+                    "last_attempt", 0
+                )
+                if blocks_since_last_attempt < 100:  # Wait ~20 minutes between retries
+                    continue
+
+                # Skip if we've tried too many times
+                if tweet_data.get("attempts", 0) >= 3:
+                    bt.logging.debug(
+                        f"❌ Giving up on tweet after 3 attempts: {self.format_tweet_url(tweet_id)}"
+                    )
+                    pending_tweets.pop(tweet_id)
+                    continue
+
+                try:
+                    tweet = tweet_data["tweet"]
+                    validation_response = validator.validate_tweet(
+                        tweet.get("ID"),
+                        tweet.get("Name"),
+                        tweet.get("Username"),
+                        tweet.get("Text"),
+                        tweet.get("Timestamp"),
+                        tweet.get("Hashtags"),
+                    )
+
+                    if validation_response:
+                        bt.logging.info(
+                            f"✅ Retry validation passed: {self.format_tweet_url(tweet_id)}"
+                        )
+                        valid_tweets.append(tweet)
+                        pending_tweets.pop(tweet_id)
+                    else:
+                        # Update attempt count and timestamp
+                        tweet_data["attempts"] = tweet_data.get("attempts", 0) + 1
+                        tweet_data["last_attempt"] = current_block
+                        bt.logging.debug(
+                            f"❌ Retry validation failed: {self.format_tweet_url(tweet_id)}"
+                        )
+
+                except Exception as e:
+                    error_str = str(e)
+                    tweet_data["attempts"] = tweet_data.get("attempts", 0) + 1
+                    tweet_data["last_attempt"] = current_block
+
+                    if "429" in error_str or "Too Many Requests" in error_str:
+                        bt.logging.debug(
+                            f"❓ Still rate limited for: {self.format_tweet_url(tweet_id)}"
+                        )
+                    elif "ServerDisconnectedError" in error_str:
+                        bt.logging.debug(
+                            f"📡 Server still disconnected for: {self.format_tweet_url(tweet_id)}"
+                        )
+                    else:
+                        bt.logging.debug(
+                            f"⚠️ Retry error for {self.format_tweet_url(tweet_id)}: {error_str}"
+                        )
+
+                await asyncio.sleep(2)  # Rate limiting protection
+
+            # If we validated any tweets, update the miner's score
+            if valid_tweets:
+                if not self.validator.tweets_by_uid.get(uid):
+                    self.validator.tweets_by_uid[uid] = {
+                        tweet["ID"] for tweet in valid_tweets
+                    }
+                else:
+                    self.validator.tweets_by_uid[uid].update(
+                        {tweet["ID"] for tweet in valid_tweets}
+                    )
+
+                self.validator.scorer.add_volume(uid, len(valid_tweets), current_block)
+                bt.logging.info(
+                    f"📈 Added {len(valid_tweets)} validated tweets for miner {uid}"
+                )
+
+            # Clean up if no more pending tweets for this miner
+            if not pending_tweets:
+                self.validator.pending_validations.pop(uid)
