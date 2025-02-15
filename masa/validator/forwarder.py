@@ -354,7 +354,7 @@ class Forwarder:
                 # Add exponential backoff for rate limits
                 retry_count = 0
                 max_retries = 3
-                is_valid = None
+                validation_response = None
                 rate_limited = False
                 validation_error = None
                 while retry_count < max_retries:
@@ -367,14 +367,23 @@ class Forwarder:
                             random_tweet.get("Timestamp"),
                             random_tweet.get("Hashtags"),
                         )
+                        bt.logging.debug(
+                            f"Raw validation response for {self.format_tweet_url(random_tweet.get('ID'))}: {validation_response}"
+                        )
                         if validation_response is None:
                             validation_error = "Validation response was None"
-                            is_valid = False
+                            is_valid = None
+                            bt.logging.debug(
+                                f"Validation returned None - treating as connection issue"
+                            )
                             break
                         is_valid = validation_response
                         break
                     except Exception as e:
                         error_str = str(e)
+                        bt.logging.debug(
+                            f"Validation exception for {self.format_tweet_url(random_tweet.get('ID'))}: {error_str}"
+                        )
                         if "429" in error_str or "Too Many Requests" in error_str:
                             if retry_count < max_retries - 1:
                                 wait_time = (2**retry_count) * 5  # 5, 10, 20 seconds
@@ -388,6 +397,7 @@ class Forwarder:
                             else:
                                 validation_error = "Rate limited"
                                 rate_limited = True
+                                bt.logging.debug(f"Max retries reached for rate limit")
                                 break
                         elif (
                             "'NoneType' object has no attribute 'status_code'"
@@ -406,6 +416,15 @@ class Forwarder:
                             bt.logging.debug(f"Validation error details: {error_str}")
                             validation_error = "Failed to validate tweet"
                             break
+
+                # Log validation attempt summary
+                bt.logging.debug(
+                    f"Validation summary for {self.format_tweet_url(random_tweet.get('ID'))}:"
+                    f"\n  - Response: {validation_response}"
+                    f"\n  - Error: {validation_error}"
+                    f"\n  - Is Valid: {is_valid}"
+                    f"\n  - Retries: {retry_count}"
+                )
 
                 # Always wait at least 2 seconds between validations
                 await asyncio.sleep(2)
@@ -457,55 +476,65 @@ class Forwarder:
                     )
 
                 # Modified validation result handling
-                if is_valid and query_in_tweet and is_since_date_requested:
-                    bt.logging.info(
-                        f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
-                    for tweet in unique_tweets_response:
-                        if tweet:
-                            valid_tweets.append(tweet)
+                if validation_response is None:
+                    # If validation response is None, treat as a connection issue
+                    validation_error = "Unable to connect to Twitter API"
+                    is_valid = None
+                elif not validation_response:
+                    # Only mark as invalid if validation explicitly returns False
+                    validation_error = "Failed to validate tweet"
+                    is_valid = False
                 else:
-                    # Add to pending validation if it's a connection issue or rate limit
-                    if validation_error in [
-                        "Rate limited",
-                        "Server disconnected",
-                        "Unable to connect to Twitter API",
-                    ]:
-                        uid_int = int(uid)
-                        if uid_int not in self.validator.pending_validations:
-                            self.validator.pending_validations[uid_int] = {}
+                    is_valid = True
 
-                        # Add all tweets to pending validation
-                        for tweet in unique_tweets_response:
-                            tweet_id = tweet["Tweet"]["ID"]
-                            if (
-                                tweet_id
-                                not in self.validator.pending_validations[uid_int]
-                            ):
-                                self.validator.pending_validations[uid_int][
-                                    tweet_id
-                                ] = {
-                                    "tweet": tweet["Tweet"],
-                                    "attempts": 0,
-                                    "last_attempt": current_block,
-                                }
+                # Handle validation outcomes
+                if is_valid is None:
+                    # Connection issues or rate limits - add to pending validation
+                    uid_int = int(uid)
+                    if uid_int not in self.validator.pending_validations:
+                        self.validator.pending_validations[uid_int] = {}
 
-                        if validation_error == "Rate limited":
-                            bt.logging.info(
-                                f"❓ Tweet validation pending (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
-                            )
-                        elif validation_error == "Server disconnected":
-                            bt.logging.info(
-                                f"📡 Tweet validation pending (server disconnected): {self.format_tweet_url(random_tweet.get('ID'))}"
-                            )
-                        else:
-                            bt.logging.info(
-                                f"🌐 Tweet validation pending (connection error): {self.format_tweet_url(random_tweet.get('ID'))}"
-                            )
+                    # Add all tweets to pending validation
+                    for tweet in unique_tweets_response:
+                        tweet_id = tweet["Tweet"]["ID"]
+                        if tweet_id not in self.validator.pending_validations[uid_int]:
+                            self.validator.pending_validations[uid_int][tweet_id] = {
+                                "tweet": tweet["Tweet"],
+                                "attempts": 0,
+                                "last_attempt": current_block,
+                            }
+
+                    if validation_error == "Rate limited":
+                        bt.logging.info(
+                            f"❓ Tweet validation pending (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        )
+                    elif validation_error == "Server disconnected":
+                        bt.logging.info(
+                            f"📡 Tweet validation pending (server disconnected): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        )
                     else:
                         bt.logging.info(
-                            f"❌ Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                            f"🌐 Tweet validation pending (connection error): {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
+                elif is_valid:
+                    # Tweet passed validation - check content requirements
+                    if query_in_tweet and is_since_date_requested:
+                        bt.logging.info(
+                            f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        )
+                        for tweet in unique_tweets_response:
+                            if tweet:
+                                valid_tweets.append(tweet)
+                    else:
+                        # Tweet exists but doesn't meet content requirements
+                        bt.logging.info(
+                            f"⚠️ Tweet exists but doesn't meet requirements: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        )
+                else:
+                    # Tweet failed validation
+                    bt.logging.info(
+                        f"❌ Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
 
                 all_valid_tweets.extend(valid_tweets)
 
