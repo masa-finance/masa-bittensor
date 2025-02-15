@@ -319,6 +319,8 @@ class Forwarder:
                 # Add exponential backoff for rate limits
                 retry_count = 0
                 max_retries = 3
+                is_valid = None
+                rate_limited = False
                 while retry_count < max_retries:
                     try:
                         is_valid = validator.validate_tweet(
@@ -338,6 +340,7 @@ class Forwarder:
                             )
                             await asyncio.sleep(wait_time)
                             retry_count += 1
+                            rate_limited = True
                         else:
                             bt.logging.error(
                                 f"Failed to validate tweet after {retry_count} retries: {e}"
@@ -397,15 +400,20 @@ class Forwarder:
                 # note, they passed the spot check!
                 if is_valid and query_in_tweet and is_since_date_requested:
                     bt.logging.info(
-                        f"Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                     for tweet in unique_tweets_response:
                         if tweet:
                             valid_tweets.append(tweet)
                 else:
-                    bt.logging.info(
-                        f"Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
+                    if rate_limited:
+                        bt.logging.info(
+                            f"❓ Tweet validation unknown (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        )
+                    else:
+                        bt.logging.info(
+                            f"❌ Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        )
 
                 all_valid_tweets.extend(valid_tweets)
 
