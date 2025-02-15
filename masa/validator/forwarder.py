@@ -373,7 +373,9 @@ class Forwarder:
                         elif "'NoneType' object has no attribute 'status_code'" in str(
                             e
                         ):
-                            validation_error = "Failed to connect to Twitter API"
+                            # Only show error details at debug level
+                            bt.logging.debug(f"Connection error details: {str(e)}")
+                            validation_error = "Unable to connect to Twitter API"
                             is_valid = False
                             break
                         else:
@@ -444,6 +446,10 @@ class Forwarder:
                     if rate_limited:
                         bt.logging.info(
                             f"❓ Tweet validation skipped (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        )
+                    elif validation_error and "Unable to connect" in validation_error:
+                        bt.logging.info(
+                            f"🌐 Tweet validation incomplete (connection error): {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
                     elif validation_error:
                         bt.logging.info(
