@@ -66,6 +66,12 @@ class BaseNeuron(ABC):
         """Synchronous initialization of basic attributes."""
         base_config = copy.deepcopy(config or self.config())
 
+        # Set the correct chain endpoint based on network before any connections
+        if base_config.subtensor.network == "test":
+            base_config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
+        else:
+            base_config.subtensor.chain_endpoint = "wss://entrypoint-finney.masa.ai:443"
+
         self.config = base_config
         self.device = None
         self.wallet = None
@@ -98,12 +104,6 @@ class BaseNeuron(ABC):
         # Build Bittensor objects
         # These are core Bittensor classes to interact with the network.
         bt.logging.info("Setting up bittensor objects.")
-
-        # Set the correct chain endpoint based on network before initializing
-        if self.config.subtensor.network == "test":
-            self.config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
-        else:
-            self.config.subtensor.chain_endpoint = "wss://entrypoint-finney.masa.ai:443"
 
         self.wallet = bt.wallet(config=self.config)
         self.subtensor = bt.AsyncSubtensor(config=self.config)
