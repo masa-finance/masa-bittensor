@@ -96,15 +96,14 @@ class BaseNeuron(ABC):
         # If a gpu is required, set the device to cuda:N (e.g. cuda:0)
         self.device = self.config.neuron.device
 
-        # Log the configuration for reference.
-        bt.logging.info(self.config)
-
         # Build Bittensor objects
         # These are core Bittensor classes to interact with the network.
         bt.logging.info("Setting up bittensor objects.")
         bt.logging.info(f"Using chain endpoint: {self.config.subtensor.chain_endpoint}")
 
         self.wallet = bt.wallet(config=self.config)
+        # Explicitly set network=None to prevent default network settings
+        self.config.subtensor.network = None
         self.subtensor = bt.AsyncSubtensor(config=self.config)
         await self.subtensor.initialize()
 
