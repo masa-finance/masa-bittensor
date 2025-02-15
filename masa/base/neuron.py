@@ -64,23 +64,7 @@ class BaseNeuron(ABC):
 
     def __init__(self, config=None):
         """Synchronous initialization of basic attributes."""
-        base_config = copy.deepcopy(config or self.config())
-
-        # Only set default chain endpoint if not explicitly provided
-        if (
-            not hasattr(base_config.subtensor, "chain_endpoint")
-            or not base_config.subtensor.chain_endpoint
-        ):
-            if base_config.subtensor.network == "test":
-                base_config.subtensor.chain_endpoint = (
-                    "wss://test.finney.opentensor.ai:443"
-                )
-            else:
-                base_config.subtensor.chain_endpoint = (
-                    "wss://entrypoint-finney.masa.ai:443"
-                )
-
-        self.config = base_config
+        self.config = copy.deepcopy(config or self.config())
         self.device = None
         self.wallet = None
         self.subtensor = None
@@ -112,11 +96,24 @@ class BaseNeuron(ABC):
         # Build Bittensor objects
         # These are core Bittensor classes to interact with the network.
         bt.logging.info("Setting up bittensor objects.")
+
+        # Set default chain endpoint if not explicitly provided
+        if (
+            not hasattr(self.config.subtensor, "chain_endpoint")
+            or not self.config.subtensor.chain_endpoint
+        ):
+            if self.config.subtensor.network == "test":
+                self.config.subtensor.chain_endpoint = (
+                    "wss://test.finney.opentensor.ai:443"
+                )
+            else:
+                self.config.subtensor.chain_endpoint = (
+                    "wss://entrypoint-finney.masa.ai:443"
+                )
+
         bt.logging.info(f"Using chain endpoint: {self.config.subtensor.chain_endpoint}")
 
         self.wallet = bt.wallet(config=self.config)
-
-        # Create subtensor with our configured endpoint
         self.subtensor = bt.AsyncSubtensor(config=self.config)
         await self.subtensor.initialize()
 
