@@ -64,7 +64,7 @@ class BaseNeuron(ABC):
 
     def __init__(self, config=None):
         """Synchronous initialization of basic attributes."""
-        self.config = copy.deepcopy(config or self.config())
+        self.config = config  # Just store the config, don't initialize
         self.device = None
         self.wallet = None
         self.subtensor = None
@@ -77,6 +77,12 @@ class BaseNeuron(ABC):
         """Asynchronous initialization of network components."""
         if self._is_initialized:
             return
+
+        # Initialize config if not already set
+        if not self.config:
+            self.config = self.config()
+        elif config:  # If new config passed to initialize
+            self.config = config
 
         self.check_config(self.config)
 
