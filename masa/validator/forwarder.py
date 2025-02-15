@@ -331,11 +331,11 @@ class Forwarder:
 
                 if invalid_tweet_count > 0:
                     bt.logging.info(
-                        f"❌ Miner {uid} penalized - submitted {invalid_tweet_count} tweets with invalid IDs out of {len(all_responses)}"
+                        f"❌ Miner {self.format_miner_link(int(uid))} penalized - submitted {invalid_tweet_count} tweets with invalid IDs out of {len(all_responses)}"
                     )
                     if invalid_ids:
                         bt.logging.debug(
-                            f"Invalid IDs from miner {uid}: {invalid_ids[:5]}..."
+                            f"Invalid IDs from miner {self.format_miner_link(int(uid))}: {invalid_ids[:5]}..."
                         )
                     # Give zero score for submitting any invalid tweets
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
@@ -347,7 +347,9 @@ class Forwarder:
                 )
 
                 if not unique_tweets_response:  # If no valid tweets after filtering
-                    bt.logging.debug(f"Miner {uid} had no valid tweets after filtering")
+                    bt.logging.debug(
+                        f"Miner {self.format_miner_link(int(uid))} had no valid tweets after filtering"
+                    )
                     continue
 
                 # Continue with validation of a random tweet from the valid set
@@ -552,7 +554,7 @@ class Forwarder:
                         uid_int, len(valid_tweets), current_block
                     )
                     bt.logging.info(
-                        f"Miner {uid_int} produced {len(valid_tweets)} new tweets"
+                        f"Miner {self.format_miner_link(uid_int)} produced {len(valid_tweets)} new tweets"
                     )
                 else:
                     existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
@@ -563,10 +565,12 @@ class Forwarder:
                         uid_int, len(updates), current_block
                     )
                     bt.logging.debug(
-                        f"Miner {uid_int} produced {len(updates)} new tweets"
+                        f"Miner {self.format_miner_link(uid_int)} produced {len(updates)} new tweets"
                     )
             except Exception as e:
-                bt.logging.error(f"Error processing miner {uid}: {e}")
+                bt.logging.error(
+                    f"Error processing miner {self.format_miner_link(int(uid))}: {e}"
+                )
                 continue
 
         # Send tweets to API
@@ -593,6 +597,11 @@ class Forwarder:
     def normalize_whitespace(self, s: str) -> str:
         return " ".join(s.split())
 
+    def format_miner_link(self, uid: int) -> str:
+        """Format a miner's hotkey into a taostats URL."""
+        hotkey = self.validator.metagraph.hotkeys[uid]
+        return f"@https://taostats.io/hotkey/{hotkey}"
+
     def format_tweet_url(self, tweet_id: str) -> str:
         """Format a tweet ID into an x.com URL."""
         return f"https://x.com/i/status/{tweet_id}"
@@ -602,7 +611,9 @@ class Forwarder:
         try:
             # Spot check validation
             if await self.validate_spot_check(uid, response):
-                bt.logging.debug(f"Miner {uid} passed spot check")
+                bt.logging.debug(
+                    f"Miner {self.format_miner_link(uid)} passed spot check"
+                )
 
                 # Process tweet counts
                 if len(response.get("tweets", [])) > 0:
@@ -613,24 +624,28 @@ class Forwarder:
 
                     if new_tweets == total_tweets:
                         bt.logging.debug(
-                            f"Miner {uid} produced {new_tweets} new tweets"
+                            f"Miner {self.format_miner_link(uid)} produced {new_tweets} new tweets"
                         )
                     else:
                         bt.logging.debug(
-                            f"Miner {uid} produced {new_tweets} new tweets (total: {total_tweets})"
+                            f"Miner {self.format_miner_link(uid)} produced {new_tweets} new tweets (total: {total_tweets})"
                         )
 
                     # Log sample tweet URL at debug level
                     if response["tweets"]:
                         sample_tweet = response["tweets"][0]
                         bt.logging.debug(
-                            f"Sample tweet from miner {uid}: {self.format_tweet_url(sample_tweet['id'])}"
+                            f"Sample tweet from miner {self.format_miner_link(uid)}: {self.format_tweet_url(sample_tweet['id'])}"
                         )
             else:
-                bt.logging.debug(f"Miner {uid} failed spot check")
+                bt.logging.debug(
+                    f"Miner {self.format_miner_link(uid)} failed spot check"
+                )
 
         except Exception as e:
-            bt.logging.error(f"Error processing response from miner {uid}: {e}")
+            bt.logging.error(
+                f"Error processing response from miner {self.format_miner_link(int(uid))}: {e}"
+            )
 
     async def validate_spot_check(self, uid: int, response: Any) -> bool:
         """Validate a random tweet from the response."""
@@ -655,7 +670,9 @@ class Forwarder:
             return is_valid
 
         except Exception as e:
-            bt.logging.error(f"Error in spot check for miner {uid}: {e}")
+            bt.logging.error(
+                f"Error in spot check for miner {self.format_miner_link(int(uid))}: {e}"
+            )
             return False
 
     async def retry_pending_validations(self, current_block: int):
@@ -747,7 +764,7 @@ class Forwarder:
 
                 self.validator.scorer.add_volume(uid, len(valid_tweets), current_block)
                 bt.logging.info(
-                    f"📈 Added {len(valid_tweets)} validated tweets for miner {uid}"
+                    f"📈 Added {len(valid_tweets)} validated tweets for miner {self.format_miner_link(int(uid))}"
                 )
 
             # Clean up if no more pending tweets for this miner
