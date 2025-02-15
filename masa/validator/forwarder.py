@@ -147,13 +147,20 @@ class Forwarder:
                 version_counts[v] = version_counts.get(v, 0) + 1
 
         # Format the summary string
-        summary_parts = [
-            f"v{v} - {count} miners" for v, count in sorted(version_counts.items())
-        ]
-        if unreachable > 0:
-            summary_parts.append(f"unreachable - {unreachable} miners")
+        total_miners = len(versions)
+        reachable = total_miners - unreachable
+        summary_parts = [f"Miners: {reachable}/{total_miners} online"]
 
-        return ", ".join(summary_parts)
+        if version_counts:
+            version_str = ", ".join(
+                f"v{v}:{count}" for v, count in sorted(version_counts.items())
+            )
+            summary_parts.append(f"Versions: {version_str}")
+
+        if unreachable > 0:
+            summary_parts.append(f"Unreachable: {unreachable}")
+
+        return " | ".join(summary_parts)
 
     async def ping_axons(self, current_block: int):
         request = PingAxonSynapse(
@@ -199,22 +206,10 @@ class Forwarder:
                 )
 
         self.validator.versions = [response.version for response in all_responses]
-        bt.logging.info(f"Miner versions: {self.validator.versions}")
 
-        # Log final summary at INFO level with more details
-        version_counts = {}
-        for v in self.validator.versions:
-            if v > 0:
-                version_counts[v] = version_counts.get(v, 0) + 1
-
-        bt.logging.info(
-            f"📊 Ping Summary:\n"
-            f"    Total Axons: {total_axons}\n"
-            f"    Successful: {successful_pings} ({successful_pings * 100 / total_axons:.1f}%)\n"
-            f"    Failed: {failed_pings} ({failed_pings * 100 / total_axons:.1f}%)\n"
-            f"    Version Distribution: "
-            + ", ".join(f"v{v}: {count}" for v, count in sorted(version_counts.items()))
-        )
+        # Use the summarize function for a cleaner log
+        version_summary = self._summarize_versions(self.validator.versions)
+        bt.logging.info(f"🔍 Miner Status: {version_summary}")
 
         # Keep detailed version list at DEBUG level
         bt.logging.debug(f"Detailed Miner Versions: {self.validator.versions}")
