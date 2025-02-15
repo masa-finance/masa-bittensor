@@ -330,9 +330,13 @@ class Forwarder:
                         invalid_tweet_count += 1
 
                 if invalid_tweet_count > 0:
-                    bt.logging.debug(
-                        f"Miner {uid} submitted {invalid_tweet_count} invalid tweets out of {len(all_responses)}"
+                    bt.logging.info(
+                        f"❌ Miner {uid} penalized - submitted {invalid_tweet_count} tweets with invalid IDs out of {len(all_responses)}"
                     )
+                    if invalid_ids:
+                        bt.logging.debug(
+                            f"Invalid IDs from miner {uid}: {invalid_ids[:5]}..."
+                        )
                     # Give zero score for submitting any invalid tweets
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
                     continue  # Skip further processing for this miner
@@ -548,7 +552,7 @@ class Forwarder:
                     self.validator.scorer.add_volume(
                         uid_int, len(valid_tweets), current_block
                     )
-                    bt.logging.debug(
+                    bt.logging.info(
                         f"Miner {uid_int} produced {len(valid_tweets)} new tweets"
                     )
                 else:
