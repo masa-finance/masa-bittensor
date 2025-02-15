@@ -239,7 +239,7 @@ class Forwarder:
 
     async def get_miners_volumes(self, current_block: int):
         if len(self.validator.versions) == 0:
-            bt.logging.info("Pinging axons to get miner versions...")
+            bt.logging.info("🔍 Pinging axons to get miner versions...")
             return await self.ping_axons(current_block)
         if len(self.validator.keywords) == 0 or self.check_tempo(current_block):
             await self.fetch_twitter_queries()

@@ -63,7 +63,7 @@ class BaseValidatorNeuron(BaseNeuron):
         """Run the validator forever."""
         while True:
             current_block = await self.block
-            bt.logging.info(f"Syncing at block {current_block}")
+            bt.logging.info(f"🔄 Syncing at block {current_block}")
             # Sync the metagraph
             # This is in neuron.py
             # It will check registration
