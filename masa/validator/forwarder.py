@@ -238,36 +238,12 @@ class Forwarder:
             bt.logging.error(f"Error fetching trending queries: {e}")
             self.validator.keywords = ["crypto", "btc", "eth"]
 
-    async def fetch_subnet_config(self):
-        async with aiohttp.ClientSession() as session:
-            url = "https://raw.githubusercontent.com/masa-finance/masa-bittensor/main/config.json"
-            network_type = (
-                "testnet"
-                if self.validator.config.subtensor.network == "test"
-                else "mainnet"
-            )
-            async with session.get(url) as response:
-                if response.status == 200:
-                    configRaw = await response.text()
-                    config = json.loads(configRaw)
-                    subnet_config = config.get(network_type, {})
-                    bt.logging.debug(
-                        f"fetched {network_type} config from github: {subnet_config}"
-                    )
-                    self.validator.subnet_config = subnet_config
-                else:
-                    bt.logging.error(
-                        f"failed to fetch subnet config from GitHub: {response.status}"
-                    )
-
     async def get_miners_volumes(self, current_block: int):
         if len(self.validator.versions) == 0:
             bt.logging.info("Pinging axons to get miner versions...")
             return await self.ping_axons(current_block)
         if len(self.validator.keywords) == 0 or self.check_tempo(current_block):
             await self.fetch_twitter_queries()
-        if len(self.validator.subnet_config) == 0 or self.check_tempo(current_block):
-            await self.fetch_subnet_config()
 
         random_keyword = random.choice(self.validator.keywords)
         query = f'"{random_keyword.strip()}"'
