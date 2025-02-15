@@ -321,9 +321,10 @@ class Forwarder:
                 max_retries = 3
                 is_valid = None
                 rate_limited = False
+                validation_error = None
                 while retry_count < max_retries:
                     try:
-                        is_valid = validator.validate_tweet(
+                        validation_response = validator.validate_tweet(
                             random_tweet.get("ID"),
                             random_tweet.get("Name"),
                             random_tweet.get("Username"),
@@ -331,6 +332,11 @@ class Forwarder:
                             random_tweet.get("Timestamp"),
                             random_tweet.get("Hashtags"),
                         )
+                        if validation_response is None:
+                            validation_error = "Validation response was None"
+                            is_valid = False
+                            break
+                        is_valid = validation_response
                         break
                     except Exception as e:
                         if "429" in str(e) and retry_count < max_retries - 1:
@@ -341,10 +347,17 @@ class Forwarder:
                             await asyncio.sleep(wait_time)
                             retry_count += 1
                             rate_limited = True
+                        elif "'NoneType' object has no attribute 'status_code'" in str(
+                            e
+                        ):
+                            validation_error = "Failed to connect to Twitter API"
+                            is_valid = False
+                            break
                         else:
                             bt.logging.error(
                                 f"Failed to validate tweet after {retry_count} retries: {e}"
                             )
+                            validation_error = str(e)
                             is_valid = False
                             break
 
@@ -409,6 +422,10 @@ class Forwarder:
                     if rate_limited:
                         bt.logging.info(
                             f"❓ Tweet validation unknown (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        )
+                    elif validation_error:
+                        bt.logging.info(
+                            f"⚠️ Tweet validation error ({validation_error}): {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
                     else:
                         bt.logging.info(
