@@ -227,8 +227,7 @@ class Forwarder:
 
     async def fetch_twitter_queries(self):
         try:
-            with SilentOutput():
-                trending_queries = TrendingQueries().fetch()
+            trending_queries = TrendingQueries().fetch()
             self.validator.keywords = [
                 query["query"] for query in trending_queries[:10]  # top 10 trends
             ]
