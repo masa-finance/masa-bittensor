@@ -366,33 +366,37 @@ class Forwarder:
                         is_valid = validation_response
                         break
                     except Exception as e:
-                        if "429" in str(e) and retry_count < max_retries - 1:
-                            wait_time = (2**retry_count) * 5  # 5, 10, 20 seconds
-                            # Only log at debug level for rate limit details
-                            bt.logging.debug(
-                                f"Rate limited, waiting {wait_time} seconds before retry"
-                            )
-                            await asyncio.sleep(wait_time)
-                            retry_count += 1
-                            rate_limited = True
-                        elif "'NoneType' object has no attribute 'status_code'" in str(
-                            e
+                        error_str = str(e)
+                        if "429" in error_str or "Too Many Requests" in error_str:
+                            if retry_count < max_retries - 1:
+                                wait_time = (2**retry_count) * 5  # 5, 10, 20 seconds
+                                bt.logging.debug(
+                                    f"Rate limited, waiting {wait_time} seconds before retry"
+                                )
+                                await asyncio.sleep(wait_time)
+                                retry_count += 1
+                                rate_limited = True
+                                continue
+                            else:
+                                validation_error = "Rate limited"
+                                rate_limited = True
+                                break
+                        elif (
+                            "'NoneType' object has no attribute 'status_code'"
+                            in error_str
                         ):
-                            # Only show error details at debug level
-                            bt.logging.debug(f"Connection error details: {str(e)}")
+                            bt.logging.debug(f"Connection error details: {error_str}")
                             validation_error = "Unable to connect to Twitter API"
-                            is_valid = False
                             break
-                        elif "ServerDisconnectedError" in str(e):
-                            bt.logging.debug(f"Server disconnection details: {str(e)}")
+                        elif "ServerDisconnectedError" in error_str:
+                            bt.logging.debug(
+                                f"Server disconnection details: {error_str}"
+                            )
                             validation_error = "Server disconnected"
-                            is_valid = False
                             break
                         else:
-                            # Only log non-rate-limit errors at error level
-                            bt.logging.debug(f"Validation error details: {str(e)}")
+                            bt.logging.debug(f"Validation error details: {error_str}")
                             validation_error = "Failed to validate tweet"
-                            is_valid = False
                             break
 
                 # Always wait at least 2 seconds between validations
@@ -453,18 +457,30 @@ class Forwarder:
                         if tweet:
                             valid_tweets.append(tweet)
                 else:
-                    if rate_limited:
+                    if validation_error == "Rate limited":
                         bt.logging.info(
                             f"❓ Tweet validation skipped (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
+                        # Consider the tweet valid if we hit rate limits
+                        for tweet in unique_tweets_response:
+                            if tweet:
+                                valid_tweets.append(tweet)
                     elif validation_error == "Server disconnected":
                         bt.logging.info(
                             f"📡 Tweet validation incomplete (server disconnected): {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
+                        # Consider the tweet valid if we can't connect
+                        for tweet in unique_tweets_response:
+                            if tweet:
+                                valid_tweets.append(tweet)
                     elif validation_error and "Unable to connect" in validation_error:
                         bt.logging.info(
                             f"🌐 Tweet validation incomplete (connection error): {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
+                        # Consider the tweet valid if we can't connect
+                        for tweet in unique_tweets_response:
+                            if tweet:
+                                valid_tweets.append(tweet)
                     else:
                         bt.logging.info(
                             f"❌ Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
