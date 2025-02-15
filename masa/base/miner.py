@@ -141,7 +141,7 @@ class BaseMinerNeuron(BaseNeuron):
                 axon=self.axon,
             )
             bt.logging.info(
-                f"Running miner {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+                f"Running miner {self.axon} on network: {self.config.subtensor.network} with netuid: {self.config.netuid}"
             )
         except Exception as e:
             bt.logging.error(f"Failed to serve Axon with exception: {e}")

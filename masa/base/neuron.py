@@ -99,9 +99,10 @@ class BaseNeuron(ABC):
         # Build Bittensor objects
         # These are core Bittensor classes to interact with the network.
         bt.logging.info("Setting up bittensor objects.")
-        bt.logging.info(f"Using chain endpoint: {self.config.subtensor.chain_endpoint}")
+        bt.logging.info(f"Using network: {self.config.subtensor.network}")
 
         self.wallet = bt.wallet(config=self.config)
+        # Initialize subtensor with only chain endpoint
         self.subtensor = bt.AsyncSubtensor(config=self.config)
         await self.subtensor.initialize()
 
@@ -125,12 +126,12 @@ class BaseNeuron(ABC):
                 f"🟡 Code is outdated based on subnet requirements!  Required: {weights_version}, Current: {self.spec_version}.  Please update your code to the latest release!"
             )
         else:
-            bt.logging.success(f"🟢 Code is up to date based on subnet requirements!")
+            bt.logging.success("🟢 Code is up to date based on subnet requirements!")
 
         # Each miner gets a unique identity (UID) in the network for differentiation.
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
         bt.logging.info(
-            f"Running neuron on subnet: {self.config.netuid} with uid {self.uid} using network: {self.subtensor.chain_endpoint}"
+            f"Running neuron on subnet: {self.config.netuid} with uid {self.uid} using network: {self.subtensor.network}"
         )
         self.step = 0
         self._is_initialized = True

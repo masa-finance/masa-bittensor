@@ -28,8 +28,7 @@ class TestValidator:
     async def validator(self):
         config = BaseValidatorNeuron.config()
         config.netuid = 165
-        config.subtensor.network = "test"
-        config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
+        config.subtensor.network = "wss://test.finney.opentensor.ai:443"
         config.wallet.name = "validator"
         config.wallet.hotkey = "default"
         config.axon.port = 8092

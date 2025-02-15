@@ -102,16 +102,11 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_healthcheck_block = 0
         self.last_weights_block = await self.block  # Set this to current block at init
 
-        # load config file for subnet specific settings as default
-        # note, every tempo we fetch the latest config file from github main branch
+        # Load subnet configuration from local config.json file
         with open("config.json", "r") as config_file:
             config = json.load(config_file)
-            network = (
-                "testnet" if self.config.subtensor.network == "test" else "mainnet"
-            )
-            subnet_config = config.get(network, {})
-            bt.logging.debug(f"Loaded subnet config: {subnet_config}")
-            self.subnet_config = subnet_config
+            self.subnet_config = config.get("mainnet", {})
+            bt.logging.debug(f"Loaded subnet config: {self.subnet_config}")
 
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.scores = torch.zeros(
@@ -141,7 +136,7 @@ class BaseValidatorNeuron(BaseNeuron):
                     axon=self.axon,
                 )
                 bt.logging.info(
-                    f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+                    f"Running validator {self.axon} on network: {self.config.subtensor.network} with netuid: {self.config.netuid}"
                 )
             except Exception as e:
                 bt.logging.error(f"Failed to serve Axon with exception: {e}")
@@ -150,7 +145,7 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
 
     async def healthcheck(self):
-        """Run health check and auto-update."""
+        """Run health check."""
         try:
             # Check if current endpoint is responsive
             try:
@@ -158,20 +153,9 @@ class BaseValidatorNeuron(BaseNeuron):
             except Exception as e:
                 bt.logging.error(f"Failed to get current block: {e}")
 
-            # Fetch latest config from GitHub
-            await self.update_config()
-
         except Exception as e:
             bt.logging.error(f"Error in health check: {e}")
             # Don't raise, let it continue to next loop
-
-    async def update_config(self):
-        """Update config from GitHub."""
-        try:
-            # Implement config update logic here
-            pass
-        except Exception as e:
-            bt.logging.error(f"Error updating config: {e}")
 
     async def should_set_weights(self) -> bool:
         bt.logging.info("Checking if we should set weights")

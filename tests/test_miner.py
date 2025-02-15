@@ -41,8 +41,7 @@ class TestMiner:
     async def miner(self):
         config = BaseMinerNeuron.config()
         config.netuid = 165
-        config.subtensor.network = "test"
-        config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
+        config.subtensor.network = "wss://test.finney.opentensor.ai:443"
         config.wallet.name = "miner"
         config.wallet.hotkey = "default"
         config.blacklist.force_validator_permit = True

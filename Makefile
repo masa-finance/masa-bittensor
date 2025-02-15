@@ -7,10 +7,10 @@ NETWORK ?= main
 
 # Network-specific configurations
 ifeq ($(NETWORK),test)
-    SUBTENSOR_CHAIN = chain_endpoint wss://test.finney.opentensor.ai
+    SUBTENSOR_CHAIN = network wss://test.finney.opentensor.ai
     NETUID = 165
 else ifeq ($(NETWORK),main)
-    SUBTENSOR_CHAIN = chain_endpoint wss://entrypoint-finney.masa.ai
+    SUBTENSOR_CHAIN = network wss://entrypoint-finney.masa.ai
     NETUID = 42
 else
     $(error Invalid network specified. Use NETWORK=test or NETWORK=main)
