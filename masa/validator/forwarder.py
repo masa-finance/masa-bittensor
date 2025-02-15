@@ -480,14 +480,13 @@ class Forwarder:
                     )
 
                 # Modified validation result handling
-                if validation_response is None:
-                    # If validation response is None, treat as a connection issue
+                if validation_response is None or validation_response is False:
+                    # Both None and False indicate connection/rate limit issues
                     validation_error = "Unable to connect to Twitter API"
                     is_valid = None
-                elif not validation_response:
-                    # Only mark as invalid if validation explicitly returns False
-                    validation_error = "Failed to validate tweet"
-                    is_valid = False
+                    bt.logging.debug(
+                        f"Connection issue detected for {self.format_tweet_url(random_tweet.get('ID'))}: Response was {validation_response}"
+                    )
                 else:
                     is_valid = True
 
