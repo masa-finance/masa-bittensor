@@ -268,11 +268,16 @@ class Forwarder:
 
         random_keyword = random.choice(self.validator.keywords)
         query = f'"{random_keyword.strip()}"'
-        bt.logging.info(f"Volume checking for: {query}")
+        bt.logging.info(f"🔍 Volume checking for: {query}")
         request = RecentTweetsSynapse(
             query=query,
             timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
         )
+
+        # Add icons to miner selection logs
+        bt.logging.info(f"👥 Selected {sample_size} miners to query")
+        bt.logging.info(f"🎯 Selected UIDs: {miner_uids}")
+
         responses, miner_uids = await self.forward_request(
             request,
             sample_size=self.validator.subnet_config.get("synthetic").get(
