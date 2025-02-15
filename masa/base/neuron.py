@@ -112,8 +112,11 @@ class BaseNeuron(ABC):
         # Build Bittensor objects
         # These are core Bittensor classes to interact with the network.
         bt.logging.info("Setting up bittensor objects.")
+        bt.logging.info(f"Using chain endpoint: {self.config.subtensor.chain_endpoint}")
 
         self.wallet = bt.wallet(config=self.config)
+
+        # Create subtensor with our configured endpoint
         self.subtensor = bt.AsyncSubtensor(config=self.config)
         await self.subtensor.initialize()
 
