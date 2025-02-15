@@ -251,7 +251,7 @@ class Forwarder:
                     configRaw = await response.text()
                     config = json.loads(configRaw)
                     subnet_config = config.get(network_type, {})
-                    bt.logging.info(
+                    bt.logging.debug(
                         f"fetched {network_type} config from github: {subnet_config}"
                     )
                     self.validator.subnet_config = subnet_config

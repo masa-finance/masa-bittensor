@@ -50,7 +50,6 @@ class Validator(BaseValidatorNeuron):
             self.API = API(self)
             bt.logging.info("Validator API initialized.")
 
-        bt.logging.info("Validator initialized with config: {}".format(config))
         self._is_initialized = True
 
 

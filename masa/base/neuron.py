@@ -102,8 +102,6 @@ class BaseNeuron(ABC):
         bt.logging.info(f"Using chain endpoint: {self.config.subtensor.chain_endpoint}")
 
         self.wallet = bt.wallet(config=self.config)
-        # Explicitly set network=None to prevent default network settings
-        self.config.subtensor.network = None
         self.subtensor = bt.AsyncSubtensor(config=self.config)
         await self.subtensor.initialize()
 

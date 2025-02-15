@@ -110,7 +110,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 "testnet" if self.config.subtensor.network == "test" else "mainnet"
             )
             subnet_config = config.get(network, {})
-            bt.logging.info(f"Loaded subnet config: {subnet_config}")
+            bt.logging.debug(f"Loaded subnet config: {subnet_config}")
             self.subnet_config = subnet_config
 
         self.dendrite = bt.dendrite(wallet=self.wallet)
