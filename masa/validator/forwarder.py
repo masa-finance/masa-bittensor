@@ -170,17 +170,28 @@ class Forwarder:
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         all_responses = []
-        total_axons = len(self.validator.metagraph.axons)
+
+        # Filter out validators (they have nonzero validator_trust)
+        miner_axons = []
+        miner_indices = []
+        for idx, axon in enumerate(self.validator.metagraph.axons):
+            if (
+                self.validator.metagraph.validator_trust[idx] == 0
+            ):  # Only include miners
+                miner_axons.append(axon)
+                miner_indices.append(idx)
+
+        total_miners = len(miner_axons)
         successful_pings = 0
         failed_pings = 0
 
         bt.logging.info(
-            f"Starting to ping {total_axons} axons in batches of {sample_size}"
+            f"Starting to ping {total_miners} miners in batches of {sample_size}"
         )
 
         async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
-            for i in range(0, total_axons, sample_size):
-                batch = self.validator.metagraph.axons[i : i + sample_size]
+            for i in range(0, total_miners, sample_size):
+                batch = miner_axons[i : i + sample_size]
                 batch_responses = await dendrite(
                     batch,
                     request,
@@ -198,17 +209,28 @@ class Forwarder:
                 failed_pings += batch_failed
 
                 # Progress update every batch
-                progress = min(100, (i + len(batch)) * 100 // total_axons)
+                progress = min(100, (i + len(batch)) * 100 // total_miners)
                 bt.logging.info(
                     f"Ping progress: {progress}% | "
                     f"Success: {successful_pings} | "
                     f"Failed: {failed_pings}"
                 )
 
-        self.validator.versions = [response.version for response in all_responses]
+        # Initialize versions array with zeros for all nodes
+        self.validator.versions = [0] * len(self.validator.metagraph.axons)
+
+        # Update versions only for miners we pinged
+        for idx, response in zip(miner_indices, all_responses):
+            self.validator.versions[idx] = response.version
 
         # Use the summarize function for a cleaner log
-        version_summary = self._summarize_versions(self.validator.versions)
+        version_summary = self._summarize_versions(
+            [
+                v
+                for i, v in enumerate(self.validator.versions)
+                if self.validator.metagraph.validator_trust[i] == 0
+            ]
+        )
         bt.logging.info(f"🔍 Miner Status: {version_summary}")
 
         # Keep detailed version list at DEBUG level
@@ -220,7 +242,7 @@ class Forwarder:
                 "status_code": response.dendrite.status_code,
                 "status_message": response.dendrite.status_message,
                 "version": response.version,
-                "uid": all_responses.index(response),
+                "uid": miner_indices[all_responses.index(response)],
             }
             for response in all_responses
         ]
@@ -341,7 +363,8 @@ class Forwarder:
                     except Exception as e:
                         if "429" in str(e) and retry_count < max_retries - 1:
                             wait_time = (2**retry_count) * 5  # 5, 10, 20 seconds
-                            bt.logging.warning(
+                            # Only log at debug level for rate limit details
+                            bt.logging.debug(
                                 f"Rate limited, waiting {wait_time} seconds before retry"
                             )
                             await asyncio.sleep(wait_time)
@@ -354,10 +377,9 @@ class Forwarder:
                             is_valid = False
                             break
                         else:
-                            bt.logging.error(
-                                f"Failed to validate tweet after {retry_count} retries: {e}"
-                            )
-                            validation_error = str(e)
+                            # Only log non-rate-limit errors at error level
+                            bt.logging.debug(f"Validation error details: {str(e)}")
+                            validation_error = "Failed to validate tweet"
                             is_valid = False
                             break
 
@@ -421,11 +443,11 @@ class Forwarder:
                 else:
                     if rate_limited:
                         bt.logging.info(
-                            f"❓ Tweet validation unknown (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
+                            f"❓ Tweet validation skipped (rate limited): {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
                     elif validation_error:
                         bt.logging.info(
-                            f"⚠️ Tweet validation error ({validation_error}): {self.format_tweet_url(random_tweet.get('ID'))}"
+                            f"❌ Tweet validation failed ({validation_error}): {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
                     else:
                         bt.logging.info(
