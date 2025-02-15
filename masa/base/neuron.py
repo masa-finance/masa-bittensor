@@ -66,11 +66,19 @@ class BaseNeuron(ABC):
         """Synchronous initialization of basic attributes."""
         base_config = copy.deepcopy(config or self.config())
 
-        # Set the correct chain endpoint based on network before any connections
-        if base_config.subtensor.network == "test":
-            base_config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
-        else:
-            base_config.subtensor.chain_endpoint = "wss://entrypoint-finney.masa.ai:443"
+        # Only set default chain endpoint if not explicitly provided
+        if (
+            not hasattr(base_config.subtensor, "chain_endpoint")
+            or not base_config.subtensor.chain_endpoint
+        ):
+            if base_config.subtensor.network == "test":
+                base_config.subtensor.chain_endpoint = (
+                    "wss://test.finney.opentensor.ai:443"
+                )
+            else:
+                base_config.subtensor.chain_endpoint = (
+                    "wss://entrypoint-finney.masa.ai:443"
+                )
 
         self.config = base_config
         self.device = None
