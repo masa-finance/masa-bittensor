@@ -99,6 +99,12 @@ class BaseNeuron(ABC):
         # These are core Bittensor classes to interact with the network.
         bt.logging.info("Setting up bittensor objects.")
 
+        # Set the correct chain endpoint based on network before initializing
+        if self.config.subtensor.network == "test":
+            self.config.subtensor.chain_endpoint = "wss://test.finney.opentensor.ai:443"
+        else:
+            self.config.subtensor.chain_endpoint = "wss://entrypoint-finney.masa.ai:443"
+
         self.wallet = bt.wallet(config=self.config)
         self.subtensor = bt.AsyncSubtensor(config=self.config)
         await self.subtensor.initialize()
