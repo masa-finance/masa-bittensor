@@ -7,11 +7,9 @@ NETWORK ?= main
 
 # Network-specific configurations
 ifeq ($(NETWORK),test)
-    SUBTENSOR_NETWORK = network test
     SUBTENSOR_CHAIN = chain_endpoint wss://test.finney.opentensor.ai
     NETUID = 165
 else ifeq ($(NETWORK),main)
-    SUBTENSOR_NETWORK = network finney
     SUBTENSOR_CHAIN = chain_endpoint wss://entrypoint-finney.masa.ai
     NETUID = 42
 else
@@ -58,7 +56,7 @@ run-miner:
 
 run-validator:
 	@echo "Running validator on $(NETWORK)net (netuid: $(NETUID))"
-	python3 neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_NETWORK) --subtensor.$(SUBTENSOR_CHAIN) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.info --logging.info --neuron.axon_off
+	python3 neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_CHAIN) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.info --logging.info --neuron.axon_off
 
 hyperparameters:
 	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_NETWORK) --netuid $(NETUID)
