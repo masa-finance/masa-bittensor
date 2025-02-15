@@ -274,10 +274,6 @@ class Forwarder:
             timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
         )
 
-        # Add icons to miner selection logs
-        bt.logging.info(f"👥 Selected {sample_size} miners to query")
-        bt.logging.info(f"🎯 Selected UIDs: {miner_uids}")
-
         responses, miner_uids = await self.forward_request(
             request,
             sample_size=self.validator.subnet_config.get("synthetic").get(
@@ -286,6 +282,10 @@ class Forwarder:
             timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
             sequential=True,
         )
+
+        # Log miner selection after we have the values
+        bt.logging.info(f"👥 Selected {len(miner_uids)} miners to query")
+        bt.logging.info(f"🎯 Selected UIDs: {miner_uids}")
 
         all_valid_tweets = []
         validator = None
