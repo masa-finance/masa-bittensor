@@ -83,19 +83,34 @@ class Forwarder:
         if miner_uids is None or len(miner_uids) == 0:
             return [], []
 
-        async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
-            responses = await dendrite(
-                [self.validator.metagraph.axons[uid] for uid in miner_uids],
-                request,
-                deserialize=True,
-                timeout=timeout,
-            )
+        try:
+            async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
+                responses = await dendrite(
+                    [self.validator.metagraph.axons[uid] for uid in miner_uids],
+                    request,
+                    deserialize=True,
+                    timeout=timeout,
+                )
 
-            formatted_responses = [
-                {"uid": int(uid), "response": response}
-                for uid, response in zip(miner_uids, responses)
-            ]
-            return formatted_responses, miner_uids
+                # Handle potential None responses
+                formatted_responses = []
+                for uid, response in zip(miner_uids, responses):
+                    if response is None:
+                        bt.logging.warning(f"Received None response from miner {uid}")
+                        formatted_responses.append({"uid": int(uid), "response": None})
+                    else:
+                        formatted_responses.append(
+                            {"uid": int(uid), "response": response}
+                        )
+
+                return formatted_responses, miner_uids
+
+        except Exception as e:
+            bt.logging.error(f"Error in forward_request: {e}")
+            # Return empty responses but with proper structure for error handling
+            return [
+                {"uid": int(uid), "response": None} for uid in miner_uids
+            ], miner_uids
 
     async def get_twitter_profile(self, username: str = "getmasafi"):
         request = TwitterProfileSynapse(username=username)
@@ -362,20 +377,23 @@ class Forwarder:
 
         for response, uid in zip(responses, miner_uids):
             try:
-                # Extract response data and log raw response if invalid
-                if not response or not hasattr(response, "get"):
-                    bt.logging.info(
-                        f"ℹ️ [DRY RUN] Miner {uid}: No valid response received"
-                    )
-                    bt.logging.info(f"Raw response: {response}")
+                # Handle None response
+                if response is None or not hasattr(response, "get"):
+                    bt.logging.warning(f"Miner {uid}: Invalid response structure")
+                    bt.logging.debug(f"Raw response: {response}")
                     continue
 
-                all_responses = dict(response).get("response", [])
+                # Extract response data
+                response_data = dict(response)
+                if response_data.get("response") is None:
+                    bt.logging.warning(f"Miner {uid}: Received None response")
+                    bt.logging.debug(f"Response object: {response_data}")
+                    continue
+
+                all_responses = response_data.get("response", [])
                 if not all_responses:
-                    bt.logging.info(
-                        f"ℹ️ [DRY RUN] Miner {uid}: No valid response received"
-                    )
-                    bt.logging.info(f"Raw response object: {dict(response)}")
+                    bt.logging.warning(f"Miner {uid}: Empty response list")
+                    bt.logging.debug(f"Response data: {response_data}")
                     continue
 
                 # Filter valid tweets
@@ -386,10 +404,8 @@ class Forwarder:
                 ]
 
                 if not valid_tweets:
-                    bt.logging.info(
-                        f"ℹ️ [DRY RUN] Miner {uid}: No valid tweets in response"
-                    )
-                    bt.logging.info(f"All responses received: {all_responses}")
+                    bt.logging.warning(f"Miner {uid}: No valid tweets in response")
+                    bt.logging.debug(f"All responses: {all_responses}")
                     continue
 
                 # Validate random tweet
@@ -419,9 +435,8 @@ class Forwarder:
                     )
 
             except Exception as e:
-                bt.logging.error(
-                    f"Error processing miner {self.format_miner_link(int(uid))}: {e}"
-                )
+                bt.logging.error(f"Error processing miner {uid}: {str(e)}")
+                bt.logging.debug(f"Full error: {e}")
                 continue
 
         return all_valid_tweets
