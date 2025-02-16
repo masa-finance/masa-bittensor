@@ -497,151 +497,77 @@ class Forwarder:
         all_valid_tweets = []
         validator = TweetValidator()
 
-        bt.logging.info("\n=== Data Structure Analysis ===")
-        bt.logging.info(f"Number of responses: {len(responses)}")
-
-        # Take the first response to analyze structure
-        if responses:
-            sample_response = responses[0]
-            bt.logging.info("\n=== Response Structure ===")
-            bt.logging.info(f"Response type: {type(sample_response)}")
-            bt.logging.info(
-                f"Response keys: {list(sample_response.keys()) if isinstance(sample_response, dict) else 'Not a dict'}"
-            )
-
-            if isinstance(sample_response, dict) and "response" in sample_response:
-                all_responses = sample_response.get("response", [])
-                bt.logging.info("\n=== All Responses Structure ===")
-                bt.logging.info(f"All responses type: {type(all_responses)}")
-
-                if (
-                    all_responses
-                    and isinstance(all_responses, list)
-                    and len(all_responses) > 0
-                ):
-                    first_item = all_responses[0]
-                    bt.logging.info("\n=== Individual Response Structure ===")
-                    bt.logging.info(f"Item type: {type(first_item)}")
-                    bt.logging.info(
-                        f"Item keys: {list(first_item.keys()) if isinstance(first_item, dict) else 'Not a dict'}"
-                    )
-
-                    if isinstance(first_item, dict) and "Tweet" in first_item:
-                        tweet_data = first_item["Tweet"]
-                        bt.logging.info("\n=== Tweet Data Structure ===")
-                        bt.logging.info(f"Tweet data type: {type(tweet_data)}")
-                        bt.logging.info(
-                            f"Tweet data keys: {list(tweet_data.keys()) if isinstance(tweet_data, dict) else 'Not a dict'}"
-                        )
-
-        # Continue with the rest of the processing...
-        bt.logging.info("\n=== Processing Miner Responses ===")
-        bt.logging.info(f"Random keyword: {random_keyword}")
-        bt.logging.info(f"Number of responses: {len(responses)}")
-
         for response, uid in zip(responses, miner_uids):
             try:
                 uid_int = int(uid)
-                bt.logging.info(f"\n--- Miner {uid} Response Structure ---")
-                bt.logging.info(f"Response type: {type(response)}")
-                bt.logging.info(f"Response content: {response}")
 
-                if response is None:
-                    bt.logging.info(f"Miner {uid}: Response is None")
+                # Check if response is None or malformed
+                if not isinstance(response, dict) or "response" not in response:
+                    bt.logging.info(f"Miner {uid}: Invalid response structure")
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
-                # Get all responses
-                all_responses = response.get("response", [])
-                bt.logging.info(f"\nAll responses type: {type(all_responses)}")
-                bt.logging.info(f"All responses content: {all_responses}")
-
-                if not isinstance(all_responses, list):
-                    bt.logging.info(
-                        f"Miner {uid}: Response is not a list, got {type(all_responses)}"
-                    )
+                # Get the actual response data
+                response_data = response["response"]
+                if response_data is None:
+                    bt.logging.info(f"Miner {uid}: Response data is None")
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
-                if not all_responses:
-                    bt.logging.info(f"Miner {uid}: No responses")
+                if not isinstance(response_data, list):
+                    bt.logging.info(f"Miner {uid}: Response data is not a list")
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
-                bt.logging.info(
-                    f"\n=== Processing {len(all_responses)} tweets from miner {uid} ==="
-                )
-
-                # Log the first response to see its structure
-                if all_responses:
-                    bt.logging.info(f"\nSample response structure:")
-                    bt.logging.info(f"First response type: {type(all_responses[0])}")
-                    bt.logging.info(f"First response content: {all_responses[0]}")
-
-                # Filter out any None values and ensure Tweet structure before deduplication
-                valid_responses = [
-                    resp
-                    for resp in all_responses
-                    if resp is not None
-                    and isinstance(resp, dict)
-                    and "Tweet" in resp
-                    and resp["Tweet"] is not None
-                    and "ID" in resp["Tweet"]
-                ]
-
-                bt.logging.info(f"\nValid responses count: {len(valid_responses)}")
-                if valid_responses:
-                    bt.logging.info(f"Sample valid response: {valid_responses[0]}")
-
-                # Now do the deduplication with validated responses
-                unique_tweets = list(
-                    {tweet["Tweet"]["ID"]: tweet for tweet in valid_responses}.values()
-                )
-
-                bt.logging.info(
-                    f"Miner {uid}: Found {len(unique_tweets)} tweets with valid structure"
-                )
-                if unique_tweets:
-                    bt.logging.info(
-                        f"Sample unique tweet structure: {unique_tweets[0]}"
-                    )
-
-                # Select a random sample of tweets to validate (max 5)
-                sample_size = min(5, len(unique_tweets))
-                tweets_to_validate = random.sample(unique_tweets, sample_size)
-                bt.logging.info(f"Miner {uid}: Validating {sample_size} random tweets")
-
+                # Filter valid tweets
                 valid_tweets = []
-
-                for tweet in tweets_to_validate:
-                    tweet_data = tweet["Tweet"]
-                    tweet_id = tweet_data["ID"]
-                    tweet_url = self.format_tweet_url(tweet_id)
-
-                    # Check timestamp
-                    tweet_timestamp = datetime.fromtimestamp(
-                        tweet_data["Timestamp"], UTC
-                    )
-                    yesterday = datetime.now(UTC).replace(
-                        hour=0, minute=0, second=0, microsecond=0
-                    ) - timedelta(days=1)
-                    if not yesterday <= tweet_timestamp:
-                        bt.logging.info(f"Tweet timestamp check failed: {tweet_url}")
+                for tweet_obj in response_data:
+                    # Check for Error field first
+                    if (
+                        not isinstance(tweet_obj, dict)
+                        or tweet_obj.get("Error") is not None
+                    ):
                         continue
 
-                    # Process query - just strip quotes and pass as single word
-                    query_words = []
-                    if random_keyword:
-                        # Just strip quotes, nothing else
-                        cleaned = random_keyword.strip().strip("\"'")
-                        if cleaned:
-                            query_words = [cleaned]
+                    # Get Tweet data
+                    tweet_data = tweet_obj.get("Tweet")
+                    if not isinstance(tweet_data, dict):
+                        continue
 
-                    bt.logging.info(f"Query terms: {query_words}")
-                    bt.logging.info(f"Tweet text: {tweet_data['Text']}")
+                    # Validate required fields
+                    required_fields = ["ID", "Name", "Text", "Username", "Timestamp"]
+                    if not all(field in tweet_data for field in required_fields):
+                        continue
 
-                    if not self._check_tweet_content(tweet_data, query_words):
-                        bt.logging.info(f"Query match failed for {tweet_url}")
+                    # Normalize hashtags (they might be None)
+                    tweet_data["Hashtags"] = tweet_data.get("Hashtags", []) or []
+
+                    valid_tweets.append({"Tweet": tweet_data})
+
+                if not valid_tweets:
+                    bt.logging.info(f"Miner {uid}: No valid tweets found")
+                    self.validator.scorer.add_volume(uid_int, 0, current_block)
+                    continue
+
+                # Deduplicate tweets
+                unique_tweets = list(
+                    {tweet["Tweet"]["ID"]: tweet for tweet in valid_tweets}.values()
+                )
+
+                # Select random sample for validation
+                sample_size = min(5, len(unique_tweets))
+                tweets_to_validate = random.sample(unique_tweets, sample_size)
+
+                validated_tweets = []
+                for tweet in tweets_to_validate:
+                    tweet_data = tweet["Tweet"]
+
+                    # Check timestamp
+                    if not self._check_tweet_timestamp(tweet_data["Timestamp"]):
+                        continue
+
+                    # Check content match
+                    if not self._check_tweet_content(tweet_data, [random_keyword]):
                         continue
 
                     # Do masa-ai validation
@@ -653,35 +579,23 @@ class Forwarder:
                                 tweet_data["Username"],
                                 tweet_data["Text"],
                                 tweet_data["Timestamp"],
-                                tweet_data.get("Hashtags", []),
+                                tweet_data["Hashtags"],
                             )
-
-                        if is_valid:
-                            valid_tweets.append(tweet)
-                            bt.logging.info(f"Tweet validation passed: {tweet_url}")
-                            bt.logging.info(f"  Text: {tweet_data['Text']}")
-                        else:
-                            bt.logging.info(f"Tweet validation failed: {tweet_url}")
-
+                            if is_valid:
+                                validated_tweets.append(tweet)
                     except Exception as e:
-                        bt.logging.error(f"Error validating {tweet_url}: {str(e)}")
+                        bt.logging.error(
+                            f"Error validating tweet {tweet_data['ID']}: {str(e)}"
+                        )
+                        continue
 
-                    # Wait between validations
-                    await asyncio.sleep(2)
-
-                # Calculate validation success rate
-                validation_success_rate = (
-                    len(valid_tweets) / sample_size if sample_size > 0 else 0
-                )
-                bt.logging.info(
-                    f"Miner {uid}: Validation success rate: {validation_success_rate:.2%}"
+                # Calculate success rate
+                success_rate = (
+                    len(validated_tweets) / sample_size if sample_size > 0 else 0
                 )
 
-                # Only credit miner if validation success rate is high enough (e.g. 80%)
-                if validation_success_rate >= 0.8:
-                    bt.logging.info(
-                        f"Miner {uid}: Validation success rate sufficient, crediting tweets"
-                    )
+                # Credit miner if success rate is sufficient
+                if success_rate >= 0.8:
                     if not self.validator.tweets_by_uid.get(uid_int):
                         self.validator.tweets_by_uid[uid_int] = {
                             tweet["Tweet"]["ID"] for tweet in unique_tweets
@@ -689,28 +603,17 @@ class Forwarder:
                         self.validator.scorer.add_volume(
                             uid_int, len(unique_tweets), current_block
                         )
-                        bt.logging.info(
-                            f"Miner {uid_int} produced {len(unique_tweets)} new tweets"
-                        )
                     else:
-                        existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
-                        new_tweet_ids = {
-                            tweet["Tweet"]["ID"] for tweet in unique_tweets
-                        }
-                        updates = new_tweet_ids - existing_tweet_ids
+                        existing_ids = self.validator.tweets_by_uid[uid_int]
+                        new_ids = {tweet["Tweet"]["ID"] for tweet in unique_tweets}
+                        updates = new_ids - existing_ids
                         if updates:
-                            self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
+                            self.validator.tweets_by_uid[uid_int].update(new_ids)
                             self.validator.scorer.add_volume(
                                 uid_int, len(updates), current_block
                             )
-                            bt.logging.info(
-                                f"Miner {uid_int} produced {len(updates)} new tweets (had {len(existing_tweet_ids)} existing)"
-                            )
                     all_valid_tweets.extend(unique_tweets)
                 else:
-                    bt.logging.info(
-                        f"Miner {uid}: Validation success rate too low, not crediting tweets"
-                    )
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
 
             except Exception as e:
