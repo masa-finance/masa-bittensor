@@ -362,6 +362,36 @@ class Forwarder:
         ) - timedelta(days=1)
         return yesterday <= tweet_time
 
+    def _process_single_response(self, resp, uid):
+        """Process a single miner's response and return valid tweets."""
+        if not isinstance(resp, list):
+            bt.logging.warning(f"└─ Invalid response type: {type(resp)}")
+            return [], 0, 0
+
+        if not resp:
+            bt.logging.warning("└─ Empty response list")
+            return [], 0, 0
+
+        if not isinstance(resp[0], dict):
+            bt.logging.warning(f"└─ Invalid item type: {type(resp[0])}")
+            return [], 0, 0
+
+        # Count errors and valid tweets
+        error_items = [item for item in resp if item.get("Error")]
+        valid_items = [
+            item for item in resp if not item.get("Error") and item.get("Tweet")
+        ]
+
+        # Log results
+        if error_items:
+            bt.logging.warning(f"└─ Found {len(error_items)} items with errors")
+            bt.logging.warning(f"└─ Sample error: {error_items[0]['Error']}")
+
+        if valid_items:
+            bt.logging.info(f"└─ Found {len(valid_items)} valid tweets")
+
+        return valid_items, len(error_items), len(valid_items)
+
     async def _process_responses(self, responses, miner_uids, random_keyword):
         """Process and validate miner responses."""
         all_valid_tweets = []
@@ -372,7 +402,7 @@ class Forwarder:
             bt.logging.info(f"Miner {uid}:")
 
             if response is None:
-                bt.logging.warning(f"└─ None response")
+                bt.logging.warning("└─ None response")
                 continue
 
             try:
@@ -383,49 +413,29 @@ class Forwarder:
                     bt.logging.warning("└─ Empty response data")
                     continue
 
+                # Log basic response info
                 bt.logging.info(f"└─ Response type: {type(resp)}")
-
                 if isinstance(resp, list):
                     bt.logging.info(f"└─ Number of items: {len(resp)}")
 
-                    if len(resp) > 0:
-                        bt.logging.info(f"└─ First item type: {type(resp[0])}")
+                # Process the response
+                valid_items, errors, valid = self._process_single_response(resp, uid)
 
-                        if isinstance(resp[0], dict):
-                            bt.logging.info(f"└─ Keys: {list(resp[0].keys())}")
-
-                            # Count errors and valid tweets
-                            error_items = [item for item in resp if item.get("Error")]
-                            valid_items = [
-                                item
-                                for item in resp
-                                if not item.get("Error") and item.get("Tweet")
-                            ]
-
-                            if error_items:
-                                total_errors += len(error_items)
-                                bt.logging.warning(
-                                    f"└─ Found {len(error_items)} items with errors"
-                                )
-                                if error_items:
-                                    bt.logging.warning(
-                                        f"└─ Sample error: {error_items[0]['Error']}"
-                                    )
-
-                            if valid_items:
-                                total_valid += len(valid_items)
-                                bt.logging.info(
-                                    f"└─ Found {len(valid_items)} valid tweets"
-                                )
-                                all_valid_tweets.extend(valid_items)
+                # Update totals
+                total_errors += errors
+                total_valid += valid
+                all_valid_tweets.extend(valid_items)
 
             except Exception as e:
-                bt.logging.error(f"└─ Error parsing: {str(e)}")
+                bt.logging.error(f"└─ Error processing response: {str(e)}")
                 continue
 
-        bt.logging.info(f"Total valid tweets collected: {len(all_valid_tweets)}")
-        bt.logging.info(f"Total errors encountered: {total_errors}")
-        bt.logging.info(f"Total valid tweets: {total_valid}")
+        # Log summary
+        bt.logging.info(f"Summary:")
+        bt.logging.info(f"└─ Total miners queried: {len(miner_uids)}")
+        bt.logging.info(f"└─ Total valid tweets: {total_valid}")
+        bt.logging.info(f"└─ Total errors: {total_errors}")
+        bt.logging.info(f"└─ Unique tweets collected: {len(all_valid_tweets)}")
 
         return all_valid_tweets
 

@@ -255,8 +255,8 @@ class BaseValidatorNeuron(BaseNeuron):
         try:
             with open(log_file, "a") as f:
                 f.write(json.dumps(log_entry) + "\n")
-            bt.logging.info(
-                f"Successfully logged weights for {len(uint_uids)} uids to {log_file}"
+            bt.logging.success(
+                f"Logged weights for {len(uint_uids)} uids to {log_file}"
             )
             bt.logging.info(
                 f"Weight stats - Min: {self.scores.min():.6f}, Max: {self.scores.max():.6f}, Mean: {self.scores.mean():.6f}"
@@ -434,7 +434,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 None, lambda: os.replace(temp_path, save_path)
             )
 
-            bt.logging.info(f"Successfully saved state to {save_path}")
+            bt.logging.success(f"Saved state to {save_path}")
 
         except Exception as e:
             bt.logging.error(f"Failed to save state: {str(e)}")
