@@ -323,7 +323,7 @@ class Forwarder:
 
         # Process responses
         all_valid_tweets = await self._process_responses(
-            responses, miner_uids, random_keyword
+            responses, miner_uids, random_keyword, current_block
         )
 
         # Export valid tweets
@@ -465,7 +465,9 @@ class Forwarder:
 
         return valid_items, len(error_items), len(valid_items)
 
-    async def _process_responses(self, responses, miner_uids, random_keyword):
+    async def _process_responses(
+        self, responses, miner_uids, random_keyword, current_block: int
+    ):
         """Process responses from miners based on actual response structure."""
         all_valid_tweets = []
         validator = None
