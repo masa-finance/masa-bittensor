@@ -154,13 +154,13 @@ class Scorer:
                         miner_stats, key=lambda x: x[2], reverse=True
                     )
 
-                    # Display top 10 miners
+                    # Display top 5 miners
                     bt.logging.info("+" + "=" * 50 + "+")
                     bt.logging.info(
-                        "|" + " " * 15 + "TOP 10 MINERS BY REWARD" + " " * 14 + "|"
+                        "|" + " " * 15 + "TOP 5 MINERS BY REWARD" + " " * 15 + "|"
                     )
                     bt.logging.info("+" + "=" * 50 + "+")
-                    for uid, volume, reward in sorted_miners[:10]:
+                    for uid, volume, reward in sorted_miners[:5]:
                         bt.logging.info(f"• Miner {uid}")
                         bt.logging.info(f"  Volume: {volume:.0f}")
                         bt.logging.info(f"  Reward: {reward:.4f}")
@@ -169,13 +169,13 @@ class Scorer:
                         )
                         bt.logging.info("-" * 52)
 
-                    # Display bottom 10 miners
+                    # Display bottom 5 miners
                     bt.logging.info("\n+" + "=" * 50 + "+")
                     bt.logging.info(
-                        "|" + " " * 13 + "BOTTOM 10 MINERS BY REWARD" + " " * 12 + "|"
+                        "|" + " " * 13 + "BOTTOM 5 MINERS BY REWARD" + " " * 13 + "|"
                     )
                     bt.logging.info("+" + "=" * 50 + "+")
-                    for uid, volume, reward in sorted_miners[-10:]:
+                    for uid, volume, reward in sorted_miners[-5:]:
                         bt.logging.info(f"• Miner {uid}")
                         bt.logging.info(f"  Volume: {volume:.0f}")
                         bt.logging.info(f"  Reward: {reward:.4f}")

@@ -6,17 +6,22 @@ from typing import List
 
 def check_uid_availability(metagraph: "bt.metagraph.Metagraph", uid: int) -> bool:
     """
-    Check if uid is available. The UID should be available if it is serving and has less
-    than vpermit_tao_limit stake
+    Check if uid is available. The UID should be available if:
+    1. It is not a validator (validator_trust == 0)
+    2. It is serving
+    3. Has proper validator permit configuration
 
     Args:
         metagraph (:obj: bt.metagraph.Metagraph): Metagraph object
         uid (int): uid to be checked
-        vpermit_tao_limit (int): Validator permit tao limit
     Returns:
         bool: True if uid is available, False otherwise
     """
-    # Filter non serving axons.
+    # First filter out validators
+    if metagraph.validator_trust[uid] > 0:
+        return False
+
+    # Then filter non serving axons
     if not metagraph.axons[uid].is_serving:
         hotkey = metagraph.hotkeys[uid]
         bt.logging.info(
@@ -26,7 +31,6 @@ def check_uid_availability(metagraph: "bt.metagraph.Metagraph", uid: int) -> boo
 
     # Filter out non validator permit.
     if metagraph.validator_permit[uid]:
-
         # Filter out uid without IP.
         if metagraph.neurons[uid].axon_info.ip == "0.0.0.0":
             return False
