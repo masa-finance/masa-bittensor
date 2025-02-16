@@ -497,10 +497,33 @@ class Forwarder:
         all_valid_tweets = []
         validator = TweetValidator()
 
+        bt.logging.info("\n=== Processing Miner Responses ===")
+        bt.logging.info(f"Random keyword: {random_keyword}")
+        bt.logging.info(f"Number of responses: {len(responses)}")
+
         for response, uid in zip(responses, miner_uids):
             try:
                 uid_int = int(uid)
+                bt.logging.info(f"\n--- Miner {uid} Response Structure ---")
+                bt.logging.info(f"Response type: {type(response)}")
+                bt.logging.info(f"Response content: {response}")
+
+                if response is None:
+                    bt.logging.info(f"Miner {uid}: Response is None")
+                    self.validator.scorer.add_volume(uid_int, 0, current_block)
+                    continue
+
+                # Get all responses
                 all_responses = response.get("response", [])
+                bt.logging.info(f"\nAll responses type: {type(all_responses)}")
+                bt.logging.info(f"All responses content: {all_responses}")
+
+                if not isinstance(all_responses, list):
+                    bt.logging.info(
+                        f"Miner {uid}: Response is not a list, got {type(all_responses)}"
+                    )
+                    self.validator.scorer.add_volume(uid_int, 0, current_block)
+                    continue
 
                 if not all_responses:
                     bt.logging.info(f"Miner {uid}: No responses")
@@ -511,13 +534,39 @@ class Forwarder:
                     f"\n=== Processing {len(all_responses)} tweets from miner {uid} ==="
                 )
 
-                # Deduplicate tweets by ID
+                # Log the first response to see its structure
+                if all_responses:
+                    bt.logging.info(f"\nSample response structure:")
+                    bt.logging.info(f"First response type: {type(all_responses[0])}")
+                    bt.logging.info(f"First response content: {all_responses[0]}")
+
+                # Filter out any None values and ensure Tweet structure before deduplication
+                valid_responses = [
+                    resp
+                    for resp in all_responses
+                    if resp is not None
+                    and isinstance(resp, dict)
+                    and "Tweet" in resp
+                    and resp["Tweet"] is not None
+                    and "ID" in resp["Tweet"]
+                ]
+
+                bt.logging.info(f"\nValid responses count: {len(valid_responses)}")
+                if valid_responses:
+                    bt.logging.info(f"Sample valid response: {valid_responses[0]}")
+
+                # Now do the deduplication with validated responses
                 unique_tweets = list(
-                    {tweet["Tweet"]["ID"]: tweet for tweet in all_responses}.values()
+                    {tweet["Tweet"]["ID"]: tweet for tweet in valid_responses}.values()
                 )
+
                 bt.logging.info(
                     f"Miner {uid}: Found {len(unique_tweets)} tweets with valid structure"
                 )
+                if unique_tweets:
+                    bt.logging.info(
+                        f"Sample unique tweet structure: {unique_tweets[0]}"
+                    )
 
                 # Select a random sample of tweets to validate (max 5)
                 sample_size = min(5, len(unique_tweets))
