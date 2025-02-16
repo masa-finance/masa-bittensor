@@ -161,13 +161,9 @@ class Scorer:
                     )
                     bt.logging.info("+" + "=" * 50 + "+")
                     for uid, volume, reward in sorted_miners[:5]:
-                        bt.logging.info(f"• Miner {uid}")
-                        bt.logging.info(f"  Volume: {volume:.0f}")
-                        bt.logging.info(f"  Reward: {reward:.4f}")
                         bt.logging.info(
-                            f"  Link: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
+                            f"Miner: {uid}, Volume: {volume:.0f}, Reward: {reward:.4f}, Link: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
                         )
-                        bt.logging.info("-" * 52)
 
                     # Display bottom 5 miners
                     bt.logging.info("\n+" + "=" * 50 + "+")
@@ -176,13 +172,9 @@ class Scorer:
                     )
                     bt.logging.info("+" + "=" * 50 + "+")
                     for uid, volume, reward in sorted_miners[-5:]:
-                        bt.logging.info(f"• Miner {uid}")
-                        bt.logging.info(f"  Volume: {volume:.0f}")
-                        bt.logging.info(f"  Reward: {reward:.4f}")
                         bt.logging.info(
-                            f"  Link: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
+                            f"Miner: {uid}, Volume: {volume:.0f}, Reward: {reward:.4f}, Link: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
                         )
-                        bt.logging.info("-" * 52)
 
                 scores = torch.FloatTensor(rewards).to(self.validator.device)
             except Exception:
