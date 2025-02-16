@@ -484,9 +484,19 @@ class Forwarder:
 
         for response, uid in zip(responses, miner_uids):
             try:
-                all_responses = dict(response).get("response", [])
-                if not all_responses:
-                    bt.logging.info(f"Miner {uid}: No responses")
+                # Convert uid to int here, before any conditional logic
+                uid_int = int(uid)
+
+                # Handle None response
+                if response is None or not isinstance(response, dict):
+                    bt.logging.info(f"Miner {uid}: Invalid response format")
+                    self.validator.scorer.add_volume(uid_int, 0, current_block)
+                    continue
+
+                all_responses = response.get("response", [])
+                if not all_responses or not isinstance(all_responses, list):
+                    bt.logging.info(f"Miner {uid}: No valid responses")
+                    self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
                 bt.logging.info(
@@ -497,8 +507,13 @@ class Forwarder:
                 structured_tweets = []
                 invalid_structure_count = 0
                 for tweet in all_responses:
+                    if not isinstance(tweet, dict):
+                        invalid_structure_count += 1
+                        continue
+
                     if (
                         "Tweet" in tweet
+                        and isinstance(tweet["Tweet"], dict)
                         and "ID" in tweet["Tweet"]
                         and tweet["Tweet"]["ID"]
                     ):
@@ -507,7 +522,6 @@ class Forwarder:
                             structured_tweets.append(tweet)
                         else:
                             invalid_structure_count += 1
-                            bt.logging.debug(f"Invalid tweet ID format: {tweet_id}")
                     else:
                         invalid_structure_count += 1
 
@@ -515,7 +529,6 @@ class Forwarder:
                     bt.logging.info(
                         f"Miner {uid}: Found {invalid_structure_count} tweets with invalid structure"
                     )
-                    continue
 
                 # Deduplicate tweets by ID
                 unique_tweets = list(
@@ -529,10 +542,8 @@ class Forwarder:
 
                 if not unique_tweets:
                     bt.logging.info(f"Miner {uid}: No tweets with valid structure")
+                    self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
-
-                # Convert uid to int here, before any conditional logic
-                uid_int = int(uid)
 
                 # Select a random sample of tweets to validate (max 5)
                 sample_size = min(5, len(unique_tweets))
@@ -686,6 +697,8 @@ class Forwarder:
 
             except Exception as e:
                 bt.logging.error(f"Error processing miner {uid}: {e}")
+                if uid_int:
+                    self.validator.scorer.add_volume(uid_int, 0, current_block)
                 continue
 
         return all_valid_tweets
