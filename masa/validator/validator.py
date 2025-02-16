@@ -20,11 +20,11 @@ async def send_to_protocol(self, chunk_index: int, data: Any) -> bool:
         success = True  # Your actual send logic result
 
         if success:
-            bt.logging.info("🥷  Axon off, not serving ip to chain.")
+            bt.logging.info("🥷 Axon off, not serving ip to chain.")
             bt.logging.info(f"🔄  Syncing at block {current_block}")
-            bt.logging.info("- Checking if we should set weights")
-            bt.logging.info(f"⏱️  Blocks elapsed since last update: {blocks_elapsed}")
-            bt.logging.info("✅  Initial weight setting")
+            bt.logging.info("🔍 Checking if we should set weights")
+            bt.logging.info(f"⏱️ Blocks elapsed since last update: {blocks_elapsed}")
+            bt.logging.info("✅ Initial weight setting")
             bt.logging.debug("Starting weight setting process...")
             bt.logging.info(
                 f"🛰️  Setting weights on {self.config.subtensor.network} ..."

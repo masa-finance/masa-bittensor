@@ -155,7 +155,7 @@ class Scorer:
                     )
 
                     # Display top 10 miners
-                    bt.logging.info("🏆  Top 10 Miners by Reward:")
+                    bt.logging.info("🏆 Top 10 Miners by Reward:")
                     for uid, volume, reward in sorted_miners[:10]:
                         bt.logging.info(
                             f"Miner {uid}: volume={volume:.0f}, reward={reward:.4f}, {self.format_miner_link(uid)[1:]}"
