@@ -474,26 +474,37 @@ class Forwarder:
                         try:
                             if tweet_validator:
                                 with SilentOutput():
-                                    masa_validation_passed = (
-                                        tweet_validator.validate_tweet(
-                                            tweet.get("ID"),
-                                            tweet.get("Name"),
-                                            tweet.get("Username"),
-                                            tweet.get("Text"),
-                                            tweet.get("Timestamp"),
-                                            tweet.get("Hashtags", []),
+                                    try:
+                                        masa_validation_passed = (
+                                            tweet_validator.validate_tweet(
+                                                tweet.get("ID"),
+                                                tweet.get("Name"),
+                                                tweet.get("Username"),
+                                                tweet.get("Text"),
+                                                tweet.get("Timestamp"),
+                                                tweet.get("Hashtags", []),
+                                            )
                                         )
-                                    )
-                                bt.logging.info(
-                                    f"└─ Masa-ai validation: {'✅ Passed' if masa_validation_passed else '❌ Failed'}"
-                                )
+                                        bt.logging.info(
+                                            f"└─ Masa-ai validation: {'❌ Tweet does not exist' if not masa_validation_passed else '✅ Valid'}"
+                                        )
+                                    except Exception as validation_error:
+                                        # If masa-ai has API issues, we accept the tweet
+                                        bt.logging.info(
+                                            f"└─ Masa-ai validation: ⚠️ API error - accepting tweet"
+                                        )
+                                        bt.logging.debug(
+                                            f"└─ Validation error details: {str(validation_error)}"
+                                        )
+                                        masa_validation_passed = True
                         except Exception as e:
-                            bt.logging.error(
-                                f"Error validating tweet with masa-ai: {e}"
-                            )
-                            masa_validation_passed = False
+                            # If masa-ai completely fails to initialize or other serious error
+                            bt.logging.error(f"Error with masa-ai validator: {e}")
+                            # Accept the tweet since it's not the miner's fault
+                            masa_validation_passed = True
 
-                        # If the random tweet passes masa-ai validation, include all basic validated tweets
+                        # If the random tweet passes masa-ai validation or if masa-ai had API issues,
+                        # include all basic validated tweets
                         if masa_validation_passed:
                             all_valid_tweets.extend(basic_validated_tweets)
                             valid = len(basic_validated_tweets)
@@ -504,7 +515,7 @@ class Forwarder:
                         else:
                             no_tweets_miners.append(uid)
                             bt.logging.debug(
-                                f"Miner: {uid}, Status: 🟡 Random tweet failed masa-ai validation, Link: {taostats_link}"
+                                f"Miner: {uid}, Status: 🟡 Tweet confirmed invalid by masa-ai, Link: {taostats_link}"
                             )
                     else:
                         no_tweets_miners.append(uid)
