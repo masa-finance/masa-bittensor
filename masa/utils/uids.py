@@ -29,13 +29,7 @@ def check_uid_availability(metagraph: "bt.metagraph.Metagraph", uid: int) -> boo
         )
         return False
 
-    # Filter out non validator permit.
-    if metagraph.validator_permit[uid]:
-        # Filter out uid without IP.
-        if metagraph.neurons[uid].axon_info.ip == "0.0.0.0":
-            return False
-
-    # Available otherwise.
+    # Available if it's a serving miner
     return True
 
 

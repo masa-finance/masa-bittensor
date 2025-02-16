@@ -450,9 +450,8 @@ class Forwarder:
                     self.normalize_whitespace(random_tweet.get("Username", ""))
                     .strip()
                     .lower(),
-                    self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
-                    .strip()
-                    .lower(),
+                    # Handle hashtags as individual items
+                    *[tag.lower() for tag in random_tweet.get("Hashtags", [])],
                 ]
                 query_in_tweet = any(
                     any(word in field for field in fields_to_check)
