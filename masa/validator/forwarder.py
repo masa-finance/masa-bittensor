@@ -629,12 +629,14 @@ class Forwarder:
                     f"Miner {uid}: Validation success rate: {validation_success_rate:.2%}"
                 )
 
+                # Convert uid to int here, before any conditional logic
+                uid_int = int(uid)
+
                 # Only credit miner if validation success rate is high enough (e.g. 80%)
                 if validation_success_rate >= 0.8:
                     bt.logging.info(
                         f"Miner {uid}: Validation success rate sufficient, crediting tweets"
                     )
-                    uid_int = int(uid)
                     if not self.validator.tweets_by_uid.get(uid_int):
                         self.validator.tweets_by_uid[uid_int] = {
                             tweet["Tweet"]["ID"] for tweet in unique_tweets
