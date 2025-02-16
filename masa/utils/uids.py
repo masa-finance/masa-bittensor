@@ -25,7 +25,7 @@ def check_uid_availability(metagraph: "bt.metagraph.Metagraph", uid: int) -> boo
     if not metagraph.axons[uid].is_serving:
         hotkey = metagraph.hotkeys[uid]
         bt.logging.info(
-            f"UID: {uid} is not serving - https://taostats.io/hotkey/{hotkey}"
+            f"Miner {uid} is not serving - https://taostats.io/hotkey/{hotkey}"
         )
         return False
 
