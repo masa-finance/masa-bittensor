@@ -365,13 +365,33 @@ class Forwarder:
 
     def _check_tweet_content(self, tweet_data, query_words):
         """Check if tweet content matches query terms."""
-        fields = [
-            self.normalize_whitespace(tweet_data.get("Text", "")).strip().lower(),
-            self.normalize_whitespace(tweet_data.get("Name", "")).strip().lower(),
-            self.normalize_whitespace(tweet_data.get("Username", "")).strip().lower(),
-            *[tag.lower() for tag in tweet_data.get("Hashtags", [])],
-        ]
-        return any(any(word in field for field in fields) for word in query_words)
+        if not tweet_data or not query_words:
+            return False
+
+        # Log the tweet data we're checking
+        bt.logging.debug(
+            f"Checking tweet content: {tweet_data.get('Text', '')[:100]}..."
+        )
+        bt.logging.debug(f"Against query words: {query_words}")
+
+        # Get all the fields we want to check
+        text = self.normalize_whitespace(tweet_data.get("Text", "")).strip().lower()
+        name = self.normalize_whitespace(tweet_data.get("Name", "")).strip().lower()
+        username = (
+            self.normalize_whitespace(tweet_data.get("Username", "")).strip().lower()
+        )
+        hashtags = [tag.lower() for tag in tweet_data.get("Hashtags", [])]
+
+        # Combine all fields into one string for easier searching
+        searchable_content = f"{text} {name} {username} {' '.join(hashtags)}"
+
+        # Check if any query word is in the searchable content
+        for word in query_words:
+            if word in searchable_content:
+                bt.logging.debug(f"Found match for query word: {word}")
+                return True
+
+        return False
 
     def _check_tweet_timestamp(self, timestamp):
         """Check if tweet meets recency requirements."""
@@ -453,6 +473,15 @@ class Forwarder:
         unreachable_miners = []
         no_tweets_miners = []
 
+        # Clean and split the query words once
+        query_words = (
+            self.normalize_whitespace(random_keyword.replace('"', ""))
+            .strip()
+            .lower()
+            .split()
+        )
+        bt.logging.info(f"Processing responses for query words: {query_words}")
+
         for response, uid in zip(responses, miner_uids):
             hotkey = self.validator.metagraph.hotkeys[uid]
             taostats_link = f"https://taostats.io/hotkey/{hotkey}"
@@ -464,11 +493,6 @@ class Forwarder:
                     f"Miner: {uid}, Status: No response, Link: {taostats_link}"
                 )
                 continue
-
-            # Log the raw response for debugging
-            bt.logging.debug(f"Raw response from miner {uid}:")
-            bt.logging.debug(f"Response type: {type(response)}")
-            bt.logging.debug(f"Response content: {response}")
 
             try:
                 # Check if response is a dict and has 'response' field
@@ -537,28 +561,23 @@ class Forwarder:
                 bt.logging.info(f"Miner {uid}: Found {len(valid_tweets)} valid tweets")
 
                 # Process valid tweets for query terms
-                query_words = (
-                    self.normalize_whitespace(random_keyword.replace('"', ""))
-                    .strip()
-                    .lower()
-                    .split()
-                )
                 matching_tweets = []
-
                 for tweet in valid_tweets:
-                    if self._check_tweet_content(
-                        tweet["Tweet"], query_words
-                    ) and self._check_tweet_timestamp(
-                        tweet["Tweet"].get("Timestamp", 0)
-                    ):
-                        matching_tweets.append(tweet)
+                    try:
+                        if self._check_tweet_content(
+                            tweet["Tweet"], query_words
+                        ) and self._check_tweet_timestamp(
+                            tweet["Tweet"].get("Timestamp", 0)
+                        ):
+                            matching_tweets.append(tweet)
+                    except Exception as e:
+                        bt.logging.error(f"Error checking tweet content: {str(e)}")
+                        continue
 
                 if matching_tweets:
                     bt.logging.info(
                         f"Miner {uid}: {len(matching_tweets)} tweets match query terms"
                     )
-                    # Only validate one random tweet with masa-ai
-                    random_tweet = random.choice(matching_tweets)
                     all_valid_tweets.extend(matching_tweets)
                     miner_stats.append((uid, len(matching_tweets)))
                 else:
@@ -574,7 +593,7 @@ class Forwarder:
         unreachable_count = len(unreachable_miners)
         no_tweets_count = len(no_tweets_miners)
 
-        bt.logging.info(f"Volume Check Results:")
+        bt.logging.info("Volume Check Results:")
         bt.logging.info(f"└─ Query: {random_keyword}")
         bt.logging.info(
             f"└─ Miners: {active_miners} 🟢 active, {unreachable_count} 🔴 unreachable, {no_tweets_count} 🟡 no tweets"
