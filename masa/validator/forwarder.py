@@ -466,148 +466,19 @@ class Forwarder:
         return valid_items, len(error_items), len(valid_items)
 
     async def _process_responses(self, responses, miner_uids, random_keyword):
-        """Process and validate miner responses."""
-        all_valid_tweets = []
-        total_errors = 0
-        miner_stats = []
-        unreachable_miners = []
-        no_tweets_miners = []
-
-        # Clean and split the query words once
-        query_words = (
-            self.normalize_whitespace(random_keyword.replace('"', ""))
-            .strip()
-            .lower()
-            .split()
-        )
-        bt.logging.info(f"Processing responses for query words: {query_words}")
+        """Log raw responses from miners."""
+        bt.logging.info(f"\nResponses for query: {random_keyword}")
 
         for response, uid in zip(responses, miner_uids):
-            hotkey = self.validator.metagraph.hotkeys[uid]
-            taostats_link = f"https://taostats.io/hotkey/{hotkey}"
+            bt.logging.info(f"\n=== Raw response from miner {uid} ===")
+            bt.logging.info(f"Response type: {type(response)}")
+            bt.logging.info(f"Response content: {response}")
 
-            # First check if we have a response at all
-            if response is None:
-                unreachable_miners.append(uid)
-                bt.logging.info(
-                    f"Miner: {uid}, Status: No response, Link: {taostats_link}"
-                )
-                continue
+            if isinstance(response, dict) and "response" in response:
+                bt.logging.info(f"\nResponse field type: {type(response['response'])}")
+                bt.logging.info(f"Response field content: {response['response']}")
 
-            try:
-                # Check if response is a dict and has 'response' field
-                if not isinstance(response, dict):
-                    bt.logging.error(
-                        f"Miner {uid}: Response is not a dict, got {type(response)}"
-                    )
-                    unreachable_miners.append(uid)
-                    continue
-
-                resp = response.get("response")
-                if resp is None:
-                    bt.logging.error(f"Miner {uid}: Response has no 'response' field")
-                    unreachable_miners.append(uid)
-                    continue
-
-                # Check if resp is a list
-                if not isinstance(resp, list):
-                    bt.logging.error(
-                        f"Miner {uid}: Response content is not a list, got {type(resp)}"
-                    )
-                    unreachable_miners.append(uid)
-                    continue
-
-                # Log the actual tweet count
-                bt.logging.info(f"Miner {uid}: Received {len(resp)} tweets")
-
-                # Now we know we have a list, check each item
-                valid_tweets = []
-                for item in resp:
-                    if not isinstance(item, dict):
-                        bt.logging.debug(
-                            f"Miner {uid}: Invalid tweet format - not a dict"
-                        )
-                        continue
-
-                    # Get the tweet data
-                    tweet_data = None
-                    if "Tweet" in item:
-                        tweet_data = item["Tweet"]
-                    elif "tweet" in item:
-                        tweet_data = item["tweet"]
-                    else:
-                        bt.logging.debug(
-                            f"Miner {uid}: Tweet missing Tweet/tweet field"
-                        )
-                        continue
-
-                    if not isinstance(tweet_data, dict):
-                        bt.logging.debug(f"Miner {uid}: Tweet data is not a dict")
-                        continue
-
-                    # Check required fields
-                    required_fields = ["ID", "Text", "Timestamp"]
-                    if not all(field in tweet_data for field in required_fields):
-                        bt.logging.debug(f"Miner {uid}: Tweet missing required fields")
-                        continue
-
-                    valid_tweets.append({"Tweet": tweet_data})
-
-                if not valid_tweets:
-                    bt.logging.info(f"Miner {uid}: No valid tweets found in response")
-                    no_tweets_miners.append(uid)
-                    continue
-
-                bt.logging.info(f"Miner {uid}: Found {len(valid_tweets)} valid tweets")
-
-                # Process valid tweets for query terms
-                matching_tweets = []
-                for tweet in valid_tweets:
-                    try:
-                        if self._check_tweet_content(
-                            tweet["Tweet"], query_words
-                        ) and self._check_tweet_timestamp(
-                            tweet["Tweet"].get("Timestamp", 0)
-                        ):
-                            matching_tweets.append(tweet)
-                    except Exception as e:
-                        bt.logging.error(f"Error checking tweet content: {str(e)}")
-                        continue
-
-                if matching_tweets:
-                    bt.logging.info(
-                        f"Miner {uid}: {len(matching_tweets)} tweets match query terms"
-                    )
-                    all_valid_tweets.extend(matching_tweets)
-                    miner_stats.append((uid, len(matching_tweets)))
-                else:
-                    bt.logging.info(f"Miner {uid}: No tweets match query terms")
-                    no_tweets_miners.append(uid)
-
-            except Exception as e:
-                bt.logging.error(f"Error processing miner {uid}: {str(e)}")
-                continue
-
-        # Log summary
-        active_miners = len(miner_stats)
-        unreachable_count = len(unreachable_miners)
-        no_tweets_count = len(no_tweets_miners)
-
-        bt.logging.info("Volume Check Results:")
-        bt.logging.info(f"└─ Query: {random_keyword}")
-        bt.logging.info(
-            f"└─ Miners: {active_miners} 🟢 active, {unreachable_count} 🔴 unreachable, {no_tweets_count} 🟡 no tweets"
-        )
-
-        if miner_stats:
-            miner_summary = ", ".join(f"{uid}:{count}" for uid, count in miner_stats)
-            bt.logging.info(f"└─ Tweets per miner: {miner_summary}")
-
-        bt.logging.info(
-            f"└─ Total tweets: {len(all_valid_tweets)} valid, {total_errors} errors"
-        )
-
-        return all_valid_tweets
+        return []  # Don't process anything until we understand the data
 
     def _log_validation_failure(self, uid, tweet, query_words, reason):
         """Log tweet validation failure details."""
