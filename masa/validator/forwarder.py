@@ -464,12 +464,39 @@ class Forwarder:
                 if valid > 0:
                     # First validate all tweets for basic criteria
                     basic_validated_tweets = []
+                    query_words = (
+                        self.normalize_whitespace(random_keyword.replace('"', ""))
+                        .strip()
+                        .lower()
+                        .split()
+                    )
+                    bt.logging.info(f"Checking tweets for query terms: {query_words}")
+
                     for item in valid_items:
                         tweet = item.get("Tweet", {})
-                        if self._check_tweet_timestamp(tweet.get("Timestamp", 0)):
+                        tweet_id = tweet.get("ID", "unknown")
+
+                        # Check timestamp
+                        timestamp_valid = self._check_tweet_timestamp(
+                            tweet.get("Timestamp", 0)
+                        )
+
+                        # Check query terms
+                        content_valid = self._check_tweet_content(tweet, query_words)
+
+                        if timestamp_valid and content_valid:
                             basic_validated_tweets.append(item)
+                        else:
+                            bt.logging.debug(
+                                f"Tweet {self.format_tweet_url(tweet_id)} failed basic validation:"
+                                f"{' (timestamp invalid)' if not timestamp_valid else ''}"
+                                f"{' (query terms not found)' if not content_valid else ''}"
+                            )
 
                     if basic_validated_tweets:
+                        bt.logging.info(
+                            f"Found {len(basic_validated_tweets)}/{len(valid_items)} tweets containing query terms"
+                        )
                         # Only validate one random tweet with masa-ai
                         random_tweet = random.choice(basic_validated_tweets)
                         tweet = random_tweet.get("Tweet", {})
