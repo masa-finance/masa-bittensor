@@ -466,11 +466,6 @@ class Forwarder:
             hotkey = self.validator.metagraph.hotkeys[uid]
             taostats_link = f"https://taostats.io/hotkey/{hotkey}"
 
-            # Log raw response data for debugging
-            bt.logging.debug(f"Raw response for miner {uid}:")
-            bt.logging.debug(f"Response type: {type(response)}")
-            bt.logging.debug(f"Response content: {response}")
-
             # Handle all cases where we don't have a valid response
             if response is None:
                 unreachable_miners.append(uid)
@@ -484,11 +479,10 @@ class Forwarder:
                 response_data = response if isinstance(response, dict) else {}
                 resp = response_data.get("response")
 
-                # Log response data structure
-                bt.logging.debug(f"Response data type: {type(response_data)}")
-                bt.logging.debug(f"Response data content: {response_data}")
-                bt.logging.debug(f"Resp type: {type(resp)}")
-                bt.logging.debug(f"Resp content: {resp}")
+                # Log raw data at debug level
+                bt.logging.debug(f"Raw response data for miner {uid}:")
+                bt.logging.debug(f"Response data: {response_data}")
+                bt.logging.debug(f"Response content: {resp}")
 
                 if resp is None:
                     unreachable_miners.append(uid)
@@ -496,12 +490,6 @@ class Forwarder:
                         f"Miner: {uid}, Status: 🔴 Unreachable (empty response), Link: {taostats_link}"
                     )
                     continue
-
-                # Only log tweet count if we have valid data
-                if isinstance(resp, list):
-                    bt.logging.info(
-                        f"Checking {len(resp)} tweets from miner {uid} for query terms: {random_keyword}"
-                    )
 
                 # Process the response
                 valid_items, errors, valid = self._process_single_response(resp, uid)
@@ -541,7 +529,7 @@ class Forwarder:
                     continue
 
                 bt.logging.info(
-                    f"Checking {len(valid_structured_items)} tweets from miner {uid} for query terms: {query_words}"
+                    f"Processing {len(valid_structured_items)} tweets from miner {uid} for query terms: {query_words}"
                 )
 
                 for item in valid_structured_items:
