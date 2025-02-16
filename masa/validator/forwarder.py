@@ -375,19 +375,21 @@ class Forwarder:
         bt.logging.debug(f"Against query words: {query_words}")
 
         # Get all the fields we want to check
-        text = self.normalize_whitespace(tweet_data.get("Text", "")).strip().lower()
-        name = self.normalize_whitespace(tweet_data.get("Name", "")).strip().lower()
-        username = (
-            self.normalize_whitespace(tweet_data.get("Username", "")).strip().lower()
-        )
+        text = self.normalize_whitespace(tweet_data.get("Text", "")).lower()
+        name = self.normalize_whitespace(tweet_data.get("Name", "")).lower()
+        username = self.normalize_whitespace(tweet_data.get("Username", "")).lower()
         hashtags = [tag.lower() for tag in tweet_data.get("Hashtags", [])]
 
         # Combine all fields into one string for easier searching
-        searchable_content = f"{text} {name} {username} {' '.join(hashtags)}"
+        searchable_content = f"{text} {name} {username} {' '.join(hashtags)}".lower()
 
         # Check if any query word is in the searchable content
+        # Use word boundaries to ensure we match whole words
         for word in query_words:
-            if word in searchable_content:
+            word = word.lower()  # Convert query word to lowercase
+            # Create regex pattern with word boundaries
+            pattern = f"\\b{re.escape(word)}\\b"
+            if re.search(pattern, searchable_content):
                 bt.logging.debug(f"Found match for query word: {word}")
                 return True
 
