@@ -99,7 +99,9 @@ class Forwarder:
                     taostats_link = f"https://taostats.io/hotkey/{hotkey}"
 
                     if response is None:
-                        bt.logging.info(f"Miner {uid}: No response | {taostats_link}")
+                        bt.logging.info(
+                            f"Miner: {uid}, Status: No response, Link: {taostats_link}"
+                        )
                         formatted_responses.append({"uid": int(uid), "response": None})
                     else:
                         # Extract response metrics
@@ -114,7 +116,7 @@ class Forwarder:
 
                         # Only log at debug level since this will be summarized later
                         bt.logging.debug(
-                            f"Miner {uid}: Initial response received | {taostats_link}"
+                            f"Miner: {uid}, Status: Response received, Link: {taostats_link}"
                         )
                         formatted_responses.append(
                             {"uid": int(uid), "response": response}
@@ -425,7 +427,9 @@ class Forwarder:
 
             if response is None or response.get("response") is None:
                 no_response_miners.append(uid)
-                bt.logging.info(f"Miner {uid}: No response | {taostats_link}")
+                bt.logging.info(
+                    f"Miner: {uid}, Status: No response, Link: {taostats_link}"
+                )
                 continue
 
             try:
@@ -442,16 +446,16 @@ class Forwarder:
                 if valid > 0:
                     miner_stats.append((uid, valid))
                     bt.logging.info(
-                        f"Miner {uid}: Processed {valid} tweets ({errors} errors) | {taostats_link}"
+                        f"Miner: {uid}, Tweets: {valid}, Errors: {errors}, Link: {taostats_link}"
                     )
                 else:
                     bt.logging.info(
-                        f"Miner {uid}: No valid tweets found | {taostats_link}"
+                        f"Miner: {uid}, Status: No valid tweets, Link: {taostats_link}"
                     )
 
             except Exception as e:
                 bt.logging.error(
-                    f"Miner {uid}: Error processing response: {str(e)} | {taostats_link}"
+                    f"Miner: {uid}, Status: Error processing response ({str(e)}), Link: {taostats_link}"
                 )
                 continue
 
