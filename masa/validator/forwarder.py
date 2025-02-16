@@ -372,72 +372,59 @@ class Forwarder:
             .split()
         )
 
-        with SilentOutput():
-            validator = TweetValidator()
-
+        # Log raw responses for debugging
+        bt.logging.debug("Raw responses received:")
         for response, uid in zip(responses, miner_uids):
-            try:
-                # Handle None response
-                if response is None or not hasattr(response, "get"):
-                    bt.logging.warning(f"Miner {uid}: Invalid response structure")
-                    bt.logging.debug(f"Raw response: {response}")
-                    continue
-
-                # Extract response data
-                response_data = dict(response)
-                if response_data.get("response") is None:
-                    bt.logging.warning(f"Miner {uid}: Received None response")
-                    bt.logging.debug(f"Response object: {response_data}")
-                    continue
-
-                all_responses = response_data.get("response", [])
-                if not all_responses:
-                    bt.logging.warning(f"Miner {uid}: Empty response list")
-                    bt.logging.debug(f"Response data: {response_data}")
-                    continue
-
-                # Filter valid tweets
-                valid_tweets = [
-                    tweet
-                    for tweet in all_responses
-                    if self._validate_tweet_structure(tweet)
-                ]
-
-                if not valid_tweets:
-                    bt.logging.warning(f"Miner {uid}: No valid tweets in response")
-                    bt.logging.debug(f"All responses: {all_responses}")
-                    continue
-
-                # Validate random tweet
-                random_tweet = dict(random.choice(valid_tweets))["Tweet"]
-
-                # Run all validations
-                content_valid = self._check_tweet_content(random_tweet, query_words)
-                timestamp_valid = self._check_tweet_timestamp(
-                    random_tweet.get("Timestamp", 0)
-                )
-                external_valid = validator.validate_tweet(random_tweet)
-
-                # If all validations pass, include the tweets
-                if content_valid and timestamp_valid and external_valid:
-                    bt.logging.info(f"✅ Miner {uid}: Tweet validation passed")
-                    bt.logging.info(
-                        f"URL: https://x.com/i/status/{random_tweet.get('ID')}"
-                    )
-                    all_valid_tweets.extend(valid_tweets)
-                else:
-                    bt.logging.info(f"❌ Miner {uid}: Tweet validation failed")
-                    bt.logging.info(f"- Content valid: {content_valid}")
-                    bt.logging.info(f"- Timestamp valid: {timestamp_valid}")
-                    bt.logging.info(f"- External valid: {external_valid}")
-                    bt.logging.info(
-                        f"URL: https://x.com/i/status/{random_tweet.get('ID')}"
-                    )
-
-            except Exception as e:
-                bt.logging.error(f"Error processing miner {uid}: {str(e)}")
-                bt.logging.debug(f"Full error: {e}")
+            bt.logging.debug(f"Miner {uid} raw response: {response}")
+            if response is None:
+                bt.logging.warning(f"Miner {uid}: None response received")
                 continue
+
+            # Extract response data and log it
+            response_data = dict(response)
+            bt.logging.debug(f"Miner {uid} response_data: {response_data}")
+
+            # Get the actual response content
+            all_responses = response_data.get("response")
+            bt.logging.debug(f"Miner {uid} all_responses: {all_responses}")
+
+            if not all_responses:
+                bt.logging.warning(f"Miner {uid}: Empty or invalid response list")
+                continue
+
+            # Filter valid tweets
+            valid_tweets = [
+                tweet
+                for tweet in all_responses
+                if self._validate_tweet_structure(tweet)
+            ]
+
+            if not valid_tweets:
+                bt.logging.warning(f"Miner {uid}: No valid tweets in response")
+                bt.logging.debug(f"All responses: {all_responses}")
+                continue
+
+            # Validate random tweet
+            random_tweet = dict(random.choice(valid_tweets))["Tweet"]
+
+            # Run all validations
+            content_valid = self._check_tweet_content(random_tweet, query_words)
+            timestamp_valid = self._check_tweet_timestamp(
+                random_tweet.get("Timestamp", 0)
+            )
+            external_valid = TweetValidator().validate_tweet(random_tweet)
+
+            # If all validations pass, include the tweets
+            if content_valid and timestamp_valid and external_valid:
+                bt.logging.info(f"✅ Miner {uid}: Tweet validation passed")
+                bt.logging.info(f"URL: https://x.com/i/status/{random_tweet.get('ID')}")
+                all_valid_tweets.extend(valid_tweets)
+            else:
+                bt.logging.info(f"❌ Miner {uid}: Tweet validation failed")
+                bt.logging.info(f"- Content valid: {content_valid}")
+                bt.logging.info(f"- Timestamp valid: {timestamp_valid}")
+                bt.logging.info(f"- External valid: {external_valid}")
+                bt.logging.info(f"URL: https://x.com/i/status/{random_tweet.get('ID')}")
 
         return all_valid_tweets
 
