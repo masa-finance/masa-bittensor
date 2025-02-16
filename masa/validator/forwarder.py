@@ -435,7 +435,9 @@ class Forwarder:
 
                 # Check content requirements first
                 query_words = (
-                    self.normalize_whitespace(random_keyword.replace('"', ""))
+                    self.normalize_whitespace(
+                        random_keyword.replace('"', "").replace("#", "")
+                    )
                     .strip()
                     .lower()
                     .split()
