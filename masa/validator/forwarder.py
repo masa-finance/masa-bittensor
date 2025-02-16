@@ -466,38 +466,208 @@ class Forwarder:
         return valid_items, len(error_items), len(valid_items)
 
     async def _process_responses(self, responses, miner_uids, random_keyword):
-        """Log response structure from miners."""
-        bt.logging.info(f"\nAnalyzing responses for query: {random_keyword}")
+        """Process responses from miners based on actual response structure."""
+        all_valid_tweets = []
+        validator = None
+        with SilentOutput():
+            validator = (
+                TweetValidator()
+            )  # Create a single validator instance to reuse guest token
 
         for response, uid in zip(responses, miner_uids):
-            bt.logging.info(f"\n=== Response structure from miner {uid} ===")
-            if not isinstance(response, dict):
-                bt.logging.info(f"Invalid response type: {type(response)}")
+            try:
+                valid_tweets = []
+                all_responses = dict(response).get("response", [])
+                if not all_responses:
+                    bt.logging.info(f"Miner {uid}: No responses")
+                    continue
+
+                # First filter out any tweets with non-numeric IDs and log bad miners
+                valid_tweet_count = 0
+                invalid_tweet_count = 0
+                invalid_ids = []
+
+                bt.logging.info(
+                    f"\n=== Processing {len(all_responses)} tweets from miner {uid} ==="
+                )
+
+                for tweet in all_responses:
+                    if (
+                        "Tweet" in tweet
+                        and "ID" in tweet["Tweet"]
+                        and tweet["Tweet"]["ID"]
+                    ):
+                        tweet_id = tweet["Tweet"]["ID"].strip()
+                        if tweet_id.isdigit():
+                            valid_tweets.append(tweet)
+                            valid_tweet_count += 1
+                        else:
+                            invalid_ids.append(tweet_id)
+                            invalid_tweet_count += 1
+                    else:
+                        invalid_tweet_count += 1
+
+                if invalid_tweet_count > 0:
+                    bt.logging.info(
+                        f"Miner {uid}: Found {invalid_tweet_count} invalid tweets out of {len(all_responses)}"
+                    )
+                    if invalid_ids:
+                        bt.logging.debug(f"Miner {uid}: Invalid IDs: {invalid_ids[:5]}")
+                    self.validator.scorer.add_volume(int(uid), 0, current_block)
+                    continue
+
+                # Deduplicate valid tweets using numeric IDs
+                unique_tweets_response = list(
+                    {tweet["Tweet"]["ID"]: tweet for tweet in valid_tweets}.values()
+                )
+                bt.logging.info(
+                    f"Miner {uid}: Found {len(unique_tweets_response)} unique valid tweets"
+                )
+
+                if not unique_tweets_response:
+                    bt.logging.info(f"Miner {uid}: No valid tweets after filtering")
+                    continue
+
+                # Validate a random tweet from the valid set
+                random_tweet = dict(random.choice(unique_tweets_response)).get(
+                    "Tweet", {}
+                )
+                bt.logging.info(
+                    f"Miner {uid}: Validating random tweet {self.format_tweet_url(random_tweet.get('ID'))}"
+                )
+
+                # Add exponential backoff for rate limits
+                retry_count = 0
+                max_retries = 3
+                while retry_count < max_retries:
+                    try:
+                        is_valid = validator.validate_tweet(
+                            random_tweet.get("ID"),
+                            random_tweet.get("Name"),
+                            random_tweet.get("Username"),
+                            random_tweet.get("Text"),
+                            random_tweet.get("Timestamp"),
+                            random_tweet.get("Hashtags"),
+                        )
+                        break
+                    except Exception as e:
+                        if "429" in str(e) and retry_count < max_retries - 1:
+                            wait_time = (2**retry_count) * 5  # 5, 10, 20 seconds
+                            bt.logging.warning(
+                                f"Rate limited, waiting {wait_time} seconds before retry"
+                            )
+                            await asyncio.sleep(wait_time)
+                            retry_count += 1
+                        else:
+                            bt.logging.error(
+                                f"Failed to validate tweet after {retry_count} retries: {e}"
+                            )
+                            is_valid = False
+                            break
+
+                # Always wait at least 2 seconds between validations
+                await asyncio.sleep(2)
+
+                query_words = (
+                    self.normalize_whitespace(random_keyword.replace('"', ""))
+                    .strip()
+                    .lower()
+                    .split()
+                )
+                bt.logging.info(f"Checking tweet against query words: {query_words}")
+
+                fields_to_check = [
+                    self.normalize_whitespace(random_tweet.get("Text", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Name", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Username", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
+                    .strip()
+                    .lower(),
+                ]
+
+                # Log what we're checking against
+                bt.logging.debug(f"Miner {uid}: Checking fields:")
+                bt.logging.debug(f"Text: {fields_to_check[0][:100]}...")
+                bt.logging.debug(f"Name: {fields_to_check[1]}")
+                bt.logging.debug(f"Username: {fields_to_check[2]}")
+                bt.logging.debug(f"Hashtags: {fields_to_check[3]}")
+
+                query_in_tweet = all(
+                    any(word in field for field in fields_to_check)
+                    for word in query_words
+                )
+
+                if not query_in_tweet:
+                    bt.logging.info(
+                        f"Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
+
+                tweet_timestamp = datetime.fromtimestamp(
+                    random_tweet.get("Timestamp", 0), UTC
+                )
+                yesterday = datetime.now(UTC).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                ) - timedelta(days=1)
+                is_since_date_requested = yesterday <= tweet_timestamp
+
+                if not is_since_date_requested:
+                    bt.logging.info(
+                        f"Tweet timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
+                    bt.logging.debug(
+                        f"Tweet time: {tweet_timestamp}, Required after: {yesterday}"
+                    )
+
+                if is_valid and query_in_tweet and is_since_date_requested:
+                    bt.logging.info(
+                        f"Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
+                    all_valid_tweets.extend(unique_tweets_response)
+                else:
+                    bt.logging.info(
+                        f"Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
+                    bt.logging.debug(
+                        f"Valid: {is_valid}, Query match: {query_in_tweet}, Recent: {is_since_date_requested}"
+                    )
+
+                # Update state and score
+                uid_int = int(uid)
+                if not self.validator.tweets_by_uid.get(uid_int):
+                    self.validator.tweets_by_uid[uid_int] = {
+                        tweet["Tweet"]["ID"] for tweet in unique_tweets_response
+                    }
+                    self.validator.scorer.add_volume(
+                        uid_int, len(unique_tweets_response), current_block
+                    )
+                    bt.logging.info(
+                        f"Miner {uid_int} produced {len(unique_tweets_response)} new tweets"
+                    )
+                else:
+                    existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
+                    new_tweet_ids = {
+                        tweet["Tweet"]["ID"] for tweet in unique_tweets_response
+                    }
+                    updates = new_tweet_ids - existing_tweet_ids
+                    self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
+                    self.validator.scorer.add_volume(
+                        uid_int, len(updates), current_block
+                    )
+                    bt.logging.info(
+                        f"Miner {uid_int} produced {len(updates)} new tweets (had {len(existing_tweet_ids)} existing)"
+                    )
+
+            except Exception as e:
+                bt.logging.error(f"Error processing miner {uid}: {e}")
                 continue
 
-            if "response" not in response:
-                bt.logging.info("Missing 'response' field")
-                continue
-
-            tweets = response["response"]
-            if not isinstance(tweets, list):
-                bt.logging.info(f"'response' field is not a list: {type(tweets)}")
-                continue
-
-            bt.logging.info(f"Number of items in response: {len(tweets)}")
-
-            if tweets:
-                # Log structure of first tweet only
-                first = tweets[0]
-                bt.logging.info("First item structure:")
-                bt.logging.info(f"- Has Error field: {('Error' in first)}")
-                if "Tweet" in first:
-                    tweet = first["Tweet"]
-                    bt.logging.info("- Tweet fields:")
-                    for key in tweet:
-                        bt.logging.info(f"  - {key}: {type(tweet[key])}")
-
-        return []  # Still don't process anything until we verify the structure
+        return all_valid_tweets
 
     def _log_validation_failure(self, uid, tweet, query_words, reason):
         """Log tweet validation failure details."""
