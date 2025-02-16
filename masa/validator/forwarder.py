@@ -454,7 +454,7 @@ class Forwarder:
                     .strip()
                     .lower(),
                 ]
-                query_in_tweet = all(
+                query_in_tweet = any(
                     any(word in field for field in fields_to_check)
                     for word in query_words
                 )
