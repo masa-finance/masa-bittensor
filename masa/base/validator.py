@@ -209,7 +209,9 @@ class BaseValidatorNeuron(BaseNeuron):
             return
 
         # Use raw scores directly - let process_weights_for_netuid handle normalization
-        bt.logging.info(f"🛰️ Setting weights on {self.config.subtensor.network} ...")
+        bt.logging.info(
+            f"🛰️ Attempting to set weights on {self.config.subtensor.network} ..."
+        )
         (
             processed_weight_uids,
             processed_weights,

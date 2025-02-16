@@ -18,7 +18,10 @@ def check_uid_availability(metagraph: "bt.metagraph.Metagraph", uid: int) -> boo
     """
     # Filter non serving axons.
     if not metagraph.axons[uid].is_serving:
-        bt.logging.info(f"UID: {uid} is not serving")
+        hotkey = metagraph.hotkeys[uid]
+        bt.logging.info(
+            f"UID: {uid} is not serving - https://taostats.io/hotkey/{hotkey}"
+        )
         return False
 
     # Filter out non validator permit.
