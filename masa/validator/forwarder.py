@@ -457,24 +457,27 @@ class Forwarder:
                     # Validate tweets with masa-ai
                     validated_tweets = []
                     masa_validation_count = 0
-                    internal_validation_count = 0
-
                     for item in valid_items:
                         tweet = item.get("Tweet", {})
                         tweet_id = tweet.get("ID", "unknown")
+                        tweet_text = tweet.get("Text", "")
+                        tweet_url = f"https://x.com/i/status/{tweet_id}"
 
-                        # First check basic structure
-                        if not self._validate_tweet_structure(item):
-                            bt.logging.debug(
-                                f"Tweet {tweet_id} failed structure validation"
-                            )
-                            continue
+                        bt.logging.info(f"Validating tweet from miner {uid}:")
+                        bt.logging.info(f"└─ ID: {tweet_id}")
+                        bt.logging.info(f"└─ URL: {tweet_url}")
+                        bt.logging.info(f"└─ Content: {tweet_text[:200]}...")
 
                         try:
                             if tweet_validator:
                                 with SilentOutput():
                                     is_valid = tweet_validator.validate_tweet(
-                                        tweet.get("Text", "")
+                                        tweet.get("ID"),
+                                        tweet.get("Name"),
+                                        tweet.get("Username"),
+                                        tweet.get("Text"),
+                                        tweet.get("Timestamp"),
+                                        tweet.get("Hashtags", []),
                                     )
                                 if is_valid:
                                     validated_tweets.append(item)
@@ -484,32 +487,26 @@ class Forwarder:
                                         f"Tweet {tweet_id} failed masa-ai validation"
                                     )
                             else:
-                                # Fallback to internal validation if masa-ai fails
+                                # Fallback to internal validation
                                 if self._check_tweet_timestamp(
                                     tweet.get("Timestamp", 0)
                                 ):
                                     validated_tweets.append(item)
-                                    internal_validation_count += 1
-                                else:
-                                    bt.logging.debug(
-                                        f"Tweet {tweet_id} failed timestamp validation"
+                                    bt.logging.info(
+                                        "└─ Status: ✅ Valid (timestamp check only)"
                                     )
-
+                                else:
+                                    bt.logging.info("└─ Status: ❌ Invalid timestamp")
                         except Exception as e:
+                            bt.logging.error(f"└─ Validation error: {str(e)}")
                             validation_errors += 1
-                            bt.logging.debug(
-                                f"Validation error for tweet {tweet_id}: {str(e)}"
-                            )
                             continue
 
                     valid = len(validated_tweets)
                     if valid > 0:
                         miner_stats.append((uid, valid))
-                        validation_method = (
-                            "masa-ai" if masa_validation_count > 0 else "internal"
-                        )
                         bt.logging.info(
-                            f"Miner: {uid}, Status: 🟢 Active, Tweets: {valid} ({validation_method}), Link: {taostats_link}"
+                            f"Miner: {uid}, Status: 🟢 Active, Tweets: {valid}, Link: {taostats_link}"
                         )
                         all_valid_tweets.extend(validated_tweets)
                     else:
@@ -668,7 +665,19 @@ class Forwarder:
             random_tweet = random.choice(response["tweets"])
             tweet_id = random_tweet.get("id")
 
-            is_valid = await self.validate_tweet(random_tweet)
+            try:
+                with SilentOutput():
+                    is_valid = tweet_validator.validate_tweet(
+                        random_tweet.get("ID"),
+                        random_tweet.get("Name"),
+                        random_tweet.get("Username"),
+                        random_tweet.get("Text"),
+                        random_tweet.get("Timestamp"),
+                        random_tweet.get("Hashtags", []),
+                    )
+            except Exception as e:
+                bt.logging.error(f"Validation error in spot check: {e}")
+                return False
 
             if is_valid:
                 bt.logging.info(

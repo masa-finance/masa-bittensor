@@ -18,6 +18,7 @@
 
 import bittensor as bt
 import asyncio
+import sys
 
 from masa.base.validator import BaseValidatorNeuron
 from masa.api.server import API
@@ -55,6 +56,11 @@ class Validator(BaseValidatorNeuron):
 
 async def main():
     validator = await Validator.create()
+    bt.logging.info(
+        f"🚀 Validator | Network: {config.subtensor.network} | Netuid: {config.netuid}"
+    )
+    bt.logging.debug(f"Command: {' '.join(sys.argv)}")
+    bt.logging.info(f"📂 Path | {config.neuron.full_path}")
     await validator.run()
 
 
