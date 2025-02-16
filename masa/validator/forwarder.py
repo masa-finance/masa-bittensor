@@ -111,8 +111,10 @@ class Forwarder:
                         tweet_count = (
                             len(resp_data) if isinstance(resp_data, list) else 0
                         )
-                        bt.logging.info(
-                            f"Miner {uid}: Received {tweet_count} tweets | {taostats_link}"
+
+                        # Only log at debug level since this will be summarized later
+                        bt.logging.debug(
+                            f"Miner {uid}: Initial response received | {taostats_link}"
                         )
                         formatted_responses.append(
                             {"uid": int(uid), "response": response}
@@ -415,19 +417,20 @@ class Forwarder:
         total_errors = 0
         total_valid = 0
         miner_stats = []
+        no_response_miners = []
 
         for response, uid in zip(responses, miner_uids):
-            if response is None:
-                bt.logging.debug(f"└─ Miner {uid}: None response")
+            hotkey = self.validator.metagraph.hotkeys[uid]
+            taostats_link = f"https://taostats.io/hotkey/{hotkey}"
+
+            if response is None or response.get("response") is None:
+                no_response_miners.append(uid)
+                bt.logging.info(f"Miner {uid}: No response | {taostats_link}")
                 continue
 
             try:
                 response_data = dict(response)
                 resp = response_data.get("response")
-
-                if resp is None:
-                    bt.logging.debug(f"└─ Miner {uid}: Empty response data")
-                    continue
 
                 # Process the response
                 valid_items, errors, valid = self._process_single_response(resp, uid)
@@ -435,20 +438,30 @@ class Forwarder:
                 # Update totals
                 total_errors += errors
                 total_valid += valid
-                all_valid_tweets.extend(valid_items)
 
                 if valid > 0:
                     miner_stats.append((uid, valid))
+                    bt.logging.info(
+                        f"Miner {uid}: Processed {valid} tweets ({errors} errors) | {taostats_link}"
+                    )
+                else:
+                    bt.logging.info(
+                        f"Miner {uid}: No valid tweets found | {taostats_link}"
+                    )
 
             except Exception as e:
-                bt.logging.error(f"└─ Miner {uid}: Error processing response: {str(e)}")
+                bt.logging.error(
+                    f"Miner {uid}: Error processing response: {str(e)} | {taostats_link}"
+                )
                 continue
 
         # Log summary
         bt.logging.info(f"Volume Check Results:")
         bt.logging.info(f"└─ Query: {random_keyword}")
+        responding_miners = len(miner_stats)
+        total_miners = len(miner_uids)
         bt.logging.info(
-            f"└─ Miners: {len(miner_stats)}/{len(miner_uids)} responded with data"
+            f"└─ Miners: {responding_miners}/{total_miners} responded with data"
         )
 
         # Log miner responses in a compact format
