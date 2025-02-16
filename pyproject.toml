@@ -15,6 +15,21 @@ authors = [
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.12"
+dependencies = [
+    "bittensor>=9.0.0",
+    "masa-ai>=0.2.7",
+    "aiohttp>=3.10.11",
+    "fastapi>=0.110.3",
+    "loguru>=0.7.3",
+    "python-dotenv>=1.0.1",
+    "pydantic>=2.9.2",
+    "uvicorn>=0.30.5",
+    "tqdm>=4.67.1",
+    "numpy>=2.0.2",
+    "pandas>=2.2.3",
+    "torch>=2.3.0",
+    "scipy>=1.15.0"
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
