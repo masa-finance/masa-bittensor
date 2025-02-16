@@ -364,7 +364,8 @@ class Forwarder:
 
     async def _process_responses(self, responses, miner_uids, random_keyword):
         """Process and validate miner responses."""
-        # First, just log response structure
+        all_valid_tweets = []
+
         for response, uid in zip(responses, miner_uids):
             bt.logging.info(f"Miner {uid}:")
             if response is None:
@@ -385,12 +386,36 @@ class Forwarder:
                         bt.logging.info(f"└─ First item type: {type(resp[0])}")
                         if isinstance(resp[0], dict):
                             bt.logging.info(f"└─ Keys: {list(resp[0].keys())}")
+
+                            # Log a sample of errors if present
+                            error_items = [item for item in resp if item.get("Error")]
+                            if error_items:
+                                bt.logging.warning(
+                                    f"└─ Found {len(error_items)} items with errors"
+                                )
+                                if len(error_items) > 0:
+                                    bt.logging.warning(
+                                        f"└─ Sample error: {error_items[0]['Error']}"
+                                    )
+
+                            # Log valid tweets
+                            valid_items = [
+                                item
+                                for item in resp
+                                if not item.get("Error") and item.get("Tweet")
+                            ]
+                            if valid_items:
+                                bt.logging.info(
+                                    f"└─ Found {len(valid_items)} valid tweets"
+                                )
+                                all_valid_tweets.extend(valid_items)
+
             except Exception as e:
                 bt.logging.error(f"└─ Error parsing: {str(e)}")
                 continue
 
-        # For now, just return empty list until we verify the data format
-        return []
+        bt.logging.info(f"Total valid tweets collected: {len(all_valid_tweets)}")
+        return all_valid_tweets
 
     def _log_validation_failure(self, uid, tweet, query_words, reason):
         """Log tweet validation failure details."""
