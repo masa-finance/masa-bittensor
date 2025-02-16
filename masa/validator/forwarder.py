@@ -476,26 +476,15 @@ class Forwarder:
     ):
         """Process responses from miners based on actual response structure."""
         all_valid_tweets = []
-        validator = None
-
-        # Initialize validator outside the loop to avoid recreation
-        with SilentOutput():
-            validator = TweetValidator()
+        validator = TweetValidator()
 
         for response, uid in zip(responses, miner_uids):
             try:
-                # Convert uid to int here, before any conditional logic
                 uid_int = int(uid)
-
-                # Handle None response
-                if response is None or not isinstance(response, dict):
-                    bt.logging.info(f"Miner {uid}: Invalid response format")
-                    self.validator.scorer.add_volume(uid_int, 0, current_block)
-                    continue
-
                 all_responses = response.get("response", [])
-                if not all_responses or not isinstance(all_responses, list):
-                    bt.logging.info(f"Miner {uid}: No valid responses")
+
+                if not all_responses:
+                    bt.logging.info(f"Miner {uid}: No responses")
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
@@ -503,57 +492,19 @@ class Forwarder:
                     f"\n=== Processing {len(all_responses)} tweets from miner {uid} ==="
                 )
 
-                # First filter out tweets with invalid structure
-                structured_tweets = []
-                invalid_structure_count = 0
-                for tweet in all_responses:
-                    if not isinstance(tweet, dict):
-                        invalid_structure_count += 1
-                        continue
-
-                    if (
-                        "Tweet" in tweet
-                        and isinstance(tweet["Tweet"], dict)
-                        and "ID" in tweet["Tweet"]
-                        and tweet["Tweet"]["ID"]
-                    ):
-                        tweet_id = str(tweet["Tweet"]["ID"]).strip()
-                        if tweet_id.isdigit():
-                            structured_tweets.append(tweet)
-                        else:
-                            invalid_structure_count += 1
-                    else:
-                        invalid_structure_count += 1
-
-                if invalid_structure_count > 0:
-                    bt.logging.info(
-                        f"Miner {uid}: Found {invalid_structure_count} tweets with invalid structure"
-                    )
-
                 # Deduplicate tweets by ID
                 unique_tweets = list(
-                    {
-                        tweet["Tweet"]["ID"]: tweet for tweet in structured_tweets
-                    }.values()
+                    {tweet["Tweet"]["ID"]: tweet for tweet in all_responses}.values()
                 )
                 bt.logging.info(
                     f"Miner {uid}: Found {len(unique_tweets)} tweets with valid structure"
                 )
-
-                if not unique_tweets:
-                    bt.logging.info(f"Miner {uid}: No tweets with valid structure")
-                    self.validator.scorer.add_volume(uid_int, 0, current_block)
-                    continue
 
                 # Select a random sample of tweets to validate (max 5)
                 sample_size = min(5, len(unique_tweets))
                 tweets_to_validate = random.sample(unique_tweets, sample_size)
                 bt.logging.info(f"Miner {uid}: Validating {sample_size} random tweets")
 
-                # Track validation results
-                validation_failures = []
-                query_failures = []
-                timestamp_failures = []
                 valid_tweets = []
 
                 for tweet in tweets_to_validate:
@@ -561,94 +512,56 @@ class Forwarder:
                     tweet_id = tweet_data["ID"]
                     tweet_url = self.format_tweet_url(tweet_id)
 
-                    # Check timestamp first (cheapest check)
+                    # Check timestamp
                     tweet_timestamp = datetime.fromtimestamp(
-                        tweet_data.get("Timestamp", 0), UTC
+                        tweet_data["Timestamp"], UTC
                     )
                     yesterday = datetime.now(UTC).replace(
                         hour=0, minute=0, second=0, microsecond=0
                     ) - timedelta(days=1)
                     if not yesterday <= tweet_timestamp:
-                        timestamp_failures.append((tweet_id, tweet_timestamp))
                         bt.logging.info(f"Tweet timestamp check failed: {tweet_url}")
-                        bt.logging.debug(
-                            f"Tweet time: {tweet_timestamp}, Required after: {yesterday}"
-                        )
                         continue
 
-                    # Check query match next (also cheap)
+                    # Check query match
                     query_words = (
                         self.normalize_whitespace(random_keyword.replace('"', ""))
                         .strip()
                         .lower()
                         .split()
                     )
-                    text = (
-                        self.normalize_whitespace(tweet_data.get("Text", ""))
-                        .strip()
-                        .lower()
-                    )
+                    text = self.normalize_whitespace(tweet_data["Text"]).strip().lower()
 
-                    bt.logging.debug(f"Checking tweet {tweet_url}")
                     bt.logging.info(f"Query terms: {query_words}")
-                    bt.logging.info(f"Tweet text: {tweet_data.get('Text', '')}")
+                    bt.logging.info(f"Tweet text: {tweet_data['Text']}")
 
-                    # Check if any query word is in the text
                     if not self._check_tweet_content(tweet_data, query_words):
-                        query_failures.append((tweet_id, text))
                         bt.logging.info(f"Query match failed for {tweet_url}")
-                        bt.logging.info(f"  Query terms: {query_words}")
-                        bt.logging.info(f"  Tweet text: {tweet_data.get('Text', '')}")
                         continue
 
-                    # Finally do masa-ai validation (most expensive)
-                    retry_count = 0
-                    max_retries = 3
-                    validation_success = False
+                    # Do masa-ai validation
+                    try:
+                        with SilentOutput():
+                            is_valid = validator.validate_tweet(
+                                tweet_data["ID"],
+                                tweet_data["Name"],
+                                tweet_data["Username"],
+                                tweet_data["Text"],
+                                tweet_data["Timestamp"],
+                                tweet_data.get("Hashtags", []),
+                            )
 
-                    while retry_count < max_retries and not validation_success:
-                        try:
-                            with SilentOutput():
-                                is_valid = validator.validate_tweet(
-                                    tweet_data.get("ID"),
-                                    tweet_data.get("Name"),
-                                    tweet_data.get("Username"),
-                                    tweet_data.get("Text"),
-                                    tweet_data.get("Timestamp"),
-                                    tweet_data.get("Hashtags", []),
-                                )
+                        if is_valid:
+                            valid_tweets.append(tweet)
+                            bt.logging.info(f"Tweet validation passed: {tweet_url}")
+                            bt.logging.info(f"  Text: {tweet_data['Text']}")
+                        else:
+                            bt.logging.info(f"Tweet validation failed: {tweet_url}")
 
-                            if is_valid:
-                                valid_tweets.append(tweet)
-                                validation_success = True
-                                bt.logging.info(f"Tweet validation passed: {tweet_url}")
-                                bt.logging.info(f"  Text: {tweet_data.get('Text', '')}")
-                            else:
-                                validation_failures.append(
-                                    (tweet_id, "Tweet not found or invalid")
-                                )
-                                bt.logging.info(f"Tweet validation failed: {tweet_url}")
-                                bt.logging.info(f"  Text: {tweet_data.get('Text', '')}")
-                                break
+                    except Exception as e:
+                        bt.logging.error(f"Error validating {tweet_url}: {str(e)}")
 
-                        except Exception as e:
-                            if "429" in str(e) and retry_count < max_retries - 1:
-                                wait_time = (2**retry_count) * 5
-                                bt.logging.warning(
-                                    f"Rate limited validating {tweet_url}, waiting {wait_time}s"
-                                )
-                                await asyncio.sleep(wait_time)
-                                retry_count += 1
-                            else:
-                                validation_failures.append(
-                                    (tweet_id, f"Error: {str(e)}")
-                                )
-                                bt.logging.error(
-                                    f"Error validating {tweet_url}: {str(e)}"
-                                )
-                                break
-
-                    # Always wait between validations
+                    # Wait between validations
                     await asyncio.sleep(2)
 
                 # Calculate validation success rate
