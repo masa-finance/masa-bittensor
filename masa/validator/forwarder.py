@@ -357,6 +357,9 @@ class Forwarder:
             .split()
         )
 
+        with SilentOutput():
+            validator = TweetValidator()
+
         for response, uid in zip(responses, miner_uids):
             try:
                 # Extract response data
@@ -389,25 +392,51 @@ class Forwarder:
                 random_tweet = dict(random.choice(valid_tweets))["Tweet"]
 
                 # Content validation
-                if not self._check_tweet_content(random_tweet, query_words):
+                content_valid = self._check_tweet_content(random_tweet, query_words)
+                if not content_valid:
                     self._log_validation_failure(
                         uid, random_tweet, query_words, "content"
                     )
-                    continue
+                    bt.logging.info(
+                        f"ℹ️ [DRY RUN] Miner {uid}: Content validation failed but continuing for debugging"
+                    )
 
                 # Timestamp validation
-                if not self._check_tweet_timestamp(random_tweet.get("Timestamp", 0)):
+                timestamp_valid = self._check_tweet_timestamp(
+                    random_tweet.get("Timestamp", 0)
+                )
+                if not timestamp_valid:
                     self._log_validation_failure(
                         uid, random_tweet, query_words, "timestamp"
                     )
-                    continue
+                    bt.logging.info(
+                        f"ℹ️ [DRY RUN] Miner {uid}: Timestamp validation failed but continuing for debugging"
+                    )
 
-                # Log success
-                bt.logging.info(f"ℹ️ [DRY RUN] Miner {uid}: Tweet validation would pass")
+                # External validation
+                try:
+                    external_valid = validator.validate_tweet(random_tweet)
+                    if not external_valid:
+                        bt.logging.info(
+                            f"ℹ️ [DRY RUN] Miner {uid}: External validation failed but continuing for debugging"
+                        )
+                except Exception as e:
+                    bt.logging.error(
+                        f"Error in external validation for miner {uid}: {e}"
+                    )
+                    bt.logging.info(
+                        f"ℹ️ [DRY RUN] Miner {uid}: External validation error but continuing for debugging"
+                    )
+
+                # Log validation status
+                bt.logging.info(f"ℹ️ [DRY RUN] Miner {uid}: Tweet validation results:")
+                bt.logging.info(f"  - Content valid: {content_valid}")
+                bt.logging.info(f"  - Timestamp valid: {timestamp_valid}")
                 bt.logging.info(
-                    f"ℹ️ [DRY RUN] Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
+                    f"  - URL: https://x.com/i/status/{random_tweet.get('ID')}"
                 )
 
+                # Include tweets regardless of validation for debugging
                 all_valid_tweets.extend(valid_tweets)
 
             except Exception as e:
