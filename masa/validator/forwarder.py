@@ -363,38 +363,57 @@ class Forwarder:
             and str(tweet["Tweet"]["ID"]).strip().isdigit()
         )
 
+    def _split_hashtag(self, hashtag: str) -> list:
+        """Split a hashtag into words based on case boundaries."""
+        # Strip # if present
+        hashtag = hashtag.lstrip("#")
+
+        # Insert a space at case boundaries: camelCase or PascalCase
+        # Look for: lowercase followed by uppercase, or uppercase followed by lowercase when preceded by uppercase
+        words = re.sub(
+            r"([a-z])([A-Z])|([A-Z])([A-Z][a-z])", r"\1\3 \2\4", hashtag
+        ).split()
+        return [word.lower() for word in words]
+
     def _check_tweet_content(self, tweet_data, query_words):
         """Check if tweet content matches query terms."""
         if not tweet_data or not query_words:
             return False
 
-        # Log the tweet data we're checking
+        # Log what we're checking
         bt.logging.debug(
             f"Checking tweet content: {tweet_data.get('Text', '')[:100]}..."
         )
         bt.logging.debug(f"Against query words: {query_words}")
 
         # Get all the fields we want to check
-        text = self.normalize_whitespace(tweet_data.get("Text", "")).lower()
-        name = self.normalize_whitespace(tweet_data.get("Name", "")).lower()
-        username = self.normalize_whitespace(tweet_data.get("Username", "")).lower()
-        hashtags = [tag.lower() for tag in tweet_data.get("Hashtags", [])]
+        text = tweet_data.get("Text", "").lower()
+        name = tweet_data.get("Name", "").lower()
+        username = tweet_data.get("Username", "").lower()
 
-        # Combine all fields into one string for easier searching
+        # Process hashtags - split each one by case boundaries
+        hashtags = []
+        for tag in tweet_data.get("Hashtags", []):
+            hashtags.extend(self._split_hashtag(tag))
+
+        # Combine all fields into searchable content
         searchable_content = f"{text} {name} {username} {' '.join(hashtags)}".lower()
 
-        # First try exact phrase match if multiple words
-        if len(query_words) > 1:
-            exact_phrase = " ".join(query_words).lower()
-            if exact_phrase in searchable_content:
-                bt.logging.debug(f"Found exact phrase match: {exact_phrase}")
-                return True
-
-        # For single words or if phrase match fails, check each word
+        # Process query words - if it starts with #, treat as hashtag
+        search_terms = []
         for word in query_words:
-            word = word.lower()
-            if word in searchable_content:
-                bt.logging.debug(f"Found word match: {word}")
+            if word.startswith("#"):
+                search_terms.extend(self._split_hashtag(word))
+            else:
+                # Remove special characters and lowercase
+                cleaned_word = re.sub(r"[^\w\s]", "", word).lower()
+                if cleaned_word:  # only add if not empty after cleaning
+                    search_terms.append(cleaned_word)
+
+        # Check if any search term is in the content
+        for term in search_terms:
+            if term in searchable_content:
+                bt.logging.debug(f"Found match: {term}")
                 return True
 
         return False
