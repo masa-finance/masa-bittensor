@@ -419,16 +419,27 @@ class Forwarder:
         total_errors = 0
         total_valid = 0
         miner_stats = []
-        no_response_miners = []
+        unreachable_miners = []
+        no_tweets_miners = []
+        validation_errors = 0
+
+        # Initialize masa-ai validator
+        try:
+            with SilentOutput():
+                tweet_validator = TweetValidator()
+                bt.logging.debug("🔧 Initialized masa-ai validator")
+        except Exception as e:
+            bt.logging.error(f"❌ Failed to initialize masa-ai validator: {e}")
+            tweet_validator = None
 
         for response, uid in zip(responses, miner_uids):
             hotkey = self.validator.metagraph.hotkeys[uid]
             taostats_link = f"https://taostats.io/hotkey/{hotkey}"
 
             if response is None or response.get("response") is None:
-                no_response_miners.append(uid)
+                unreachable_miners.append(uid)
                 bt.logging.info(
-                    f"Miner: {uid}, Status: No response, Link: {taostats_link}"
+                    f"Miner: {uid}, Status: 🔴 Unreachable, Link: {taostats_link}"
                 )
                 continue
 
@@ -439,41 +450,110 @@ class Forwarder:
                 # Process the response
                 valid_items, errors, valid = self._process_single_response(resp, uid)
 
-                # Update totals
+                # Update error count
                 total_errors += errors
-                total_valid += valid
 
                 if valid > 0:
-                    miner_stats.append((uid, valid))
-                    bt.logging.info(
-                        f"Miner: {uid}, Tweets: {valid}, Errors: {errors}, Link: {taostats_link}"
-                    )
+                    # Validate tweets with masa-ai
+                    validated_tweets = []
+                    masa_validation_count = 0
+                    internal_validation_count = 0
+
+                    for item in valid_items:
+                        tweet = item.get("Tweet", {})
+                        tweet_id = tweet.get("ID", "unknown")
+
+                        # First check basic structure
+                        if not self._validate_tweet_structure(item):
+                            bt.logging.debug(
+                                f"Tweet {tweet_id} failed structure validation"
+                            )
+                            continue
+
+                        try:
+                            if tweet_validator:
+                                with SilentOutput():
+                                    is_valid = tweet_validator.validate_tweet(
+                                        tweet.get("Text", "")
+                                    )
+                                if is_valid:
+                                    validated_tweets.append(item)
+                                    masa_validation_count += 1
+                                else:
+                                    bt.logging.debug(
+                                        f"Tweet {tweet_id} failed masa-ai validation"
+                                    )
+                            else:
+                                # Fallback to internal validation if masa-ai fails
+                                if self._check_tweet_timestamp(
+                                    tweet.get("Timestamp", 0)
+                                ):
+                                    validated_tweets.append(item)
+                                    internal_validation_count += 1
+                                else:
+                                    bt.logging.debug(
+                                        f"Tweet {tweet_id} failed timestamp validation"
+                                    )
+
+                        except Exception as e:
+                            validation_errors += 1
+                            bt.logging.debug(
+                                f"Validation error for tweet {tweet_id}: {str(e)}"
+                            )
+                            continue
+
+                    valid = len(validated_tweets)
+                    if valid > 0:
+                        miner_stats.append((uid, valid))
+                        validation_method = (
+                            "masa-ai" if masa_validation_count > 0 else "internal"
+                        )
+                        bt.logging.info(
+                            f"Miner: {uid}, Status: 🟢 Active, Tweets: {valid} ({validation_method}), Link: {taostats_link}"
+                        )
+                        all_valid_tweets.extend(validated_tweets)
+                    else:
+                        no_tweets_miners.append(uid)
+                        bt.logging.info(
+                            f"Miner: {uid}, Status: 🟡 No valid tweets after validation, Link: {taostats_link}"
+                        )
                 else:
+                    no_tweets_miners.append(uid)
                     bt.logging.info(
-                        f"Miner: {uid}, Status: No valid tweets, Link: {taostats_link}"
+                        f"Miner: {uid}, Status: 🟡 No tweets received, Link: {taostats_link}"
                     )
 
             except Exception as e:
                 bt.logging.error(
-                    f"Miner: {uid}, Status: Error processing response ({str(e)}), Link: {taostats_link}"
+                    f"Miner: {uid}, Status: ❌ Error processing response ({str(e)}), Link: {taostats_link}"
                 )
                 continue
 
-        # Log summary
-        bt.logging.info(f"Volume Check Results:")
+        # Log summary with improved categorization
+        bt.logging.info("Volume Check Results:")
         bt.logging.info(f"└─ Query: {random_keyword}")
-        responding_miners = len(miner_stats)
-        total_miners = len(miner_uids)
+
+        active_miners = len(miner_stats)
+        unreachable_count = len(unreachable_miners)
+        no_tweets_count = len(no_tweets_miners)
+
         bt.logging.info(
-            f"└─ Miners: {responding_miners}/{total_miners} responded with data"
+            f"└─ Miners: {active_miners} 🟢 active, {unreachable_count} 🔴 unreachable, {no_tweets_count} 🟡 no tweets"
         )
 
-        # Log miner responses in a compact format
         if miner_stats:
             miner_summary = ", ".join(f"{uid}:{count}" for uid, count in miner_stats)
             bt.logging.info(f"└─ Tweets per miner: {miner_summary}")
 
-        bt.logging.info(f"└─ Total tweets: {total_valid} ({total_errors} errors)")
+        validation_status = (
+            "🟢 masa-ai" if tweet_validator else "🟡 internal (masa-ai init failed)"
+        )
+        bt.logging.info(
+            f"└─ Validation: {validation_status} | Errors: {validation_errors}"
+        )
+        bt.logging.info(
+            f"└─ Total tweets: {len(all_valid_tweets)} valid, {total_errors} errors"
+        )
 
         return all_valid_tweets
 
