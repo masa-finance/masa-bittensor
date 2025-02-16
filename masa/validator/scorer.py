@@ -155,22 +155,34 @@ class Scorer:
                     )
 
                     # Display top 10 miners
-                    bt.logging.info("Top 10 Miners by Reward:")
+                    bt.logging.info("+" + "=" * 50 + "+")
+                    bt.logging.info(
+                        "|" + " " * 15 + "TOP 10 MINERS BY REWARD" + " " * 14 + "|"
+                    )
+                    bt.logging.info("+" + "=" * 50 + "+")
                     for uid, volume, reward in sorted_miners[:10]:
-                        bt.logging.info(f"Miner {uid}: volume={volume:.0f}")
-                        bt.logging.info(f"Miner {uid}: reward={reward:.4f}")
+                        bt.logging.info(f"• Miner {uid}")
+                        bt.logging.info(f"  Volume: {volume:.0f}")
+                        bt.logging.info(f"  Reward: {reward:.4f}")
                         bt.logging.info(
-                            f"Miner {uid}: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
+                            f"  Link: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
                         )
+                        bt.logging.info("-" * 52)
 
                     # Display bottom 10 miners
-                    bt.logging.info("Bottom 10 Miners by Reward:")
+                    bt.logging.info("\n+" + "=" * 50 + "+")
+                    bt.logging.info(
+                        "|" + " " * 13 + "BOTTOM 10 MINERS BY REWARD" + " " * 12 + "|"
+                    )
+                    bt.logging.info("+" + "=" * 50 + "+")
                     for uid, volume, reward in sorted_miners[-10:]:
-                        bt.logging.info(f"Miner {uid}: volume={volume:.0f}")
-                        bt.logging.info(f"Miner {uid}: reward={reward:.4f}")
+                        bt.logging.info(f"• Miner {uid}")
+                        bt.logging.info(f"  Volume: {volume:.0f}")
+                        bt.logging.info(f"  Reward: {reward:.4f}")
                         bt.logging.info(
-                            f"Miner {uid}: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
+                            f"  Link: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
                         )
+                        bt.logging.info("-" * 52)
 
                 scores = torch.FloatTensor(rewards).to(self.validator.device)
             except Exception:
