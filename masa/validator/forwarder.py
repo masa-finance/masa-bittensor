@@ -408,21 +408,21 @@ class Forwarder:
                 if validation_response is False:
                     # Tweet explicitly failed validation
                     bt.logging.info(
-                        f"❌ Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"Miner {uid}: ❌ Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
                     continue
                 elif validation_response is None:
                     # Connection issue - treat as successful but log differently
                     bt.logging.info(
-                        f"🌐 Tweet validation skipped (connection issue): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"Miner {uid}: 🌐 Tweet validation skipped (connection issue): {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
                 # Tweet passed validation or had connection issues - check content requirements
                 if query_in_tweet and is_since_date_requested:
                     if validation_response is True:
                         bt.logging.info(
-                            f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                            f"Miner {uid}: ✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
                         )
                     all_valid_tweets.extend(unique_tweets_response)
 
@@ -611,7 +611,7 @@ class Forwarder:
 
                     if validation_response:
                         bt.logging.info(
-                            f"✅ Retry validation passed: {self.format_tweet_url(tweet_id)}"
+                            f"Miner {uid}: ✅ Retry validation passed: {self.format_tweet_url(tweet_id)}"
                         )
                         valid_tweets.append(tweet)
                         pending_tweets.pop(tweet_id)
@@ -620,7 +620,7 @@ class Forwarder:
                         tweet_data["attempts"] = tweet_data.get("attempts", 0) + 1
                         tweet_data["last_attempt"] = current_block
                         bt.logging.debug(
-                            f"❌ Retry validation failed: {self.format_tweet_url(tweet_id)}"
+                            f"Miner {uid}: ❌ Retry validation failed: {self.format_tweet_url(tweet_id)}"
                         )
 
                 except Exception as e:
