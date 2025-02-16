@@ -325,11 +325,11 @@ class Forwarder:
 
                 if invalid_tweet_count > 0:
                     bt.logging.info(
-                        f"❌ Miner {self.format_miner_link(int(uid))} penalized - submitted {invalid_tweet_count} tweets with invalid IDs out of {len(all_responses)}"
+                        f"❌ Miner {uid} penalized - submitted {invalid_tweet_count} tweets with invalid IDs out of {len(all_responses)}"
                     )
                     if invalid_ids:
                         bt.logging.debug(
-                            f"Invalid IDs from miner {self.format_miner_link(int(uid))}: {invalid_ids[:5]}..."
+                            f"❌ Invalid IDs from miner {uid}: {invalid_ids[:5]}..."
                         )
                     # Give zero score for submitting any invalid tweets
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
@@ -449,7 +449,8 @@ class Forwarder:
                             uid_int, len(updates), current_block
                         )
                         bt.logging.info(
-                            f"Miner {self.format_miner_link(uid_int)} produced {len(updates)} new tweets"
+                            f"Miner {uid} produced {len(updates)} new tweets\n"
+                            f"    {self.format_miner_link(uid)}"
                         )
                 else:
                     bt.logging.info(
@@ -489,7 +490,7 @@ class Forwarder:
     def format_miner_link(self, uid: int) -> str:
         """Format a miner's hotkey into a taostats URL."""
         hotkey = self.validator.metagraph.hotkeys[uid]
-        return f"@https://taostats.io/hotkey/{hotkey}"
+        return f"https://taostats.io/hotkey/{hotkey}"
 
     def format_tweet_url(self, tweet_id: str) -> str:
         """Format a tweet ID into an x.com URL."""
@@ -513,11 +514,13 @@ class Forwarder:
 
                     if new_tweets == total_tweets:
                         bt.logging.debug(
-                            f"Miner {self.format_miner_link(uid)} produced {new_tweets} new tweets"
+                            f"Miner {uid} produced {new_tweets} new tweets\n"
+                            f"    {self.format_miner_link(uid)}"
                         )
                     else:
                         bt.logging.debug(
-                            f"Miner {self.format_miner_link(uid)} produced {new_tweets} new tweets (total: {total_tweets})"
+                            f"Miner {uid} produced {new_tweets} new tweets (total: {total_tweets})\n"
+                            f"    {self.format_miner_link(uid)}"
                         )
 
                     # Log sample tweet URL at debug level
