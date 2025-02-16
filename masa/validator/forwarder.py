@@ -392,28 +392,30 @@ class Forwarder:
         username = tweet_data.get("Username", "").lower()
 
         # Process hashtags - split each one by case boundaries
-        hashtags = []
+        hashtag_words = []
         for tag in tweet_data.get("Hashtags", []):
-            hashtags.extend(self._split_hashtag(tag))
+            # Strip # and split on case boundaries
+            if tag.startswith("#"):
+                tag = tag[1:]
+            # Split on case boundaries and lowercase
+            words = (
+                re.sub(r"([a-z])([A-Z])|([A-Z])([A-Z][a-z])", r"\1\3 \2\4", tag)
+                .lower()
+                .split()
+            )
+            hashtag_words.extend(words)
 
         # Combine all fields into searchable content
-        searchable_content = f"{text} {name} {username} {' '.join(hashtags)}".lower()
+        searchable_content = (
+            f"{text} {name} {username} {' '.join(hashtag_words)}".lower()
+        )
 
-        # Process query words - if it starts with #, treat as hashtag
-        search_terms = []
+        # For each query word
         for word in query_words:
-            if word.startswith("#"):
-                search_terms.extend(self._split_hashtag(word))
-            else:
-                # Remove special characters and lowercase
-                cleaned_word = re.sub(r"[^\w\s]", "", word).lower()
-                if cleaned_word:  # only add if not empty after cleaning
-                    search_terms.append(cleaned_word)
-
-        # Check if any search term is in the content
-        for term in search_terms:
-            if term in searchable_content:
-                bt.logging.debug(f"Found match: {term}")
+            # Remove special chars and lowercase
+            cleaned_word = re.sub(r"[^\w\s]", "", word).lower()
+            if cleaned_word and cleaned_word in searchable_content:
+                bt.logging.debug(f"Found match: {cleaned_word}")
                 return True
 
         return False
@@ -542,14 +544,13 @@ class Forwarder:
                         bt.logging.info(f"Tweet timestamp check failed: {tweet_url}")
                         continue
 
-                    # Check query match
-                    query_words = (
-                        self.normalize_whitespace(random_keyword.replace('"', ""))
-                        .strip()
-                        .lower()
-                        .split()
-                    )
-                    text = self.normalize_whitespace(tweet_data["Text"]).strip().lower()
+                    # Process query into words
+                    query_words = []
+                    if random_keyword:
+                        # Remove quotes and special chars, then split on spaces
+                        cleaned = re.sub(r'["\']', "", random_keyword).strip()
+                        if cleaned:
+                            query_words = [cleaned]
 
                     bt.logging.info(f"Query terms: {query_words}")
                     bt.logging.info(f"Tweet text: {tweet_data['Text']}")
