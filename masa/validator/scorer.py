@@ -135,6 +135,7 @@ class Scorer:
                     rewards = [1]
                 else:
                     rewards = []
+                    miner_stats = []
                     for uid in valid_miner_uids:
                         volume = miner_volumes[
                             str(uid)
@@ -143,8 +144,28 @@ class Scorer:
                             volume, mean_volume, std_dev_volume
                         )
                         rewards.append(reward)
+                        miner_stats.append((uid, volume, reward))
                         bt.logging.debug(
                             f"Miner {self.format_miner_link(uid)}: volume={volume}, reward={reward:.4f}"
+                        )
+
+                    # Sort miners by reward for top/bottom display
+                    sorted_miners = sorted(
+                        miner_stats, key=lambda x: x[2], reverse=True
+                    )
+
+                    # Display top 10 miners
+                    bt.logging.info("🏆 Top 10 Miners by Reward:")
+                    for uid, volume, reward in sorted_miners[:10]:
+                        bt.logging.info(
+                            f"Miner {self.format_miner_link(uid)}: volume={volume:.0f}, reward={reward:.4f}"
+                        )
+
+                    # Display bottom 10 miners
+                    bt.logging.info("⚠️ Bottom 10 Miners by Reward:")
+                    for uid, volume, reward in sorted_miners[-10:]:
+                        bt.logging.info(
+                            f"Miner {self.format_miner_link(uid)}: volume={volume:.0f}, reward={reward:.4f}"
                         )
 
                 scores = torch.FloatTensor(rewards).to(self.validator.device)
