@@ -395,7 +395,18 @@ class Forwarder:
             bt.logging.debug(f"└─ Miner {uid}: Invalid item type: {type(resp[0])}")
             return [], 0, 0
 
-        # Count errors and valid tweets
+        # First check for any invalid tweet IDs
+        for item in resp:
+            if item.get("Tweet"):
+                tweet_id = item["Tweet"].get("ID", "")
+                if not str(tweet_id).strip().isdigit():
+                    bt.logging.warning(
+                        f"Miner {uid} submitted tweet with invalid ID format: {tweet_id}"
+                    )
+                    # Return empty list to reject all tweets from this miner
+                    return [], 0, 0
+
+        # Only process tweets if all IDs were valid
         error_items = [item for item in resp if item.get("Error")]
         valid_items = [
             item for item in resp if not item.get("Error") and item.get("Tweet")
