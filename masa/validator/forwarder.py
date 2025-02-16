@@ -383,14 +383,19 @@ class Forwarder:
         # Combine all fields into one string for easier searching
         searchable_content = f"{text} {name} {username} {' '.join(hashtags)}".lower()
 
-        # Check if any query word is in the searchable content
-        # Use word boundaries to ensure we match whole words
+        # First try exact phrase match
+        exact_phrase = " ".join(query_words).lower()
+        if exact_phrase in searchable_content:
+            bt.logging.debug(f"Found exact phrase match: {exact_phrase}")
+            return True
+
+        # If exact phrase doesn't match, try individual word matches
         for word in query_words:
             word = word.lower()  # Convert query word to lowercase
             # Create regex pattern with word boundaries
             pattern = f"\\b{re.escape(word)}\\b"
             if re.search(pattern, searchable_content):
-                bt.logging.debug(f"Found match for query word: {word}")
+                bt.logging.debug(f"Found individual word match: {word}")
                 return True
 
         return False
