@@ -497,6 +497,44 @@ class Forwarder:
         all_valid_tweets = []
         validator = TweetValidator()
 
+        bt.logging.info("\n=== Data Structure Analysis ===")
+        bt.logging.info(f"Number of responses: {len(responses)}")
+
+        # Take the first response to analyze structure
+        if responses:
+            sample_response = responses[0]
+            bt.logging.info("\n=== Response Structure ===")
+            bt.logging.info(f"Response type: {type(sample_response)}")
+            bt.logging.info(
+                f"Response keys: {list(sample_response.keys()) if isinstance(sample_response, dict) else 'Not a dict'}"
+            )
+
+            if isinstance(sample_response, dict) and "response" in sample_response:
+                all_responses = sample_response.get("response", [])
+                bt.logging.info("\n=== All Responses Structure ===")
+                bt.logging.info(f"All responses type: {type(all_responses)}")
+
+                if (
+                    all_responses
+                    and isinstance(all_responses, list)
+                    and len(all_responses) > 0
+                ):
+                    first_item = all_responses[0]
+                    bt.logging.info("\n=== Individual Response Structure ===")
+                    bt.logging.info(f"Item type: {type(first_item)}")
+                    bt.logging.info(
+                        f"Item keys: {list(first_item.keys()) if isinstance(first_item, dict) else 'Not a dict'}"
+                    )
+
+                    if isinstance(first_item, dict) and "Tweet" in first_item:
+                        tweet_data = first_item["Tweet"]
+                        bt.logging.info("\n=== Tweet Data Structure ===")
+                        bt.logging.info(f"Tweet data type: {type(tweet_data)}")
+                        bt.logging.info(
+                            f"Tweet data keys: {list(tweet_data.keys()) if isinstance(tweet_data, dict) else 'Not a dict'}"
+                        )
+
+        # Continue with the rest of the processing...
         bt.logging.info("\n=== Processing Miner Responses ===")
         bt.logging.info(f"Random keyword: {random_keyword}")
         bt.logging.info(f"Number of responses: {len(responses)}")
