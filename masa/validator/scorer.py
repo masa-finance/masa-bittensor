@@ -155,17 +155,21 @@ class Scorer:
                     )
 
                     # Display top 10 miners
-                    bt.logging.info("🏆 Top 10 Miners by Reward:")
+                    bt.logging.info("Top 10 Miners by Reward:")
                     for uid, volume, reward in sorted_miners[:10]:
+                        bt.logging.info(f"Miner {uid}: volume={volume:.0f}")
+                        bt.logging.info(f"Miner {uid}: reward={reward:.4f}")
                         bt.logging.info(
-                            f"    🟢 Miner {uid}: volume={volume:.0f}, reward={reward:.4f}, {self.format_miner_link(uid)[1:]}"
+                            f"Miner {uid}: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
                         )
 
                     # Display bottom 10 miners
-                    bt.logging.info("⚠️  Bottom 10 Miners by Reward:")
+                    bt.logging.info("Bottom 10 Miners by Reward:")
                     for uid, volume, reward in sorted_miners[-10:]:
+                        bt.logging.info(f"Miner {uid}: volume={volume:.0f}")
+                        bt.logging.info(f"Miner {uid}: reward={reward:.4f}")
                         bt.logging.info(
-                            f"    🔴 Miner {uid}: volume={volume:.0f}, reward={reward:.4f}, {self.format_miner_link(uid)[1:]}"
+                            f"Miner {uid}: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
                         )
 
                 scores = torch.FloatTensor(rewards).to(self.validator.device)
@@ -197,15 +201,16 @@ class Scorer:
                     max_reward = max(rewards)
                     min_reward = min(rewards)
 
-                    bt.logging.info(f"📊 {len(valid_miner_uids)} Miners")
-                    bt.logging.info(
-                        f"📊 Tweet Volumes - Total: {total_volume:.0f}, Avg: {avg_volume:.0f}, Min: {min_volume:.0f}, Max: {max_volume:.0f}"
-                    )
-                    bt.logging.info(
-                        f"📊 Scores - Avg: {avg_reward:.4f}, Min: {min_reward:.4f}, Max: {max_reward:.4f}"
-                    )
+                    bt.logging.info(f"Stats: Total Miners={len(valid_miner_uids)}")
+                    bt.logging.info(f"Volume: Total={total_volume:.0f}")
+                    bt.logging.info(f"Volume: Average={avg_volume:.0f}")
+                    bt.logging.info(f"Volume: Min={min_volume:.0f}")
+                    bt.logging.info(f"Volume: Max={max_volume:.0f}")
+                    bt.logging.info(f"Score: Average={avg_reward:.4f}")
+                    bt.logging.info(f"Score: Min={min_reward:.4f}")
+                    bt.logging.info(f"Score: Max={max_reward:.4f}")
 
-                bt.logging.info("✅ Score miner volumes completed successfully")
+                bt.logging.info("Status: Score miner volumes completed successfully")
 
                 if volumes:
                     try:
