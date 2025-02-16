@@ -446,141 +446,142 @@ class Forwarder:
             hotkey = self.validator.metagraph.hotkeys[uid]
             taostats_link = f"https://taostats.io/hotkey/{hotkey}"
 
-            if response is None or response.get("response") is None:
+            # Handle all cases where we don't have a valid response
+            if response is None:
                 unreachable_miners.append(uid)
                 bt.logging.debug(
-                    f"Miner: {uid}, Status: 🔴 Unreachable, Link: {taostats_link}"
+                    f"Miner: {uid}, Status: 🔴 Unreachable (no response), Link: {taostats_link}"
                 )
                 continue
 
             try:
-                response_data = dict(response)
+                # Safely get response data, handling all possible None cases
+                response_data = response if isinstance(response, dict) else {}
                 resp = response_data.get("response")
+
+                if resp is None:
+                    unreachable_miners.append(uid)
+                    bt.logging.debug(
+                        f"Miner: {uid}, Status: 🔴 Unreachable (empty response), Link: {taostats_link}"
+                    )
+                    continue
 
                 # Process the response
                 valid_items, errors, valid = self._process_single_response(resp, uid)
                 total_errors += errors
 
-                if valid > 0:
-                    # First validate all tweets for basic criteria
-                    basic_validated_tweets = []
+                if not valid_items:  # Explicitly check for empty valid_items
+                    no_tweets_miners.append(uid)
+                    bt.logging.debug(
+                        f"Miner: {uid}, Status: 🟡 No valid tweets, Link: {taostats_link}"
+                    )
+                    continue
 
-                    # Only process query terms if we have valid items
-                    if valid_items:
-                        query_words = (
-                            self.normalize_whitespace(random_keyword.replace('"', ""))
-                            .strip()
-                            .lower()
-                            .split()
-                        )
-                        bt.logging.info(
-                            f"Checking {len(valid_items)} tweets from miner {uid} for query terms: {query_words}"
-                        )
+                # First validate all tweets for basic criteria
+                basic_validated_tweets = []
+                query_words = (
+                    self.normalize_whitespace(random_keyword.replace('"', ""))
+                    .strip()
+                    .lower()
+                    .split()
+                )
+                bt.logging.info(
+                    f"Checking {len(valid_items)} tweets from miner {uid} for query terms: {query_words}"
+                )
 
-                        for item in valid_items:
-                            if not isinstance(item, dict) or "Tweet" not in item:
-                                continue
+                for item in valid_items:
+                    if not isinstance(item, dict) or "Tweet" not in item:
+                        continue
 
-                            tweet = item.get("Tweet", {})
-                            tweet_id = tweet.get("ID", "unknown")
+                    tweet = item.get("Tweet", {})
+                    if not tweet:  # Skip if tweet data is empty
+                        continue
 
-                            # Check timestamp
-                            timestamp_valid = self._check_tweet_timestamp(
-                                tweet.get("Timestamp", 0)
-                            )
+                    tweet_id = tweet.get("ID", "unknown")
 
-                            # Check query terms
-                            content_valid = self._check_tweet_content(
-                                tweet, query_words
-                            )
+                    # Check timestamp
+                    timestamp_valid = self._check_tweet_timestamp(
+                        tweet.get("Timestamp", 0)
+                    )
 
-                            if timestamp_valid and content_valid:
-                                basic_validated_tweets.append(item)
-                            else:
-                                bt.logging.debug(
-                                    f"Tweet {self.format_tweet_url(tweet_id)} failed basic validation:"
-                                    f"{' (timestamp invalid)' if not timestamp_valid else ''}"
-                                    f"{' (query terms not found)' if not content_valid else ''}"
-                                )
+                    # Check query terms
+                    content_valid = self._check_tweet_content(tweet, query_words)
 
-                        if basic_validated_tweets:
-                            bt.logging.info(
-                                f"Miner {uid}: Found {len(basic_validated_tweets)}/{len(valid_items)} tweets containing query terms"
-                            )
-                            # Only validate one random tweet with masa-ai
-                            random_tweet = random.choice(basic_validated_tweets)
-                            tweet = random_tweet.get("Tweet", {})
-                            tweet_id = tweet.get("ID", "unknown")
-                            tweet_url = self.format_tweet_url(tweet_id)
-
-                            bt.logging.info(
-                                f"Validating random tweet from miner {uid} with masa-ai:"
-                            )
-                            bt.logging.info(f"└─ Tweet URL: {tweet_url}")
-
-                            masa_validation_passed = False
-                            try:
-                                if tweet_validator:
-                                    with SilentOutput():
-                                        try:
-                                            masa_validation_passed = (
-                                                tweet_validator.validate_tweet(
-                                                    tweet.get("ID"),
-                                                    tweet.get("Name"),
-                                                    tweet.get("Username"),
-                                                    tweet.get("Text"),
-                                                    tweet.get("Timestamp"),
-                                                    tweet.get("Hashtags", []),
-                                                )
-                                            )
-                                            bt.logging.info(
-                                                f"└─ Masa-ai validation: {'❌ Tweet does not exist' if not masa_validation_passed else '✅ Valid'}"
-                                            )
-                                        except Exception as validation_error:
-                                            # If masa-ai has API issues, we accept the tweet
-                                            bt.logging.info(
-                                                f"└─ Masa-ai validation: ⚠️ API error - accepting tweet"
-                                            )
-                                            bt.logging.debug(
-                                                f"└─ Validation error details: {str(validation_error)}"
-                                            )
-                                            masa_validation_passed = True
-                            except Exception as e:
-                                # If masa-ai completely fails to initialize or other serious error
-                                bt.logging.error(f"Error with masa-ai validator: {e}")
-                                # Accept the tweet since it's not the miner's fault
-                                masa_validation_passed = True
-
-                            # If the random tweet passes masa-ai validation or if masa-ai had API issues,
-                            # include all basic validated tweets
-                            if masa_validation_passed:
-                                all_valid_tweets.extend(basic_validated_tweets)
-                                valid = len(basic_validated_tweets)
-                                miner_stats.append((uid, valid))
-                                bt.logging.debug(
-                                    f"Miner: {uid}, Status: 🟢 Active, Tweets: {valid}, Link: {taostats_link}"
-                                )
-                            else:
-                                no_tweets_miners.append(uid)
-                                bt.logging.debug(
-                                    f"Miner: {uid}, Status: 🟡 Tweet confirmed invalid by masa-ai, Link: {taostats_link}"
-                                )
-                        else:
-                            no_tweets_miners.append(uid)
-                            bt.logging.debug(
-                                f"Miner: {uid}, Status: 🟡 No tweets passed basic validation, Link: {taostats_link}"
-                            )
+                    if timestamp_valid and content_valid:
+                        basic_validated_tweets.append(item)
                     else:
-                        no_tweets_miners.append(uid)
                         bt.logging.debug(
-                            f"Miner: {uid}, Status: 🟡 No tweets received, Link: {taostats_link}"
+                            f"Tweet {self.format_tweet_url(tweet_id)} failed basic validation:"
+                            f"{' (timestamp invalid)' if not timestamp_valid else ''}"
+                            f"{' (query terms not found)' if not content_valid else ''}"
                         )
+
+                if not basic_validated_tweets:
+                    no_tweets_miners.append(uid)
+                    bt.logging.debug(
+                        f"Miner: {uid}, Status: 🟡 No tweets passed basic validation, Link: {taostats_link}"
+                    )
+                    continue
+
+                bt.logging.info(
+                    f"Miner {uid}: Found {len(basic_validated_tweets)}/{len(valid_items)} tweets containing query terms"
+                )
+                # Only validate one random tweet with masa-ai
+                random_tweet = random.choice(basic_validated_tweets)
+                tweet = random_tweet.get("Tweet", {})
+                tweet_id = tweet.get("ID", "unknown")
+                tweet_url = self.format_tweet_url(tweet_id)
+
+                bt.logging.info(
+                    f"Validating random tweet from miner {uid} with masa-ai:"
+                )
+                bt.logging.info(f"└─ Tweet URL: {tweet_url}")
+
+                masa_validation_passed = False
+                try:
+                    if tweet_validator:
+                        with SilentOutput():
+                            try:
+                                masa_validation_passed = tweet_validator.validate_tweet(
+                                    tweet.get("ID"),
+                                    tweet.get("Name"),
+                                    tweet.get("Username"),
+                                    tweet.get("Text"),
+                                    tweet.get("Timestamp"),
+                                    tweet.get("Hashtags", []),
+                                )
+                                bt.logging.info(
+                                    f"└─ Masa-ai validation: {'❌ Tweet does not exist' if not masa_validation_passed else '✅ Valid'}"
+                                )
+                            except Exception as validation_error:
+                                # If masa-ai has API issues, we accept the tweet
+                                bt.logging.info(
+                                    f"└─ Masa-ai validation: ⚠️ API error - accepting tweet"
+                                )
+                                bt.logging.debug(
+                                    f"└─ Validation error details: {str(validation_error)}"
+                                )
+                                masa_validation_passed = True
+                except Exception as e:
+                    # If masa-ai completely fails to initialize or other serious error
+                    bt.logging.error(f"Error with masa-ai validator: {e}")
+                    # Accept the tweet since it's not the miner's fault
+                    masa_validation_passed = True
+
+                # If the random tweet passes masa-ai validation or if masa-ai had API issues,
+                # include all basic validated tweets
+                if masa_validation_passed:
+                    all_valid_tweets.extend(basic_validated_tweets)
+                    valid = len(basic_validated_tweets)
+                    miner_stats.append((uid, valid))
+                    bt.logging.debug(
+                        f"Miner: {uid}, Status: 🟢 Active, Tweets: {valid}, Link: {taostats_link}"
+                    )
                 else:
                     no_tweets_miners.append(uid)
                     bt.logging.debug(
-                        f"Miner: {uid}, Status: 🟡 No tweets received, Link: {taostats_link}"
+                        f"Miner: {uid}, Status: 🟡 Tweet confirmed invalid by masa-ai, Link: {taostats_link}"
                     )
-
             except Exception as e:
                 bt.logging.error(f"Error processing miner {uid}: {e}")
                 continue
