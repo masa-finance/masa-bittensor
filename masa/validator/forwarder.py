@@ -365,46 +365,55 @@ class Forwarder:
     async def _process_responses(self, responses, miner_uids, random_keyword):
         """Process and validate miner responses."""
         all_valid_tweets = []
+        total_errors = 0
+        total_valid = 0
 
         for response, uid in zip(responses, miner_uids):
             bt.logging.info(f"Miner {uid}:")
+
             if response is None:
-                bt.logging.warning("└─ None response")
+                bt.logging.warning(f"└─ None response")
                 continue
 
             try:
                 response_data = dict(response)
                 resp = response_data.get("response")
+
                 if resp is None:
                     bt.logging.warning("└─ Empty response data")
                     continue
 
                 bt.logging.info(f"└─ Response type: {type(resp)}")
+
                 if isinstance(resp, list):
                     bt.logging.info(f"└─ Number of items: {len(resp)}")
+
                     if len(resp) > 0:
                         bt.logging.info(f"└─ First item type: {type(resp[0])}")
+
                         if isinstance(resp[0], dict):
                             bt.logging.info(f"└─ Keys: {list(resp[0].keys())}")
 
-                            # Log a sample of errors if present
+                            # Count errors and valid tweets
                             error_items = [item for item in resp if item.get("Error")]
-                            if error_items:
-                                bt.logging.warning(
-                                    f"└─ Found {len(error_items)} items with errors"
-                                )
-                                if len(error_items) > 0:
-                                    bt.logging.warning(
-                                        f"└─ Sample error: {error_items[0]['Error']}"
-                                    )
-
-                            # Log valid tweets
                             valid_items = [
                                 item
                                 for item in resp
                                 if not item.get("Error") and item.get("Tweet")
                             ]
+
+                            if error_items:
+                                total_errors += len(error_items)
+                                bt.logging.warning(
+                                    f"└─ Found {len(error_items)} items with errors"
+                                )
+                                if error_items:
+                                    bt.logging.warning(
+                                        f"└─ Sample error: {error_items[0]['Error']}"
+                                    )
+
                             if valid_items:
+                                total_valid += len(valid_items)
                                 bt.logging.info(
                                     f"└─ Found {len(valid_items)} valid tweets"
                                 )
@@ -415,6 +424,9 @@ class Forwarder:
                 continue
 
         bt.logging.info(f"Total valid tweets collected: {len(all_valid_tweets)}")
+        bt.logging.info(f"Total errors encountered: {total_errors}")
+        bt.logging.info(f"Total valid tweets: {total_valid}")
+
         return all_valid_tweets
 
     def _log_validation_failure(self, uid, tweet, query_words, reason):
