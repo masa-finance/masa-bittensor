@@ -480,7 +480,7 @@ class Forwarder:
                         f"Miner {uid}: Query terms={', '.join(query_words)}"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Text={random_tweet.get('Text')[:100]}"
+                        f"Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
                     )
                     bt.logging.info(f"Miner {uid}: Name={random_tweet.get('Name')}")
                     bt.logging.info(
@@ -513,7 +513,7 @@ class Forwarder:
                         f"Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Text={random_tweet.get('Text')[:100]}"
+                        f"Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
                     )
                     bt.logging.info(f"Miner {uid}: Timestamp={tweet_timestamp}")
                 elif validation_response is None:
@@ -523,7 +523,7 @@ class Forwarder:
                         f"Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Text={random_tweet.get('Text')[:100]}"
+                        f"Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
                     )
                 else:
                     bt.logging.info(f"Miner {uid}: Tweet validation passed")
@@ -535,7 +535,7 @@ class Forwarder:
                         f"Miner {uid}: Query terms found in={[field for field, found in validation_details['found_in_fields'].items() if found]}"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Text={random_tweet.get('Text')[:100]}"
+                        f"Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
                     )
 
                 # If we get here, the tweet passed our core validation
@@ -568,7 +568,15 @@ class Forwarder:
             return False
 
     def normalize_whitespace(self, s: str) -> str:
-        return " ".join(s.split())
+        """Normalize and truncate text for logging."""
+        if not s:
+            return ""
+        # Replace newlines with spaces and collapse multiple spaces
+        normalized = " ".join(s.split())
+        # Truncate to 30 chars if longer
+        if len(normalized) > 30:
+            return normalized[:30] + "..."
+        return normalized
 
     def format_miner_link(self, uid: int) -> str:
         """Format a miner's hotkey into a taostats URL."""
