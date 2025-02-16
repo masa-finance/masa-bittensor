@@ -158,35 +158,36 @@ class BaseValidatorNeuron(BaseNeuron):
             # Don't raise, let it continue to next loop
 
     async def should_set_weights(self) -> bool:
-        bt.logging.info("🔍 Checking if we should set weights")
+        bt.logging.info("🔍 Checking weight setting conditions...")
+
         # Skip if weights are disabled in config
         if self.config.neuron.disable_set_weights:
-            bt.logging.info("❌ Weights disabled in config")
+            bt.logging.info("❌ Weight setting disabled in config")
             return False
 
         # Count how many UIDs have non-zero scores
         scored_uids = (self.scores > 0).sum().item()
+        bt.logging.info(f"📊 Current state: {scored_uids} UIDs with non-zero scores")
         if scored_uids < 150:
             bt.logging.info(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
             return False
 
         # Check if enough blocks have elapsed since last update
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
-        bt.logging.info(f"⏱️  Blocks elapsed since last update: {blocks_elapsed}")
 
         # Only allow setting weights if enough blocks elapsed
         if blocks_elapsed <= 100 and not self.first_run:
             bt.logging.info(
-                f"⏳ {blocks_elapsed} blocks elapsed since last weight setting"
+                f"⏳ Too soon to set weights ({blocks_elapsed}/100 blocks since last update)"
             )
             return False
 
         if self.first_run:
-            bt.logging.info("✅ Initial weight setting")
+            bt.logging.info("✅ First run - will attempt to set initial weights")
             self.first_run = False
         else:
             bt.logging.info(
-                f"✅ Will set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
+                f"✅ Ready to set weights ({scored_uids} scored UIDs, {blocks_elapsed} blocks elapsed)"
             )
 
         return True
