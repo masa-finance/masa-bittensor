@@ -383,6 +383,7 @@ class Forwarder:
 
     def _process_single_response(self, resp, uid):
         """Process a single miner's response and return valid tweets."""
+        # First handle non-list responses
         if not isinstance(resp, list):
             bt.logging.debug(f"└─ Miner {uid}: Invalid response type: {type(resp)}")
             return [], 0, 0
@@ -391,33 +392,53 @@ class Forwarder:
             bt.logging.debug(f"└─ Miner {uid}: Empty response list")
             return [], 0, 0
 
-        if not isinstance(resp[0], dict):
-            bt.logging.debug(f"└─ Miner {uid}: Invalid item type: {type(resp[0])}")
-            return [], 0, 0
+        # Count error items first
+        error_items = []
+        valid_items = []
 
-        # First check for any invalid tweet IDs
         for item in resp:
-            if item.get("Tweet"):
-                tweet_id = item["Tweet"].get("ID", "")
-                if not str(tweet_id).strip().isdigit():
-                    bt.logging.warning(
-                        f"Miner {uid} submitted tweet with invalid ID format: {tweet_id}"
-                    )
-                    # Return empty list to reject all tweets from this miner
-                    return [], 0, 0
+            # Skip if item is not a dict
+            if not isinstance(item, dict):
+                continue
 
-        # Only process tweets if all IDs were valid
-        error_items = [item for item in resp if item.get("Error")]
-        valid_items = [
-            item for item in resp if not item.get("Error") and item.get("Tweet")
-        ]
+            # Check for error items
+            if item.get("Error"):
+                error_items.append(item)
+                continue
+
+            # Get tweet data, handling different possible formats
+            tweet_data = None
+            if "Tweet" in item:
+                tweet_data = item.get("Tweet")
+            elif "tweet" in item:
+                tweet_data = item.get("tweet")
+            else:
+                # If the item itself has tweet-like fields, treat it as tweet data
+                required_fields = ["ID", "Text", "Timestamp"]
+                if all(field in item for field in required_fields):
+                    tweet_data = item
+
+            # Skip if no valid tweet data found
+            if not isinstance(tweet_data, dict):
+                continue
+
+            # Normalize tweet ID format
+            tweet_id = tweet_data.get("ID") or tweet_data.get("id")
+            if not tweet_id or not str(tweet_id).strip().isdigit():
+                continue
+
+            # If we got here, we have a valid tweet structure
+            valid_items.append({"Tweet": tweet_data})
 
         # Log results at debug level
         if error_items:
             bt.logging.debug(
                 f"└─ Miner {uid}: Found {len(error_items)} items with errors"
             )
-            bt.logging.debug(f"└─ Miner {uid}: Sample error: {error_items[0]['Error']}")
+            if error_items:
+                bt.logging.debug(
+                    f"└─ Miner {uid}: Sample error: {error_items[0]['Error']}"
+                )
 
         if valid_items:
             bt.logging.debug(f"└─ Miner {uid}: Found {len(valid_items)} valid tweets")
@@ -428,7 +449,6 @@ class Forwarder:
         """Process and validate miner responses."""
         all_valid_tweets = []
         total_errors = 0
-        total_valid = 0
         miner_stats = []
         unreachable_miners = []
         no_tweets_miners = []
@@ -446,6 +466,11 @@ class Forwarder:
             hotkey = self.validator.metagraph.hotkeys[uid]
             taostats_link = f"https://taostats.io/hotkey/{hotkey}"
 
+            # Log raw response data for debugging
+            bt.logging.debug(f"Raw response for miner {uid}:")
+            bt.logging.debug(f"Response type: {type(response)}")
+            bt.logging.debug(f"Response content: {response}")
+
             # Handle all cases where we don't have a valid response
             if response is None:
                 unreachable_miners.append(uid)
@@ -459,12 +484,24 @@ class Forwarder:
                 response_data = response if isinstance(response, dict) else {}
                 resp = response_data.get("response")
 
+                # Log response data structure
+                bt.logging.debug(f"Response data type: {type(response_data)}")
+                bt.logging.debug(f"Response data content: {response_data}")
+                bt.logging.debug(f"Resp type: {type(resp)}")
+                bt.logging.debug(f"Resp content: {resp}")
+
                 if resp is None:
                     unreachable_miners.append(uid)
                     bt.logging.debug(
                         f"Miner: {uid}, Status: 🔴 Unreachable (empty response), Link: {taostats_link}"
                     )
                     continue
+
+                # Only log tweet count if we have valid data
+                if isinstance(resp, list):
+                    bt.logging.info(
+                        f"Checking {len(resp)} tweets from miner {uid} for query terms: {random_keyword}"
+                    )
 
                 # Process the response
                 valid_items, errors, valid = self._process_single_response(resp, uid)
