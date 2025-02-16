@@ -197,11 +197,12 @@ class Scorer:
                     max_reward = max(rewards)
                     min_reward = min(rewards)
 
+                    bt.logging.info(f"📊  {len(valid_miner_uids)} Miners")
                     bt.logging.info(
-                        f"📊  Scoring Summary:\n"
-                        f"Miners: {len(valid_miner_uids)}\n"
-                        f"Volumes - Total: {total_volume:.0f}, Avg: {avg_volume:.0f}, Min: {min_volume:.0f}, Max: {max_volume:.0f}\n"
-                        f"Rewards - Avg: {avg_reward:.4f}, Min: {min_reward:.4f}, Max: {max_reward:.4f}"
+                        f"📊  Tweet Volumes - Total: {total_volume:.0f}, Avg: {avg_volume:.0f}, Min: {min_volume:.0f}, Max: {max_volume:.0f}"
+                    )
+                    bt.logging.info(
+                        f"📊  Scores - Avg: {avg_reward:.4f}, Min: {min_reward:.4f}, Max: {max_reward:.4f}"
                     )
 
                 bt.logging.info("✅  Score miner volumes completed successfully")
