@@ -57,10 +57,10 @@ class Validator(BaseValidatorNeuron):
 async def main():
     validator = await Validator.create()
     bt.logging.info(
-        f"🚀 Validator | Network: {config.subtensor.network} | Netuid: {config.netuid}"
+        f"🚀 Validator | Network: {validator.config.subtensor.network} | Netuid: {validator.config.netuid}"
     )
     bt.logging.debug(f"Command: {' '.join(sys.argv)}")
-    bt.logging.info(f"📂 Path | {config.neuron.full_path}")
+    bt.logging.info(f"📂 Path | {validator.config.neuron.full_path}")
     await validator.run()
 
 
