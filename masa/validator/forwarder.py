@@ -95,10 +95,25 @@ class Forwarder:
                 # Handle potential None responses
                 formatted_responses = []
                 for uid, response in zip(miner_uids, responses):
+                    hotkey = self.validator.metagraph.hotkeys[uid]
+                    taostats_link = f"https://taostats.io/hotkey/{hotkey}"
+
                     if response is None:
-                        bt.logging.warning(f"Received None response from miner {uid}")
+                        bt.logging.info(f"Miner {uid}: No response | {taostats_link}")
                         formatted_responses.append({"uid": int(uid), "response": None})
                     else:
+                        # Extract response metrics
+                        resp_data = (
+                            response.get("response", [])
+                            if isinstance(response, dict)
+                            else []
+                        )
+                        tweet_count = (
+                            len(resp_data) if isinstance(resp_data, list) else 0
+                        )
+                        bt.logging.info(
+                            f"Miner {uid}: Received {tweet_count} tweets | {taostats_link}"
+                        )
                         formatted_responses.append(
                             {"uid": int(uid), "response": response}
                         )

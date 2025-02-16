@@ -222,7 +222,7 @@ class Scorer:
                     bt.logging.info(f"Score: Min={min_reward:.4f}")
                     bt.logging.info(f"Score: Max={max_reward:.4f}")
 
-                bt.logging.info("Status: Score miner volumes completed successfully")
+                bt.logging.success("Miner tweet volumes scoring complete")
 
                 if volumes:
                     try:
