@@ -55,11 +55,11 @@ class Scorer:
     def format_miner_link(self, uid: int) -> str:
         """Format a miner's hotkey into a taostats URL."""
         hotkey = self.validator.metagraph.hotkeys[uid]
-        return f"@https://taostats.io/hotkey/{hotkey}"
+        return f"https://taostats.io/hotkey/{hotkey}"
 
     async def score_miner_volumes(self, current_block: int):
         try:
-            bt.logging.debug("Starting score_miner_volumes...")
+            bt.logging.debug("🔍 Starting score_miner_volumes...")
             volumes = self.validator.volumes
 
             if not volumes:
@@ -197,15 +197,15 @@ class Scorer:
                     max_reward = max(rewards)
                     min_reward = min(rewards)
 
-                    bt.logging.info(f"📊  {len(valid_miner_uids)} Miners")
+                    bt.logging.info(f"📊 {len(valid_miner_uids)} Miners")
                     bt.logging.info(
-                        f"📊  Tweet Volumes - Total: {total_volume:.0f}, Avg: {avg_volume:.0f}, Min: {min_volume:.0f}, Max: {max_volume:.0f}"
+                        f"📊 Tweet Volumes - Total: {total_volume:.0f}, Avg: {avg_volume:.0f}, Min: {min_volume:.0f}, Max: {max_volume:.0f}"
                     )
                     bt.logging.info(
-                        f"📊  Scores - Avg: {avg_reward:.4f}, Min: {min_reward:.4f}, Max: {max_reward:.4f}"
+                        f"📊 Scores - Avg: {avg_reward:.4f}, Min: {min_reward:.4f}, Max: {max_reward:.4f}"
                     )
 
-                bt.logging.info("✅  Score miner volumes completed successfully")
+                bt.logging.info("✅ Score miner volumes completed successfully")
 
                 if volumes:
                     try:

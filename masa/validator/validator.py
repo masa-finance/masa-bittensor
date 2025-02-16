@@ -5,11 +5,11 @@ async def validate_tweet(self, tweet: Dict[str, Any]) -> bool:
         is_valid = True  # Your existing validation logic
 
         if is_valid:
-            bt.logging.debug(f"Tweet {self.format_tweet_url(tweet['id'])} is valid")
+            bt.logging.debug(f"🟢 Tweet {self.format_tweet_url(tweet['id'])} is valid")
         return is_valid
 
     except Exception as e:
-        bt.logging.error(f"Error validating tweet: {e}")
+        bt.logging.error(f"🔴 Error validating tweet: {e}")
         return False
 
 
@@ -26,11 +26,9 @@ async def send_to_protocol(self, chunk_index: int, data: Any) -> bool:
             bt.logging.info(f"⏱️ Blocks elapsed since last update: {blocks_elapsed}")
             bt.logging.info("✅ Initial weight setting")
             bt.logging.debug("Starting weight setting process...")
-            bt.logging.info(
-                f"🛰️  Setting weights on {self.config.subtensor.network} ..."
-            )
+            bt.logging.info(f"🛰️ Setting weights on {self.config.subtensor.network} ...")
         return success
 
     except Exception as e:
-        bt.logging.error(f"Failed to send data to protocol API: {e}")
+        bt.logging.error(f"🔴 Failed to send data to protocol API: {e}")
         return False

@@ -154,7 +154,7 @@ class Forwarder:
         # Format the summary string
         total_miners = len(versions)
         reachable = total_miners - unreachable
-        summary_parts = [f"Miners: {reachable}/{total_miners} online"]
+        summary_parts = [f"🔍 Miners: {reachable}/{total_miners} online"]
 
         if version_counts:
             version_str = ", ".join(
