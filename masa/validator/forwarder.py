@@ -485,18 +485,30 @@ class Forwarder:
                     .lower()
                     .split()
                 )
-                bt.logging.info(
-                    f"Checking {len(valid_items)} tweets from miner {uid} for query terms: {query_words}"
-                )
 
+                # Validate each tweet's structure before processing
+                valid_structured_items = []
                 for item in valid_items:
                     if not isinstance(item, dict) or "Tweet" not in item:
                         continue
-
                     tweet = item.get("Tweet", {})
-                    if not tweet:  # Skip if tweet data is empty
+                    if not isinstance(tweet, dict):
                         continue
+                    valid_structured_items.append(item)
 
+                if not valid_structured_items:
+                    no_tweets_miners.append(uid)
+                    bt.logging.debug(
+                        f"Miner: {uid}, Status: 🟡 No valid tweet structures, Link: {taostats_link}"
+                    )
+                    continue
+
+                bt.logging.info(
+                    f"Checking {len(valid_structured_items)} tweets from miner {uid} for query terms: {query_words}"
+                )
+
+                for item in valid_structured_items:
+                    tweet = item["Tweet"]  # We know this exists and is a dict now
                     tweet_id = tweet.get("ID", "unknown")
 
                     # Check timestamp
@@ -519,12 +531,12 @@ class Forwarder:
                 if not basic_validated_tweets:
                     no_tweets_miners.append(uid)
                     bt.logging.debug(
-                        f"Miner: {uid}, Status: 🟡 No tweets passed basic validation, Link: {taostats_link}"
+                        f"Miner: {uid}, Status: 🟡 No tweets passed content validation, Link: {taostats_link}"
                     )
                     continue
 
                 bt.logging.info(
-                    f"Miner {uid}: Found {len(basic_validated_tweets)}/{len(valid_items)} tweets containing query terms"
+                    f"Miner {uid}: Found {len(basic_validated_tweets)}/{len(valid_structured_items)} tweets containing query terms"
                 )
                 # Only validate one random tweet with masa-ai
                 random_tweet = random.choice(basic_validated_tweets)
