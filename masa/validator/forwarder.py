@@ -463,6 +463,12 @@ class Forwarder:
                         random_tweet = random.choice(basic_validated_tweets)
                         tweet = random_tweet.get("Tweet", {})
                         tweet_id = tweet.get("ID", "unknown")
+                        tweet_url = self.format_tweet_url(tweet_id)
+
+                        bt.logging.info(
+                            f"Validating random tweet from miner {uid} with masa-ai:"
+                        )
+                        bt.logging.info(f"└─ Tweet URL: {tweet_url}")
 
                         masa_validation_passed = False
                         try:
@@ -478,6 +484,9 @@ class Forwarder:
                                             tweet.get("Hashtags", []),
                                         )
                                     )
+                                bt.logging.info(
+                                    f"└─ Masa-ai validation: {'✅ Passed' if masa_validation_passed else '❌ Failed'}"
+                                )
                         except Exception as e:
                             bt.logging.error(
                                 f"Error validating tweet with masa-ai: {e}"
