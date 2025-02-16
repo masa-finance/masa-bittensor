@@ -364,28 +364,30 @@ class Forwarder:
 
     async def _process_responses(self, responses, miner_uids, random_keyword):
         """Process and validate miner responses."""
-        # First, just log everything we receive
+        # First, just log response structure
         for response, uid in zip(responses, miner_uids):
-            bt.logging.info(f"Raw response from miner {uid}:")
-            bt.logging.info(f"Response type: {type(response)}")
-            bt.logging.info(f"Response content: {response}")
-
+            bt.logging.info(f"Miner {uid}:")
             if response is None:
-                bt.logging.warning(f"Miner {uid}: None response received")
+                bt.logging.warning("└─ None response")
                 continue
 
             try:
                 response_data = dict(response)
-                bt.logging.info(f"Response data from miner {uid}: {response_data}")
-            except Exception as e:
-                bt.logging.error(
-                    f"Could not convert response to dict for miner {uid}: {e}"
-                )
-                continue
+                resp = response_data.get("response")
+                if resp is None:
+                    bt.logging.warning("└─ Empty response data")
+                    continue
 
-            # Log the actual response content without processing
-            all_responses = response_data.get("response")
-            bt.logging.info(f"All responses from miner {uid}: {all_responses}")
+                bt.logging.info(f"└─ Response type: {type(resp)}")
+                if isinstance(resp, list):
+                    bt.logging.info(f"└─ Number of items: {len(resp)}")
+                    if len(resp) > 0:
+                        bt.logging.info(f"└─ First item type: {type(resp[0])}")
+                        if isinstance(resp[0], dict):
+                            bt.logging.info(f"└─ Keys: {list(resp[0].keys())}")
+            except Exception as e:
+                bt.logging.error(f"└─ Error parsing: {str(e)}")
+                continue
 
         # For now, just return empty list until we verify the data format
         return []
