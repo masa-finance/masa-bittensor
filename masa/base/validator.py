@@ -158,7 +158,7 @@ class BaseValidatorNeuron(BaseNeuron):
             # Don't raise, let it continue to next loop
 
     async def should_set_weights(self) -> bool:
-        bt.logging.info("⚖️ Checking if we should set weights")
+        bt.logging.info("🔍 Checking if we should set weights")
         # Skip if weights are disabled in config
         if self.config.neuron.disable_set_weights:
             bt.logging.info("❌ Weights disabled in config")
@@ -172,7 +172,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Check if enough blocks have elapsed since last update
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
-        bt.logging.info(f"⏱️ Blocks elapsed since last update: {blocks_elapsed}")
+        bt.logging.info(f"⏱️  Blocks elapsed since last update: {blocks_elapsed}")
 
         # Only allow setting weights if enough blocks elapsed
         if blocks_elapsed <= 100 and not self.first_run:
