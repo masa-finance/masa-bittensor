@@ -52,6 +52,11 @@ class Scorer:
             bt.logging.error(f"Exception in add_volume:\n{traceback.format_exc()}")
             raise
 
+    def format_miner_link(self, uid: int) -> str:
+        """Format a miner's hotkey into a taostats URL."""
+        hotkey = self.validator.metagraph.hotkeys[uid]
+        return f"@https://taostats.io/hotkey/{hotkey}"
+
     async def score_miner_volumes(self, current_block: int):
         try:
             bt.logging.debug("Starting score_miner_volumes...")
@@ -139,7 +144,7 @@ class Scorer:
                         )
                         rewards.append(reward)
                         bt.logging.debug(
-                            f"UID {uid}: volume={volume}, reward={reward:.4f}"
+                            f"Miner {self.format_miner_link(uid)}: volume={volume}, reward={reward:.4f}"
                         )
 
                 scores = torch.FloatTensor(rewards).to(self.validator.device)
@@ -154,7 +159,31 @@ class Scorer:
                 await self.validator.update_scores(scores, valid_miner_uids)
                 bt.logging.debug("update_scores completed")
                 self.validator.last_scoring_block = current_block
-                bt.logging.debug("score_miner_volumes completed successfully")
+
+                # Add summary statistics
+                if valid_miner_uids:
+                    total_volume = sum(
+                        float(miner_volumes[str(uid)]) for uid in valid_miner_uids
+                    )
+                    avg_volume = total_volume / len(valid_miner_uids)
+                    max_volume = max(
+                        float(miner_volumes[str(uid)]) for uid in valid_miner_uids
+                    )
+                    min_volume = min(
+                        float(miner_volumes[str(uid)]) for uid in valid_miner_uids
+                    )
+                    avg_reward = sum(rewards) / len(rewards)
+                    max_reward = max(rewards)
+                    min_reward = min(rewards)
+
+                    bt.logging.info(
+                        f"📊 Scoring Summary:\n"
+                        f"Miners: {len(valid_miner_uids)}\n"
+                        f"Volumes - Total: {total_volume:.0f}, Avg: {avg_volume:.0f}, Min: {min_volume:.0f}, Max: {max_volume:.0f}\n"
+                        f"Rewards - Avg: {avg_reward:.4f}, Min: {min_reward:.4f}, Max: {max_reward:.4f}"
+                    )
+
+                bt.logging.info("score_miner_volumes completed successfully")
 
                 if volumes:
                     try:

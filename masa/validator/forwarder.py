@@ -351,6 +351,7 @@ class Forwarder:
                     "Tweet", {}
                 )
 
+                validation_response = None
                 try:
                     validation_response = validator.validate_tweet(
                         random_tweet.get("ID"),
@@ -361,14 +362,14 @@ class Forwarder:
                         random_tweet.get("Hashtags"),
                     )
                     bt.logging.debug(
-                        f"Raw validation response for {self.format_tweet_url(random_tweet.get('ID'))}: {validation_response}"
+                        f"Complete validation response for {self.format_tweet_url(random_tweet.get('ID'))}:\nResponse: {validation_response}\nType: {type(validation_response)}\nAttributes: {dir(validation_response) if hasattr(validation_response, '__dir__') else 'No attributes'}"
                     )
                 except Exception as e:
-                    # Any connection issues, rate limits, etc. - treat as successful
+                    error_str = str(e)
                     bt.logging.debug(
-                        f"Connection issue for {self.format_tweet_url(random_tweet.get('ID'))}: {str(e)}"
+                        f"Connection issue for {self.format_tweet_url(random_tweet.get('ID'))}: {error_str}"
                     )
-                    validation_response = True
+                    # Don't set validation_response to True - leave it as None to indicate connection issue
 
                 # Check content requirements
                 query_words = (
@@ -411,12 +412,18 @@ class Forwarder:
                     )
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
                     continue
-
-                # Tweet passed validation (or had connection issues) - check content requirements
-                if query_in_tweet and is_since_date_requested:
+                elif validation_response is None:
+                    # Connection issue - treat as successful but log differently
                     bt.logging.info(
-                        f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"🌐 Tweet validation skipped (connection issue): {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
+
+                # Tweet passed validation or had connection issues - check content requirements
+                if query_in_tweet and is_since_date_requested:
+                    if validation_response is True:
+                        bt.logging.info(
+                            f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        )
                     all_valid_tweets.extend(unique_tweets_response)
 
                     # Score only unique tweets per miner
@@ -441,7 +448,7 @@ class Forwarder:
                         self.validator.scorer.add_volume(
                             uid_int, len(updates), current_block
                         )
-                        bt.logging.debug(
+                        bt.logging.info(
                             f"Miner {self.format_miner_link(uid_int)} produced {len(updates)} new tweets"
                         )
                 else:

@@ -20,7 +20,7 @@ async def send_to_protocol(self, chunk_index: int, data: Any) -> bool:
         success = True  # Your actual send logic result
 
         if success:
-            bt.logging.info(f"Sent data chunk {chunk_index} to protocol API")
+            bt.logging.info("⚖️ Sent data chunk {chunk_index} to protocol API")
         return success
 
     except Exception as e:
