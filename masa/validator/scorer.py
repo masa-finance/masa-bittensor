@@ -158,14 +158,14 @@ class Scorer:
                     bt.logging.info("🏆 Top 10 Miners by Reward:")
                     for uid, volume, reward in sorted_miners[:10]:
                         bt.logging.info(
-                            f"Miner {uid}: volume={volume:.0f}, reward={reward:.4f}, {self.format_miner_link(uid)[1:]}"
+                            f"    🟢 Miner {uid}: volume={volume:.0f}, reward={reward:.4f}, {self.format_miner_link(uid)[1:]}"
                         )
 
                     # Display bottom 10 miners
                     bt.logging.info("⚠️  Bottom 10 Miners by Reward:")
                     for uid, volume, reward in sorted_miners[-10:]:
                         bt.logging.info(
-                            f"Miner {uid}: volume={volume:.0f}, reward={reward:.4f}, {self.format_miner_link(uid)[1:]}"
+                            f"    🔴 Miner {uid}: volume={volume:.0f}, reward={reward:.4f}, {self.format_miner_link(uid)[1:]}"
                         )
 
                 scores = torch.FloatTensor(rewards).to(self.validator.device)
