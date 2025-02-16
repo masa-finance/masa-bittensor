@@ -453,174 +453,120 @@ class Forwarder:
         unreachable_miners = []
         no_tweets_miners = []
 
-        # Initialize masa-ai validator
-        try:
-            with SilentOutput():
-                tweet_validator = TweetValidator()
-                bt.logging.debug("🔧 Initialized masa-ai validator")
-        except Exception as e:
-            bt.logging.error(f"❌ Failed to initialize masa-ai validator: {e}")
-            tweet_validator = None
-
         for response, uid in zip(responses, miner_uids):
             hotkey = self.validator.metagraph.hotkeys[uid]
             taostats_link = f"https://taostats.io/hotkey/{hotkey}"
 
-            # Handle all cases where we don't have a valid response
+            # First check if we have a response at all
             if response is None:
                 unreachable_miners.append(uid)
-                bt.logging.debug(
-                    f"Miner: {uid}, Status: 🔴 Unreachable (no response), Link: {taostats_link}"
+                bt.logging.info(
+                    f"Miner: {uid}, Status: No response, Link: {taostats_link}"
                 )
                 continue
 
+            # Log the raw response for debugging
+            bt.logging.debug(f"Raw response from miner {uid}:")
+            bt.logging.debug(f"Response type: {type(response)}")
+            bt.logging.debug(f"Response content: {response}")
+
             try:
-                # Safely get response data, handling all possible None cases
-                response_data = response if isinstance(response, dict) else {}
-                resp = response_data.get("response")
-
-                # Log raw data at debug level
-                bt.logging.debug(f"Raw response data for miner {uid}:")
-                bt.logging.debug(f"Response data: {response_data}")
-                bt.logging.debug(f"Response content: {resp}")
-
-                if resp is None:
+                # Check if response is a dict and has 'response' field
+                if not isinstance(response, dict):
+                    bt.logging.error(
+                        f"Miner {uid}: Response is not a dict, got {type(response)}"
+                    )
                     unreachable_miners.append(uid)
-                    bt.logging.debug(
-                        f"Miner: {uid}, Status: 🔴 Unreachable (empty response), Link: {taostats_link}"
-                    )
                     continue
 
-                # Process the response
-                valid_items, errors, valid = self._process_single_response(resp, uid)
-                total_errors += errors
+                resp = response.get("response")
+                if resp is None:
+                    bt.logging.error(f"Miner {uid}: Response has no 'response' field")
+                    unreachable_miners.append(uid)
+                    continue
 
-                if not valid_items:  # Explicitly check for empty valid_items
+                # Check if resp is a list
+                if not isinstance(resp, list):
+                    bt.logging.error(
+                        f"Miner {uid}: Response content is not a list, got {type(resp)}"
+                    )
+                    unreachable_miners.append(uid)
+                    continue
+
+                # Log the actual tweet count
+                bt.logging.info(f"Miner {uid}: Received {len(resp)} tweets")
+
+                # Now we know we have a list, check each item
+                valid_tweets = []
+                for item in resp:
+                    if not isinstance(item, dict):
+                        bt.logging.debug(
+                            f"Miner {uid}: Invalid tweet format - not a dict"
+                        )
+                        continue
+
+                    # Get the tweet data
+                    tweet_data = None
+                    if "Tweet" in item:
+                        tweet_data = item["Tweet"]
+                    elif "tweet" in item:
+                        tweet_data = item["tweet"]
+                    else:
+                        bt.logging.debug(
+                            f"Miner {uid}: Tweet missing Tweet/tweet field"
+                        )
+                        continue
+
+                    if not isinstance(tweet_data, dict):
+                        bt.logging.debug(f"Miner {uid}: Tweet data is not a dict")
+                        continue
+
+                    # Check required fields
+                    required_fields = ["ID", "Text", "Timestamp"]
+                    if not all(field in tweet_data for field in required_fields):
+                        bt.logging.debug(f"Miner {uid}: Tweet missing required fields")
+                        continue
+
+                    valid_tweets.append({"Tweet": tweet_data})
+
+                if not valid_tweets:
+                    bt.logging.info(f"Miner {uid}: No valid tweets found in response")
                     no_tweets_miners.append(uid)
-                    bt.logging.debug(
-                        f"Miner: {uid}, Status: 🟡 No valid tweets, Link: {taostats_link}"
-                    )
                     continue
 
-                # First validate all tweets for basic criteria
-                basic_validated_tweets = []
+                bt.logging.info(f"Miner {uid}: Found {len(valid_tweets)} valid tweets")
+
+                # Process valid tweets for query terms
                 query_words = (
                     self.normalize_whitespace(random_keyword.replace('"', ""))
                     .strip()
                     .lower()
                     .split()
                 )
+                matching_tweets = []
 
-                # Validate each tweet's structure before processing
-                valid_structured_items = []
-                for item in valid_items:
-                    if not isinstance(item, dict) or "Tweet" not in item:
-                        continue
-                    tweet = item.get("Tweet", {})
-                    if not isinstance(tweet, dict):
-                        continue
-                    valid_structured_items.append(item)
+                for tweet in valid_tweets:
+                    if self._check_tweet_content(
+                        tweet["Tweet"], query_words
+                    ) and self._check_tweet_timestamp(
+                        tweet["Tweet"].get("Timestamp", 0)
+                    ):
+                        matching_tweets.append(tweet)
 
-                if not valid_structured_items:
-                    no_tweets_miners.append(uid)
-                    bt.logging.debug(
-                        f"Miner: {uid}, Status: 🟡 No valid tweet structures, Link: {taostats_link}"
+                if matching_tweets:
+                    bt.logging.info(
+                        f"Miner {uid}: {len(matching_tweets)} tweets match query terms"
                     )
-                    continue
-
-                bt.logging.info(
-                    f"Processing {len(valid_structured_items)} tweets from miner {uid} for query terms: {query_words}"
-                )
-
-                for item in valid_structured_items:
-                    tweet = item["Tweet"]  # We know this exists and is a dict now
-                    tweet_id = tweet.get("ID", "unknown")
-
-                    # Check timestamp
-                    timestamp_valid = self._check_tweet_timestamp(
-                        tweet.get("Timestamp", 0)
-                    )
-
-                    # Check query terms
-                    content_valid = self._check_tweet_content(tweet, query_words)
-
-                    if timestamp_valid and content_valid:
-                        basic_validated_tweets.append(item)
-                    else:
-                        bt.logging.debug(
-                            f"Tweet {self.format_tweet_url(tweet_id)} failed basic validation:"
-                            f"{' (timestamp invalid)' if not timestamp_valid else ''}"
-                            f"{' (query terms not found)' if not content_valid else ''}"
-                        )
-
-                if not basic_validated_tweets:
-                    no_tweets_miners.append(uid)
-                    bt.logging.debug(
-                        f"Miner: {uid}, Status: 🟡 No tweets passed content validation, Link: {taostats_link}"
-                    )
-                    continue
-
-                bt.logging.info(
-                    f"Miner {uid}: Found {len(basic_validated_tweets)}/{len(valid_structured_items)} tweets containing query terms"
-                )
-                # Only validate one random tweet with masa-ai
-                random_tweet = random.choice(basic_validated_tweets)
-                tweet = random_tweet.get("Tweet", {})
-                tweet_id = tweet.get("ID", "unknown")
-                tweet_url = self.format_tweet_url(tweet_id)
-
-                bt.logging.info(
-                    f"Validating random tweet from miner {uid} with masa-ai:"
-                )
-                bt.logging.info(f"└─ Tweet URL: {tweet_url}")
-
-                masa_validation_passed = False
-                try:
-                    if tweet_validator:
-                        with SilentOutput():
-                            try:
-                                masa_validation_passed = tweet_validator.validate_tweet(
-                                    tweet.get("ID"),
-                                    tweet.get("Name"),
-                                    tweet.get("Username"),
-                                    tweet.get("Text"),
-                                    tweet.get("Timestamp"),
-                                    tweet.get("Hashtags", []),
-                                )
-                                bt.logging.info(
-                                    f"└─ Masa-ai validation: {'❌ Tweet does not exist' if not masa_validation_passed else '✅ Valid'}"
-                                )
-                            except Exception as validation_error:
-                                # If masa-ai has API issues, we accept the tweet
-                                bt.logging.info(
-                                    f"└─ Masa-ai validation: ⚠️ API error - accepting tweet"
-                                )
-                                bt.logging.debug(
-                                    f"└─ Validation error details: {str(validation_error)}"
-                                )
-                                masa_validation_passed = True
-                except Exception as e:
-                    # If masa-ai completely fails to initialize or other serious error
-                    bt.logging.error(f"Error with masa-ai validator: {e}")
-                    # Accept the tweet since it's not the miner's fault
-                    masa_validation_passed = True
-
-                # If the random tweet passes masa-ai validation or if masa-ai had API issues,
-                # include all basic validated tweets
-                if masa_validation_passed:
-                    all_valid_tweets.extend(basic_validated_tweets)
-                    valid = len(basic_validated_tweets)
-                    miner_stats.append((uid, valid))
-                    bt.logging.debug(
-                        f"Miner: {uid}, Status: 🟢 Active, Tweets: {valid}, Link: {taostats_link}"
-                    )
+                    # Only validate one random tweet with masa-ai
+                    random_tweet = random.choice(matching_tweets)
+                    all_valid_tweets.extend(matching_tweets)
+                    miner_stats.append((uid, len(matching_tweets)))
                 else:
+                    bt.logging.info(f"Miner {uid}: No tweets match query terms")
                     no_tweets_miners.append(uid)
-                    bt.logging.debug(
-                        f"Miner: {uid}, Status: 🟡 Tweet confirmed invalid by masa-ai, Link: {taostats_link}"
-                    )
+
             except Exception as e:
-                bt.logging.error(f"Error processing miner {uid}: {e}")
+                bt.logging.error(f"Error processing miner {uid}: {str(e)}")
                 continue
 
         # Log summary
