@@ -568,13 +568,14 @@ class Forwarder:
                     )
 
                     bt.logging.debug(f"Checking tweet {tweet_url}")
-                    bt.logging.debug(f"Query: {query_words}")
-                    bt.logging.debug(f"Text: {text}")
+                    bt.logging.info(f"Query terms: {query_words}")
+                    bt.logging.info(f"Tweet text: {tweet_data.get('Text', '')}")
 
                     if not any(word in text for word in query_words):
                         query_failures.append((tweet_id, text))
                         bt.logging.info(f"Query match failed for {tweet_url}")
-                        bt.logging.debug(f"Text: {text}")
+                        bt.logging.info(f"  Query terms: {query_words}")
+                        bt.logging.info(f"  Tweet text: {tweet_data.get('Text', '')}")
                         continue
 
                     # Finally do masa-ai validation (most expensive)
@@ -594,12 +595,21 @@ class Forwarder:
                             if is_valid:
                                 valid_tweets.append(tweet)
                                 bt.logging.info(f"Tweet validation passed: {tweet_url}")
+                                bt.logging.info(f"  Text: {tweet_data.get('Text', '')}")
                                 break
                             else:
                                 validation_failures.append(
                                     (tweet_id, "Tweet not found or invalid")
                                 )
                                 bt.logging.info(f"Tweet validation failed: {tweet_url}")
+                                bt.logging.info(f"  Text: {tweet_data.get('Text', '')}")
+                                bt.logging.info(f"  Name: {tweet_data.get('Name', '')}")
+                                bt.logging.info(
+                                    f"  Username: {tweet_data.get('Username', '')}"
+                                )
+                                bt.logging.info(
+                                    f"  Timestamp: {datetime.fromtimestamp(tweet_data.get('Timestamp', 0), UTC)}"
+                                )
                                 break
                         except Exception as e:
                             if "429" in str(e) and retry_count < max_retries - 1:
