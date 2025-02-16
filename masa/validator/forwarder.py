@@ -470,72 +470,80 @@ class Forwarder:
                 # Only consider it a true failure if content requirements aren't met
                 if not query_in_tweet:
                     bt.logging.info(
-                        f"Miner {uid}: Tweet validation failed - Query terms not found"
-                    )
-                    bt.logging.info(f"Miner {uid}: Tweet ID={random_tweet.get('ID')}")
-                    bt.logging.info(
-                        f"Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
+                        f"❌ Miner {uid}: Tweet validation failed - Query terms not found"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Query terms={', '.join(query_words)}"
+                        f"❌ Miner {uid}: Tweet ID={random_tweet.get('ID')}"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
-                    )
-                    bt.logging.info(f"Miner {uid}: Name={random_tweet.get('Name')}")
-                    bt.logging.info(
-                        f"Miner {uid}: Username={random_tweet.get('Username')}"
+                        f"❌ Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Hashtags={random_tweet.get('Hashtags')}"
+                        f"❌ Miner {uid}: Query terms={', '.join(query_words)}"
+                    )
+                    bt.logging.info(
+                        f"❌ Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
+                    )
+                    bt.logging.info(f"❌ Miner {uid}: Name={random_tweet.get('Name')}")
+                    bt.logging.info(
+                        f"❌ Miner {uid}: Username={random_tweet.get('Username')}"
+                    )
+                    bt.logging.info(
+                        f"❌ Miner {uid}: Hashtags={random_tweet.get('Hashtags')}"
                     )
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
                     continue
                 elif not is_since_date_requested:
                     bt.logging.info(
-                        f"Miner {uid}: Tweet validation failed - Tweet too old"
+                        f"❌ Miner {uid}: Tweet validation failed - Tweet too old"
                     )
-                    bt.logging.info(f"Miner {uid}: Tweet ID={random_tweet.get('ID')}")
                     bt.logging.info(
-                        f"Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
+                        f"❌ Miner {uid}: Tweet ID={random_tweet.get('ID')}"
                     )
-                    bt.logging.info(f"Miner {uid}: Tweet timestamp={tweet_timestamp}")
-                    bt.logging.info(f"Miner {uid}: Required after={yesterday}")
+                    bt.logging.info(
+                        f"❌ Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
+                    )
+                    bt.logging.info(
+                        f"❌ Miner {uid}: Tweet timestamp={tweet_timestamp}"
+                    )
+                    bt.logging.info(f"❌ Miner {uid}: Required after={yesterday}")
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
                     continue
                 elif validation_response is False:
                     # Log the failure but don't penalize unless we're certain
                     bt.logging.info(
-                        f"Miner {uid}: External validation check failed but content valid"
+                        f"⚠️ Miner {uid}: External validation check failed but content valid"
                     )
-                    bt.logging.info(f"Miner {uid}: Tweet ID={random_tweet.get('ID')}")
+                    bt.logging.info(f"⚠️ Miner {uid}: Tweet ID={random_tweet.get('ID')}")
                     bt.logging.info(
-                        f"Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
+                        f"⚠️ Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
+                        f"⚠️ Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
                     )
-                    bt.logging.info(f"Miner {uid}: Timestamp={tweet_timestamp}")
+                    bt.logging.info(f"⚠️ Miner {uid}: Timestamp={tweet_timestamp}")
                 elif validation_response is None:
-                    bt.logging.info(f"Miner {uid}: External validation skipped")
-                    bt.logging.info(f"Miner {uid}: Tweet ID={random_tweet.get('ID')}")
+                    bt.logging.info(f"⚠️ Miner {uid}: External validation skipped")
+                    bt.logging.info(f"⚠️ Miner {uid}: Tweet ID={random_tweet.get('ID')}")
                     bt.logging.info(
-                        f"Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
+                        f"⚠️ Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
+                        f"⚠️ Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
                     )
                 else:
-                    bt.logging.info(f"Miner {uid}: Tweet validation passed")
-                    bt.logging.info(f"Miner {uid}: Tweet ID={random_tweet.get('ID')}")
+                    bt.logging.info(f"✅ Miner {uid}: Tweet validation passed")
                     bt.logging.info(
-                        f"Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
+                        f"✅ Miner {uid}: Tweet ID={random_tweet.get('ID')}"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Query terms found in={[field for field, found in validation_details['found_in_fields'].items() if found]}"
+                        f"✅ Miner {uid}: URL=https://x.com/i/status/{random_tweet.get('ID')}"
                     )
                     bt.logging.info(
-                        f"Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
+                        f"✅ Miner {uid}: Query terms found in={[field for field, found in validation_details['found_in_fields'].items() if found]}"
+                    )
+                    bt.logging.info(
+                        f"✅ Miner {uid}: Text={self.normalize_whitespace(random_tweet.get('Text', ''))}"
                     )
 
                 # If we get here, the tweet passed our core validation
