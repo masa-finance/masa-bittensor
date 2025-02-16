@@ -466,19 +466,38 @@ class Forwarder:
         return valid_items, len(error_items), len(valid_items)
 
     async def _process_responses(self, responses, miner_uids, random_keyword):
-        """Log raw responses from miners."""
-        bt.logging.info(f"\nResponses for query: {random_keyword}")
+        """Log response structure from miners."""
+        bt.logging.info(f"\nAnalyzing responses for query: {random_keyword}")
 
         for response, uid in zip(responses, miner_uids):
-            bt.logging.info(f"\n=== Raw response from miner {uid} ===")
-            bt.logging.info(f"Response type: {type(response)}")
-            bt.logging.info(f"Response content: {response}")
+            bt.logging.info(f"\n=== Response structure from miner {uid} ===")
+            if not isinstance(response, dict):
+                bt.logging.info(f"Invalid response type: {type(response)}")
+                continue
 
-            if isinstance(response, dict) and "response" in response:
-                bt.logging.info(f"\nResponse field type: {type(response['response'])}")
-                bt.logging.info(f"Response field content: {response['response']}")
+            if "response" not in response:
+                bt.logging.info("Missing 'response' field")
+                continue
 
-        return []  # Don't process anything until we understand the data
+            tweets = response["response"]
+            if not isinstance(tweets, list):
+                bt.logging.info(f"'response' field is not a list: {type(tweets)}")
+                continue
+
+            bt.logging.info(f"Number of items in response: {len(tweets)}")
+
+            if tweets:
+                # Log structure of first tweet only
+                first = tweets[0]
+                bt.logging.info("First item structure:")
+                bt.logging.info(f"- Has Error field: {('Error' in first)}")
+                if "Tweet" in first:
+                    tweet = first["Tweet"]
+                    bt.logging.info("- Tweet fields:")
+                    for key in tweet:
+                        bt.logging.info(f"  - {key}: {type(tweet[key])}")
+
+        return []  # Still don't process anything until we verify the structure
 
     def _log_validation_failure(self, uid, tweet, query_words, reason):
         """Log tweet validation failure details."""
