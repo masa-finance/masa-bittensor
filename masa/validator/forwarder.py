@@ -365,15 +365,15 @@ class Forwarder:
     def _process_single_response(self, resp, uid):
         """Process a single miner's response and return valid tweets."""
         if not isinstance(resp, list):
-            bt.logging.warning(f"└─ Invalid response type: {type(resp)}")
+            bt.logging.debug(f"└─ Miner {uid}: Invalid response type: {type(resp)}")
             return [], 0, 0
 
         if not resp:
-            bt.logging.warning("└─ Empty response list")
+            bt.logging.debug(f"└─ Miner {uid}: Empty response list")
             return [], 0, 0
 
         if not isinstance(resp[0], dict):
-            bt.logging.warning(f"└─ Invalid item type: {type(resp[0])}")
+            bt.logging.debug(f"└─ Miner {uid}: Invalid item type: {type(resp[0])}")
             return [], 0, 0
 
         # Count errors and valid tweets
@@ -382,13 +382,15 @@ class Forwarder:
             item for item in resp if not item.get("Error") and item.get("Tweet")
         ]
 
-        # Log results
+        # Log results at debug level
         if error_items:
-            bt.logging.warning(f"└─ Found {len(error_items)} items with errors")
-            bt.logging.warning(f"└─ Sample error: {error_items[0]['Error']}")
+            bt.logging.debug(
+                f"└─ Miner {uid}: Found {len(error_items)} items with errors"
+            )
+            bt.logging.debug(f"└─ Miner {uid}: Sample error: {error_items[0]['Error']}")
 
         if valid_items:
-            bt.logging.info(f"└─ Found {len(valid_items)} valid tweets")
+            bt.logging.debug(f"└─ Miner {uid}: Found {len(valid_items)} valid tweets")
 
         return valid_items, len(error_items), len(valid_items)
 
@@ -397,12 +399,11 @@ class Forwarder:
         all_valid_tweets = []
         total_errors = 0
         total_valid = 0
+        miner_stats = []
 
         for response, uid in zip(responses, miner_uids):
-            bt.logging.info(f"Miner {uid}:")
-
             if response is None:
-                bt.logging.warning("└─ None response")
+                bt.logging.debug(f"└─ Miner {uid}: None response")
                 continue
 
             try:
@@ -410,13 +411,8 @@ class Forwarder:
                 resp = response_data.get("response")
 
                 if resp is None:
-                    bt.logging.warning("└─ Empty response data")
+                    bt.logging.debug(f"└─ Miner {uid}: Empty response data")
                     continue
-
-                # Log basic response info
-                bt.logging.info(f"└─ Response type: {type(resp)}")
-                if isinstance(resp, list):
-                    bt.logging.info(f"└─ Number of items: {len(resp)}")
 
                 # Process the response
                 valid_items, errors, valid = self._process_single_response(resp, uid)
@@ -426,16 +422,26 @@ class Forwarder:
                 total_valid += valid
                 all_valid_tweets.extend(valid_items)
 
+                if valid > 0:
+                    miner_stats.append((uid, valid))
+
             except Exception as e:
-                bt.logging.error(f"└─ Error processing response: {str(e)}")
+                bt.logging.error(f"└─ Miner {uid}: Error processing response: {str(e)}")
                 continue
 
         # Log summary
-        bt.logging.info(f"Summary:")
-        bt.logging.info(f"└─ Total miners queried: {len(miner_uids)}")
-        bt.logging.info(f"└─ Total valid tweets: {total_valid}")
-        bt.logging.info(f"└─ Total errors: {total_errors}")
-        bt.logging.info(f"└─ Unique tweets collected: {len(all_valid_tweets)}")
+        bt.logging.info(f"Volume Check Results:")
+        bt.logging.info(f"└─ Query: {random_keyword}")
+        bt.logging.info(
+            f"└─ Miners: {len(miner_stats)}/{len(miner_uids)} responded with data"
+        )
+
+        # Log miner responses in a compact format
+        if miner_stats:
+            miner_summary = ", ".join(f"{uid}:{count}" for uid, count in miner_stats)
+            bt.logging.info(f"└─ Tweets per miner: {miner_summary}")
+
+        bt.logging.info(f"└─ Total tweets: {total_valid} ({total_errors} errors)")
 
         return all_valid_tweets
 
