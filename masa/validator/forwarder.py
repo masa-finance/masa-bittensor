@@ -361,17 +361,79 @@ class Forwarder:
                         random_tweet.get("Timestamp"),
                         random_tweet.get("Hashtags"),
                     )
+
+                    # Detailed validation logging
+                    validation_details = {
+                        "tweet_id": random_tweet.get("ID"),
+                        "text_length": len(random_tweet.get("Text", "")),
+                        "timestamp": datetime.fromtimestamp(
+                            random_tweet.get("Timestamp", 0), UTC
+                        ),
+                        "query_terms": query_words,
+                        "found_in_fields": {
+                            "text": any(
+                                word
+                                in self.normalize_whitespace(
+                                    random_tweet.get("Text", "")
+                                )
+                                .strip()
+                                .lower()
+                                for word in query_words
+                            ),
+                            "name": any(
+                                word
+                                in self.normalize_whitespace(
+                                    random_tweet.get("Name", "")
+                                )
+                                .strip()
+                                .lower()
+                                for word in query_words
+                            ),
+                            "username": any(
+                                word
+                                in self.normalize_whitespace(
+                                    random_tweet.get("Username", "")
+                                )
+                                .strip()
+                                .lower()
+                                for word in query_words
+                            ),
+                            "hashtags": any(
+                                word
+                                in self.normalize_whitespace(
+                                    str(random_tweet.get("Hashtags", []))
+                                )
+                                .strip()
+                                .lower()
+                                for word in query_words
+                            ),
+                        },
+                    }
+
                     bt.logging.debug(
-                        f"Complete validation response for {self.format_tweet_url(random_tweet.get('ID'))}:\nResponse: {validation_response}\nType: {type(validation_response)}\nAttributes: {dir(validation_response) if hasattr(validation_response, '__dir__') else 'No attributes'}"
+                        f"Miner {uid}: Validation details for {self.format_tweet_url(random_tweet.get('ID'))}:\n"
+                        f"    Response: {validation_response}\n"
+                        f"    Tweet text: {random_tweet.get('Text')[:100]}...\n"
+                        f"    Timestamp: {validation_details['timestamp']}\n"
+                        f"    Query terms: {', '.join(validation_details['query_terms'])}\n"
+                        f"    Found in:\n"
+                        f"      - Text: {'✅' if validation_details['found_in_fields']['text'] else '❌'}\n"
+                        f"      - Name: {'✅' if validation_details['found_in_fields']['name'] else '❌'}\n"
+                        f"      - Username: {'✅' if validation_details['found_in_fields']['username'] else '❌'}\n"
+                        f"      - Hashtags: {'✅' if validation_details['found_in_fields']['hashtags'] else '❌'}"
                     )
                 except Exception as e:
                     error_str = str(e)
                     bt.logging.debug(
-                        f"Connection issue for {self.format_tweet_url(random_tweet.get('ID'))}: {error_str}"
+                        f"Miner {uid}: Connection/validation issue for {self.format_tweet_url(random_tweet.get('ID'))}:\n"
+                        f"    Error: {error_str}\n"
+                        f"    Tweet ID: {random_tweet.get('ID')}\n"
+                        f"    Timestamp: {datetime.fromtimestamp(random_tweet.get('Timestamp', 0), UTC)}"
                     )
-                    # Don't set validation_response to True - leave it as None to indicate connection issue
+                    # Don't count external validation issues as failures
+                    validation_response = None
 
-                # Check content requirements
+                # Check content requirements first
                 query_words = (
                     self.normalize_whitespace(random_keyword.replace('"', ""))
                     .strip()
@@ -405,58 +467,52 @@ class Forwarder:
                 ) - timedelta(days=1)
                 is_since_date_requested = yesterday <= tweet_timestamp
 
-                if validation_response is False:
-                    # Tweet explicitly failed validation
+                # Only consider it a true failure if content requirements aren't met
+                if not query_in_tweet:
                     bt.logging.info(
-                        f"Miner {uid}: ❌ Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"Miner {uid}: ❌ Tweet validation failed - Query terms not found:\n"
+                        f"    Tweet: {self.format_tweet_url(random_tweet.get('ID'))}\n"
+                        f"    Query terms: {', '.join(query_words)}\n"
+                        f"    Text: {random_tweet.get('Text')[:100]}...\n"
+                        f"    Name: {random_tweet.get('Name')}\n"
+                        f"    Username: {random_tweet.get('Username')}\n"
+                        f"    Hashtags: {random_tweet.get('Hashtags')}"
                     )
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
                     continue
-                elif validation_response is None:
-                    # Connection issue - treat as successful but log differently
+                elif not is_since_date_requested:
                     bt.logging.info(
-                        f"Miner {uid}: 🌐 Tweet validation skipped (connection issue): {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
-
-                # Tweet passed validation or had connection issues - check content requirements
-                if query_in_tweet and is_since_date_requested:
-                    if validation_response is True:
-                        bt.logging.info(
-                            f"Miner {uid}: ✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
-                        )
-                    all_valid_tweets.extend(unique_tweets_response)
-
-                    # Score only unique tweets per miner
-                    uid_int = int(uid)
-                    if not self.validator.tweets_by_uid.get(uid_int):
-                        self.validator.tweets_by_uid[uid_int] = {
-                            tweet["Tweet"]["ID"] for tweet in unique_tweets_response
-                        }
-                        self.validator.scorer.add_volume(
-                            uid_int, len(unique_tweets_response), current_block
-                        )
-                        bt.logging.info(
-                            f"📈 Added {len(unique_tweets_response)} validated tweets for miner {self.format_miner_link(int(uid))}"
-                        )
-                    else:
-                        existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
-                        new_tweet_ids = {
-                            tweet["Tweet"]["ID"] for tweet in unique_tweets_response
-                        }
-                        updates = new_tweet_ids - existing_tweet_ids
-                        self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
-                        self.validator.scorer.add_volume(
-                            uid_int, len(updates), current_block
-                        )
-                        bt.logging.info(
-                            f"Miner {uid} produced {len(updates)} new tweets\n"
-                            f"    {self.format_miner_link(uid)}"
-                        )
-                else:
-                    bt.logging.info(
-                        f"⚠️ Tweet exists but doesn't meet requirements: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"Miner {uid}: ❌ Tweet validation failed - Tweet too old:\n"
+                        f"    Tweet: {self.format_tweet_url(random_tweet.get('ID'))}\n"
+                        f"    Tweet timestamp: {tweet_timestamp}\n"
+                        f"    Required after: {yesterday}"
                     )
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
+                    continue
+                elif validation_response is False:
+                    # Log the failure but don't penalize unless we're certain
+                    bt.logging.info(
+                        f"Miner {uid}: ⚠️ External validation check failed but content valid:\n"
+                        f"    Tweet: {self.format_tweet_url(random_tweet.get('ID'))}\n"
+                        f"    Text: {random_tweet.get('Text')[:100]}...\n"
+                        f"    Timestamp: {tweet_timestamp}"
+                    )
+                elif validation_response is None:
+                    bt.logging.info(
+                        f"Miner {uid}: 🌐 External validation skipped (connection issue):\n"
+                        f"    Tweet: {self.format_tweet_url(random_tweet.get('ID'))}\n"
+                        f"    Text: {random_tweet.get('Text')[:100]}..."
+                    )
+                else:
+                    bt.logging.info(
+                        f"Miner {uid}: ✅ Tweet validation passed:\n"
+                        f"    Tweet: {self.format_tweet_url(random_tweet.get('ID'))}\n"
+                        f"    Query terms found in: {[field for field, found in validation_details['found_in_fields'].items() if found]}\n"
+                        f"    Text: {random_tweet.get('Text')[:100]}..."
+                    )
+
+                # If we get here, the tweet passed our core validation
+                all_valid_tweets.extend(unique_tweets_response)
 
             except Exception as e:
                 bt.logging.error(
