@@ -410,12 +410,10 @@ class Forwarder:
             f"{text} {name} {username} {' '.join(hashtag_words)}".lower()
         )
 
-        # For each query word
+        # For each query word, just check if it exists in the content
         for word in query_words:
-            # Remove special chars and lowercase
-            cleaned_word = re.sub(r"[^\w\s]", "", word).lower()
-            if cleaned_word and cleaned_word in searchable_content:
-                bt.logging.debug(f"Found match: {cleaned_word}")
+            if word.lower().strip() in searchable_content:
+                bt.logging.debug(f"Found match: {word}")
                 return True
 
         return False
@@ -544,11 +542,11 @@ class Forwarder:
                         bt.logging.info(f"Tweet timestamp check failed: {tweet_url}")
                         continue
 
-                    # Process query into words
+                    # Process query - just strip quotes and pass as single word
                     query_words = []
                     if random_keyword:
-                        # Remove quotes and special chars, then split on spaces
-                        cleaned = re.sub(r'["\']', "", random_keyword).strip()
+                        # Just strip quotes, nothing else
+                        cleaned = random_keyword.strip().strip("\"'")
                         if cleaned:
                             query_words = [cleaned]
 
