@@ -477,6 +477,8 @@ class Forwarder:
         """Process responses from miners based on actual response structure."""
         all_valid_tweets = []
         validator = None
+
+        # Initialize validator outside the loop to avoid recreation
         with SilentOutput():
             validator = TweetValidator()
 
@@ -528,6 +530,9 @@ class Forwarder:
                 if not unique_tweets:
                     bt.logging.info(f"Miner {uid}: No tweets with valid structure")
                     continue
+
+                # Convert uid to int here, before any conditional logic
+                uid_int = int(uid)
 
                 # Select a random sample of tweets to validate (max 5)
                 sample_size = min(5, len(unique_tweets))
@@ -588,7 +593,9 @@ class Forwarder:
                     # Finally do masa-ai validation (most expensive)
                     retry_count = 0
                     max_retries = 3
-                    while retry_count < max_retries:
+                    validation_success = False
+
+                    while retry_count < max_retries and not validation_success:
                         try:
                             with SilentOutput():
                                 is_valid = validator.validate_tweet(
@@ -597,27 +604,22 @@ class Forwarder:
                                     tweet_data.get("Username"),
                                     tweet_data.get("Text"),
                                     tweet_data.get("Timestamp"),
-                                    tweet_data.get("Hashtags"),
+                                    tweet_data.get("Hashtags", []),
                                 )
+
                             if is_valid:
                                 valid_tweets.append(tweet)
+                                validation_success = True
                                 bt.logging.info(f"Tweet validation passed: {tweet_url}")
                                 bt.logging.info(f"  Text: {tweet_data.get('Text', '')}")
-                                break
                             else:
                                 validation_failures.append(
                                     (tweet_id, "Tweet not found or invalid")
                                 )
                                 bt.logging.info(f"Tweet validation failed: {tweet_url}")
                                 bt.logging.info(f"  Text: {tweet_data.get('Text', '')}")
-                                bt.logging.info(f"  Name: {tweet_data.get('Name', '')}")
-                                bt.logging.info(
-                                    f"  Username: {tweet_data.get('Username', '')}"
-                                )
-                                bt.logging.info(
-                                    f"  Timestamp: {datetime.fromtimestamp(tweet_data.get('Timestamp', 0), UTC)}"
-                                )
                                 break
+
                         except Exception as e:
                             if "429" in str(e) and retry_count < max_retries - 1:
                                 wait_time = (2**retry_count) * 5
@@ -645,9 +647,6 @@ class Forwarder:
                 bt.logging.info(
                     f"Miner {uid}: Validation success rate: {validation_success_rate:.2%}"
                 )
-
-                # Convert uid to int here, before any conditional logic
-                uid_int = int(uid)
 
                 # Only credit miner if validation success rate is high enough (e.g. 80%)
                 if validation_success_rate >= 0.8:
