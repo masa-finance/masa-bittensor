@@ -19,6 +19,7 @@
 import time
 from typing import Any, Tuple
 import bittensor as bt
+import asyncio
 
 from masa.base.miner import BaseMinerNeuron
 
@@ -32,11 +33,28 @@ from masa.synapses import (
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
+        self._is_initialized = False
+
+    @classmethod
+    async def create(cls, config=None):
+        if config is None:
+            config = cls.config()
+
+        self = cls(config=config)
+        await self.initialize(config)
+        return self
+
+    async def initialize(self, config=None):
+        if self._is_initialized:
+            return
+
+        await super().initialize(config)
         bt.logging.info("Miner initialized with config: {}".format(config))
+        self._is_initialized = True
 
     async def blacklist(self, synapse: Any) -> Tuple[bool, str]:
-        if self.check_tempo(synapse):
-            self.check_stake(synapse)
+        if await self.check_tempo(synapse):
+            await self.check_stake(synapse)
 
         hotkey = synapse.dendrite.hotkey
         uid = self.metagraph.hotkeys.index(hotkey)
@@ -67,7 +85,7 @@ class Miner(BaseMinerNeuron):
         bt.logging.trace(f"Not Blacklisting recognized hotkey {hotkey}")
         return False, "Hotkey recognized!"
 
-    def check_stake(self, synapse: Any):
+    async def check_stake(self, synapse: Any):
         current_stakes = self.metagraph.S
         hotkey = synapse.dendrite.hotkey
         uid = self.metagraph.hotkeys.index(hotkey)
@@ -79,21 +97,19 @@ class Miner(BaseMinerNeuron):
                     f"Removed neuron {hotkey} from staked list due to insufficient stake."
                 )
         else:
-            self.neurons_permit_stake[hotkey] = self.subtensor.block
+            self.neurons_permit_stake[hotkey] = await self.block
             bt.logging.info(f"Added neuron {hotkey} to staked list.")
 
-    def check_tempo(self, synapse: Any) -> bool:
+    async def check_tempo(self, synapse: Any) -> bool:
         hotkey = synapse.dendrite.hotkey
         last_checked_block = self.neurons_permit_stake.get(hotkey)
         if last_checked_block is None:
             bt.logging.info("There is no last checked block, starting tempo check...")
             return True
 
-        blocks_since_last_check = self.subtensor.block - last_checked_block
-        if (
-            blocks_since_last_check
-            >= self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
-        ):
+        blocks_since_last_check = await self.block - last_checked_block
+
+        if blocks_since_last_check >= self.tempo:
             bt.logging.trace(
                 f"A tempo has passed.  Blocks since last check: {blocks_since_last_check}"
             )
@@ -141,7 +157,10 @@ class Miner(BaseMinerNeuron):
         return await self.priority(synapse)
 
 
+async def main():
+    miner = await Miner.create()
+    await miner.run()
+
+
 if __name__ == "__main__":
-    with Miner() as miner:
-        while True:
-            time.sleep(5)
+    asyncio.run(main())
