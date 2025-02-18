@@ -60,9 +60,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self._is_initialized = False
         self.first_run = True
         super().__init__(config=config)
-        self.scores = torch.zeros(
-            self.metagraph.n, dtype=torch.float32, device=self.device
-        )
+        self.scores = torch.zeros(256, dtype=torch.float32, device=self.device)
 
     async def run(self):
         """Run the validator forever."""
