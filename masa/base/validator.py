@@ -49,6 +49,8 @@ class BaseValidatorNeuron(BaseNeuron):
         add_validator_args(cls, parser)
 
     def __init__(self, config=None):
+        # Determine the device
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.versions = []
         self.keywords = []
         self.uncalled_uids = set()
@@ -58,6 +60,9 @@ class BaseValidatorNeuron(BaseNeuron):
         self._is_initialized = False
         self.first_run = True
         super().__init__(config=config)
+        self.scores = torch.zeros(
+            self.metagraph.n, dtype=torch.float32, device=self.device
+        )
 
     async def run(self):
         """Run the validator forever."""
@@ -114,9 +119,6 @@ class BaseValidatorNeuron(BaseNeuron):
             self.subnet_config = subnet_config
 
         self.dendrite = bt.dendrite(wallet=self.wallet)
-        self.scores = torch.zeros(
-            self.metagraph.n, dtype=torch.float32, device=self.device
-        )
         bt.logging.info("Loading state...")
         self.load_state()
         # Serve axon to enable external connections.
@@ -458,6 +460,9 @@ class BaseValidatorNeuron(BaseNeuron):
     async def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""
         try:
+            # Ensure rewards are on the correct device
+            rewards = rewards.to(self.device)
+
             # Check if rewards contains NaN values.
             if torch.isnan(rewards).any():
                 bt.logging.warning(f"NaN values detected in rewards: {rewards}")
