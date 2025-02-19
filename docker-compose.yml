@@ -1,0 +1,46 @@
+services:
+  masa-protocol:
+    image: masaengineering/oracle:latest
+    environment:
+      - TWITTER_SCRAPER=${TWITTER_SCRAPER}
+      - TWITTER_ACCOUNTS=${TWITTER_ACCOUNTS}
+      - USER_AGENTS=${USER_AGENTS}
+      - TWITTER_API_KEY=${TWITTER_API_KEY}
+      - TWITTER_API_SECRET=${TWITTER_API_SECRET}
+      - TWITTER_ACCESS_TOKEN=${TWITTER_ACCESS_TOKEN}
+      - TWITTER_ACCESS_SECRET=${TWITTER_ACCESS_SECRET}
+      - TWITTER_BEARER_TOKEN=${TWITTER_BEARER_TOKEN}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  masa-node:
+    image: masaengineering/masa-bittensor:latest
+    env_file: .env
+    environment:
+      - ROLE=${ROLE}
+      - NETUID=${NETUID}
+      - SUBTENSOR_NETWORK=${SUBTENSOR_NETWORK}
+      - WALLET_NAME=${WALLET_NAME}
+      - HOTKEY_NAME=${HOTKEY_NAME}
+      - MINER_AXON_PORT=${MINER_PORT}
+      - MINER_METRICS_PORT=${METRICS_PORT}
+      - MINER_GRAFANA_PORT=${GRAFANA_PORT}
+      - VALIDATOR_AXON_PORT=${VALIDATOR_AXON_PORT}
+      - VALIDATOR_METRICS_PORT=${VALIDATOR_METRICS_PORT}
+      - VALIDATOR_GRAFANA_PORT=${VALIDATOR_GRAFANA_PORT}
+      - REPLICA_NUM=${REPLICA_NUM}
+      - MASA_BASE_URL=${MASA_BASE_URL}
+      - API_URL=${API_URL}
+    volumes:
+      - ./.env:/app/.env
+      - ./.bittensor:/root/.bittensor
+      - ./startup:/app/startup
+      - ./masa:/app/masa
+      - ./neurons:/app/neurons
+    entrypoint: ["python", "-u", "-m", "startup"]
+    ports:
+      - "${MINER_PORT}:${MINER_PORT}"
+      - "${METRICS_PORT}:${METRICS_PORT}"
+      - "${GRAFANA_PORT}:${GRAFANA_PORT}"
+    restart: unless-stopped
