@@ -40,21 +40,6 @@ import sys
 import os
 
 
-# Add this class to silence masa-ai output
-class SilentOutput:
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        self._original_stderr = sys.stderr
-        sys.stdout = open(os.devnull, "w")
-        sys.stderr = open(os.devnull, "w")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout.close()
-        sys.stdout = self._original_stdout
-        sys.stderr.close()
-        sys.stderr = self._original_stderr
-
-
 class Forwarder:
     def __init__(self, validator):
         self.validator = validator
@@ -227,8 +212,7 @@ class Forwarder:
 
     async def fetch_twitter_queries(self):
         try:
-            with SilentOutput():
-                trending_queries = TrendingQueries().fetch()
+            trending_queries = TrendingQueries().fetch()
             self.validator.keywords = [
                 query["query"] for query in trending_queries[:10]  # top 10 trends
             ]
@@ -286,11 +270,9 @@ class Forwarder:
         )
 
         all_valid_tweets = []
-        validator = None
-        with SilentOutput():
-            validator = (
-                TweetValidator()
-            )  # Create a single validator instance to reuse guest token
+        validator = (
+            TweetValidator()
+        )  # Create a single validator instance to reuse guest token
 
         for response, uid in zip(responses, miner_uids):
             try:

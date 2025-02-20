@@ -116,7 +116,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.load_state()
 
         # Serve axon to enable external connections.
-        await self.serve_axon()
+            await self.serve_axon()
 
         self._is_initialized = True
 
