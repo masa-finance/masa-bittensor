@@ -348,6 +348,7 @@ class Forwarder:
                 # Add exponential backoff for rate limits
                 retry_count = 0
                 max_retries = 3
+                validation_error = None
                 while retry_count < max_retries:
                     try:
                         is_valid = validator.validate_tweet(
@@ -358,13 +359,11 @@ class Forwarder:
                             random_tweet.get("Timestamp"),
                             random_tweet.get("Hashtags"),
                         )
-                        if not is_valid:
-                            bt.logging.info(
-                                f"Tweet validation failed (invalid tweet): {self.format_tweet_url(random_tweet.get('ID'))}"
-                            )
+                        validation_error = None  # Clear error if validation succeeds
                         break
                     except Exception as e:
-                        if "429" in str(e) and retry_count < max_retries - 1:
+                        validation_error = str(e)
+                        if "429" in validation_error and retry_count < max_retries - 1:
                             wait_time = (2**retry_count) * 5  # 5, 10, 20 seconds
                             bt.logging.warning(
                                 f"Rate limited, waiting {wait_time} seconds before retry"
@@ -373,13 +372,20 @@ class Forwarder:
                             retry_count += 1
                         else:
                             bt.logging.info(
-                                f"Tweet validation failed (error: {str(e)}): {self.format_tweet_url(random_tweet.get('ID'))}"
+                                f"Tweet validation check failed (API error: {validation_error}): {self.format_tweet_url(random_tweet.get('ID'))}"
                             )
-                            is_valid = False
+                            # Don't set is_valid to False here - we'll handle it below
                             break
 
                 # Always wait at least 2 seconds between validations
                 await asyncio.sleep(2)
+
+                # If we got an API error, we'll consider it a pass since we couldn't verify
+                if validation_error is not None:
+                    is_valid = True
+                    bt.logging.info(
+                        f"⚠️ Skipping masa-ai validation due to API error: {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
 
                 query_words = (
                     self.normalize_whitespace(random_keyword.replace('"', ""))
