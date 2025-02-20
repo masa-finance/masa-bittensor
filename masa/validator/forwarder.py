@@ -310,8 +310,7 @@ class Forwarder:
                         and tweet["Tweet"]["ID"]
                     ):
                         tweet_id = tweet["Tweet"]["ID"]
-                        # Check raw ID first - must be purely numeric with no whitespace
-                        if isinstance(tweet_id, str) and tweet_id.isdigit():
+                        if tweet_id.isdigit():  # Must be purely numeric
                             valid_tweets.append(tweet)
                             valid_tweet_count += 1
                         else:
@@ -321,13 +320,16 @@ class Forwarder:
                         invalid_tweet_count += 1
 
                 if invalid_tweet_count > 0:
-                    bt.logging.debug(
-                        f"Miner {uid} submitted {invalid_tweet_count} invalid tweets out of {len(all_responses)}"
-                        + (f" (invalid IDs: {invalid_ids})" if invalid_ids else "")
+                    bt.logging.info(
+                        f"❌ Miner {uid} FAILED ID validation - {invalid_tweet_count} invalid tweets out of {len(all_responses)}"
                     )
                     # Give zero score for submitting any invalid tweets
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
                     continue  # Skip further processing for this miner
+                else:
+                    bt.logging.info(
+                        f"✅ Miner {uid} PASSED ID validation - all {valid_tweet_count} tweets had valid IDs"
+                    )
 
                 # Deduplicate valid tweets using numeric IDs
                 unique_tweets_response = list(
