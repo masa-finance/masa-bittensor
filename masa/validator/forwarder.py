@@ -349,9 +349,10 @@ class Forwarder:
                 retry_count = 0
                 max_retries = 3
                 validation_error = None
+                validation_result = None
                 while retry_count < max_retries:
                     try:
-                        is_valid = validator.validate_tweet(
+                        validation_result = validator.validate_tweet(
                             random_tweet.get("ID"),
                             random_tweet.get("Name"),
                             random_tweet.get("Username"),
@@ -372,19 +373,37 @@ class Forwarder:
                             retry_count += 1
                         else:
                             bt.logging.info(
-                                f"Tweet validation check failed (API error: {validation_error}): {self.format_tweet_url(random_tweet.get('ID'))}"
+                                f"⚠️ Tweet validation unavailable (API error: {validation_error}): {self.format_tweet_url(random_tweet.get('ID'))}"
                             )
-                            # Don't set is_valid to False here - we'll handle it below
                             break
 
                 # Always wait at least 2 seconds between validations
                 await asyncio.sleep(2)
 
-                # If we got an API error, we'll consider it a pass since we couldn't verify
+                # Determine validation status
                 if validation_error is not None:
+                    # API error - consider it a pass since we couldn't verify
                     is_valid = True
                     bt.logging.info(
                         f"⚠️ Skipping masa-ai validation due to API error: {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
+                elif validation_result is None:
+                    # Tweet not found or other lookup error
+                    is_valid = False
+                    bt.logging.info(
+                        f"❌ Tweet validation failed (tweet not found): {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
+                elif validation_result is False:
+                    # Tweet exists but failed validation
+                    is_valid = False
+                    bt.logging.info(
+                        f"❌ Tweet validation failed (invalid content): {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
+                else:
+                    # Tweet passed validation
+                    is_valid = True
+                    bt.logging.info(
+                        f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
                 query_words = (
