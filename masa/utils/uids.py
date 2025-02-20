@@ -104,19 +104,14 @@ async def get_uncalled_miner_uids(
             # Generic sanitation
             avail_uids = get_available_uids(self.metagraph)
             healthy_uids = remove_excluded_uids(avail_uids, exclude)
-
-            # If versions haven't been initialized yet, use all healthy UIDs
-            if not hasattr(self, "versions") or len(self.versions) == 0:
-                self.uncalled_uids = set(healthy_uids)
-            else:
-                subnet_params = await self.subtensor.get_subnet_hyperparameters(
-                    self.config.netuid
-                )
-                weights_version = subnet_params.weights_version
-                version_checked_uids = [
-                    uid for uid in healthy_uids if self.versions[uid] >= weights_version
-                ]
-                self.uncalled_uids = set(version_checked_uids)
+            subnet_params = await self.subtensor.get_subnet_hyperparameters(
+                self.config.netuid
+            )
+            weights_version = subnet_params.weights_version
+            version_checked_uids = [
+                uid for uid in healthy_uids if self.versions[uid] >= weights_version
+            ]
+            self.uncalled_uids = set(version_checked_uids)
 
         k = min(k, len(self.uncalled_uids))
         if k == 0:
