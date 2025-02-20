@@ -568,5 +568,10 @@ class Forwarder:
 
     # Helper function to format miner info
     def format_miner_info(self, uid: int) -> str:
-        """Format miner info with TaoStats link."""
-        return f"Miner {uid} (https://taostats.io/miners/netuid-42/uid-{uid})"
+        """Format miner info with TaoStats link using hotkey."""
+        try:
+            hotkey = self.validator.metagraph.hotkeys[uid]
+            return f"Miner {uid} (https://taostats.io/hotkey/{hotkey})"
+        except (IndexError, AttributeError):
+            # Fallback if we can't get the hotkey for some reason
+            return f"Miner {uid}"
