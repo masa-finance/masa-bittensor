@@ -89,6 +89,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.scorer = Scorer(self)
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+        self.versions = [0] * self.metagraph.n.item()  # Initialize versions with zeros
         subnet_params = await self.subtensor.get_subnet_hyperparameters(
             self.config.netuid
         )
