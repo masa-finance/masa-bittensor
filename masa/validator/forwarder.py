@@ -321,14 +321,14 @@ class Forwarder:
 
                 if invalid_tweet_count > 0:
                     bt.logging.info(
-                        f"❌ Miner {uid} FAILED ID validation - {invalid_tweet_count} invalid tweets out of {len(all_responses)}"
+                        f"❌ {self.format_miner_info(int(uid))} FAILED ID validation - {invalid_tweet_count} invalid tweets out of {len(all_responses)}"
                     )
                     # Give zero score for submitting any invalid tweets
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
                     continue  # Skip further processing for this miner
                 else:
                     bt.logging.info(
-                        f"✅ Miner {uid} PASSED ID validation - all {valid_tweet_count} tweets had valid IDs"
+                        f"✅ {self.format_miner_info(int(uid))} PASSED ID validation - all {valid_tweet_count} tweets had valid IDs"
                     )
 
                 # Deduplicate valid tweets using numeric IDs
@@ -430,7 +430,7 @@ class Forwarder:
                 # note, they passed the spot check!
                 if is_valid and query_in_tweet and is_since_date_requested:
                     bt.logging.info(
-                        f"Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                     for tweet in unique_tweets_response:
                         if tweet:
@@ -444,7 +444,7 @@ class Forwarder:
                     if not is_since_date_requested:
                         failures.append("timestamp")
                     bt.logging.info(
-                        f"Tweet validation failed ({', '.join(failures)}): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"❌ Tweet validation failed ({', '.join(failures)}): {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
                 all_valid_tweets.extend(valid_tweets)
@@ -565,3 +565,8 @@ class Forwarder:
         except Exception as e:
             bt.logging.error(f"Error in spot check for miner {uid}: {e}")
             return False
+
+    # Helper function to format miner info
+    def format_miner_info(self, uid: int) -> str:
+        """Format miner info with TaoStats link."""
+        return f"Miner {uid} (https://taostats.io/miners/netuid-42/uid-{uid})"
