@@ -108,8 +108,15 @@ async def get_uncalled_miner_uids(
                 self.config.netuid
             )
             weights_version = subnet_params.weights_version
+
+            # Ensure versions list is properly sized
+            if len(self.versions) < self.metagraph.n.item():
+                self.versions = [0] * self.metagraph.n.item()
+
             version_checked_uids = [
-                uid for uid in healthy_uids if self.versions[uid] >= weights_version
+                uid
+                for uid in healthy_uids
+                if uid < len(self.versions) and self.versions[uid] >= weights_version
             ]
             self.uncalled_uids = set(version_checked_uids)
 

@@ -29,6 +29,7 @@ from typing import List
 
 from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_validator_args
+from masa.utils.uids import get_available_uids
 
 from masa.validator.scorer import Scorer
 from masa.validator.forwarder import Forwarder
@@ -51,7 +52,6 @@ class BaseValidatorNeuron(BaseNeuron):
     def __init__(self, config=None):
         self.versions = []
         self.keywords = []
-        self.uncalled_uids = set()
         self.volume_window = 6
         self.tweets_by_uid = {}
         self.volumes = []
@@ -89,7 +89,14 @@ class BaseValidatorNeuron(BaseNeuron):
         self.scorer = Scorer(self)
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
-        self.versions = []
+        self.versions = [0] * self.metagraph.n.item()  # Initialize versions with zeros
+        # Initialize uncalled_uids with ALL miner UIDs
+        miner_uids = [
+            uid
+            for uid in range(self.metagraph.n.item())
+            if self.metagraph.validator_trust[uid] == 0
+        ]
+        self.uncalled_uids = set(miner_uids)
         subnet_params = await self.subtensor.get_subnet_hyperparameters(
             self.config.netuid
         )
