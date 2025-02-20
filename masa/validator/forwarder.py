@@ -30,8 +30,12 @@ from masa.synapses import (
 )
 
 from masa.synapses import PingAxonSynapse
-from masa.base.healthcheck import get_external_ip, get_available_uids
-from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
+from masa.base.healthcheck import get_external_ip
+from masa.utils.uids import (
+    get_random_miner_uids,
+    get_uncalled_miner_uids,
+    get_available_uids,
+)
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
@@ -209,9 +213,9 @@ class Forwarder:
                 "status_code": response.dendrite.status_code,
                 "status_message": response.dendrite.status_message,
                 "version": response.version,
-                "uid": all_responses.index(response),
+                "uid": miner_uids[i],
             }
-            for response in all_responses
+            for i, response in enumerate(all_responses)
         ]
 
     async def fetch_twitter_queries(self):
