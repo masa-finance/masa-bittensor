@@ -358,6 +358,10 @@ class Forwarder:
                             random_tweet.get("Timestamp"),
                             random_tweet.get("Hashtags"),
                         )
+                        if not is_valid:
+                            bt.logging.info(
+                                f"Tweet validation failed (invalid tweet): {self.format_tweet_url(random_tweet.get('ID'))}"
+                            )
                         break
                     except Exception as e:
                         if "429" in str(e) and retry_count < max_retries - 1:
@@ -368,8 +372,8 @@ class Forwarder:
                             await asyncio.sleep(wait_time)
                             retry_count += 1
                         else:
-                            bt.logging.error(
-                                f"Failed to validate tweet after {retry_count} retries: {e}"
+                            bt.logging.info(
+                                f"Tweet validation failed (error: {str(e)}): {self.format_tweet_url(random_tweet.get('ID'))}"
                             )
                             is_valid = False
                             break
@@ -432,8 +436,15 @@ class Forwarder:
                         if tweet:
                             valid_tweets.append(tweet)
                 else:
+                    failures = []
+                    if not is_valid:
+                        failures.append("masa-ai validation")
+                    if not query_in_tweet:
+                        failures.append("query match")
+                    if not is_since_date_requested:
+                        failures.append("timestamp")
                     bt.logging.info(
-                        f"Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"Tweet validation failed ({', '.join(failures)}): {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
                 all_valid_tweets.extend(valid_tweets)
