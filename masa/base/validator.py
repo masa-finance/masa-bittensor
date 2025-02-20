@@ -114,16 +114,18 @@ class BaseValidatorNeuron(BaseNeuron):
         )
         bt.logging.info("Loading state...")
         self.load_state()
+
         # Serve axon to enable external connections.
-        if not self.config.neuron.axon_off:
-            await self.serve_axon()
-        else:
-            bt.logging.info("🥷 Axon off, not serving ip to chain.")
+        await self.serve_axon()
 
         self._is_initialized = True
 
     async def serve_axon(self):
         """Serve axon to enable external connections."""
+        if self.config.neuron.axon_off:
+            bt.logging.info("🥷 Axon disabled, not serving to chain")
+            return
+
         bt.logging.info("serving ip to chain...")
         try:
             self.axon = bt.axon(
