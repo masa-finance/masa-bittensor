@@ -61,25 +61,32 @@ class Scorer:
 
     async def score_miner_volumes(self, current_block: int):
         try:
-            # Get volumes from storage
+            # Get volumes from storage and state
             miner_volumes = {}
             for uid in range(self.validator.metagraph.n):
-                if str(uid) in self.miner_volumes:
-                    miner_volumes[str(uid)] = self.miner_volumes[str(uid)]
-                else:
-                    miner_volumes[str(uid)] = 0
+                uid_str = str(uid)
+                # Check both current volumes and state
+                volume_from_storage = self.miner_volumes.get(uid_str, 0)
+                tweets_from_state = len(
+                    self.validator.tweets_by_uid.get(int(uid_str), set())
+                )
+                miner_volumes[uid_str] = max(volume_from_storage, tweets_from_state)
 
             # Log individual miner volumes
             bt.logging.info("📊 Miner Volume Report:")
             for uid, volume in miner_volumes.items():
                 hotkey = self.validator.metagraph.hotkeys[int(uid)]
                 taostats_link = f"https://taostats.io/hotkey/{hotkey}"
+                state_tweets = len(self.validator.tweets_by_uid.get(int(uid), set()))
+
                 if volume > 0:
                     bt.logging.info(
-                        f"🟢 Miner {uid}: {volume} tweets | {taostats_link}"
+                        f"🟢 Miner {uid}: {volume} tweets (State: {state_tweets}) | {taostats_link}"
                     )
                 else:
-                    bt.logging.info(f"⚪ Miner {uid}: No tweets | {taostats_link}")
+                    bt.logging.info(
+                        f"⚪ Miner {uid}: No tweets (State: {state_tweets}) | {taostats_link}"
+                    )
 
             # Calculate rewards based on volumes
             valid_miner_uids = [

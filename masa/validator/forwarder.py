@@ -512,12 +512,18 @@ class Forwarder:
                 validation_logger.info(f"\n📌 Miner {uid} | {taostats_link}")
                 validation_logger.info("-" * 30)
 
+                # Check state first
+                existing_tweets = self.validator.tweets_by_uid.get(uid_int, set())
+                if existing_tweets:
+                    validation_logger.info(
+                        f"Found {len(existing_tweets)} tweets in state for miner {uid}"
+                    )
+
                 # Check if response exists
                 if response is None:
                     validation_logger.info(
                         f"❌ Miner {uid}: No response received (timeout or error)"
                     )
-                    self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
                 # Check if response has correct structure
@@ -525,28 +531,24 @@ class Forwarder:
                     validation_logger.info(
                         f"❌ Miner {uid}: Invalid response type: {type(response)}"
                     )
-                    self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
                 if "response" not in response:
                     validation_logger.info(
                         f"❌ Miner {uid}: Missing 'response' field in response"
                     )
-                    self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
                 # Get the actual response data
                 response_data = response["response"]
                 if response_data is None:
                     validation_logger.info(f"❌ Miner {uid}: Response data is None")
-                    self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
                 if not isinstance(response_data, list):
                     validation_logger.info(
                         f"❌ Miner {uid}: Response data is not a list (type: {type(response_data)})"
                     )
-                    self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
                 # Filter valid tweets
@@ -629,7 +631,6 @@ class Forwarder:
                         )
                         for failure in validation_failures:
                             validation_logger.info(f"   - {failure.get('reason')}")
-                    self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
                 # Deduplicate tweets
