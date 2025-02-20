@@ -27,6 +27,8 @@ import sys
 class Scorer:
     def __init__(self, validator):
         self.validator = validator
+        self.miner_volumes = {}  # Track volumes per miner
+        self.validation_stats = {}  # Track validation stats per miner
 
     def add_volume(self, miner_uid, volume, current_block):
         try:
@@ -59,190 +61,92 @@ class Scorer:
 
     async def score_miner_volumes(self, current_block: int):
         try:
-            bt.logging.debug("🔍 Starting score_miner_volumes...")
-            volumes = self.validator.volumes
-
-            if not volumes:
-                bt.logging.info("No volumes to score")
-                return JSONResponse(content=[])
-
-            window_size = min(self.validator.volume_window, len(volumes))
+            # Get volumes from storage
             miner_volumes = {}
-
-            # Process volumes and aggregate miner data
-            try:
-                for volume in volumes[-window_size:]:
-                    bt.logging.debug(f"Processing volume from tempo {volume['tempo']}")
-                    for miner_uid_str, vol in volume["miners"].items():
-                        # Ensure consistent string keys
-                        miner_uid_str = str(miner_uid_str)
-                        if miner_uid_str not in miner_volumes:
-                            miner_volumes[miner_uid_str] = 0
-                        miner_volumes[miner_uid_str] += vol
-            except Exception:
-                bt.logging.error(
-                    f"Exception processing volumes:\n{traceback.format_exc()}"
-                )
-                return JSONResponse(content=[])
-
-            bt.logging.debug(f"Aggregated miner volumes: {miner_volumes}")
-
-            try:
-                # Convert string UIDs to integers for scoring
-                valid_miner_uids = []
-                for uid_str in miner_volumes.keys():
-                    try:
-                        uid_int = int(uid_str)
-                        if uid_int < len(
-                            self.validator.scores
-                        ):  # Ensure UID is in valid range
-                            valid_miner_uids.append(uid_int)
-                        else:
-                            bt.logging.warning(
-                                f"UID {uid_int} is out of range, skipping"
-                            )
-                    except ValueError:
-                        bt.logging.warning(f"Invalid UID format: {uid_str}, skipping")
-
-                bt.logging.debug(f"Valid miner UIDs for scoring: {valid_miner_uids}")
-            except Exception:
-                bt.logging.error(
-                    f"Exception validating UIDs:\n{traceback.format_exc()}"
-                )
-                return JSONResponse(content=[])
-
-            if not valid_miner_uids:
-                bt.logging.warning("No valid miner UIDs to score")
-                return JSONResponse(content=[])
-
-            try:
-                mean_volume = sum(miner_volumes.values()) / len(miner_volumes)
-                std_dev_volume = (
-                    sum((x - mean_volume) ** 2 for x in miner_volumes.values())
-                    / len(miner_volumes)
-                ) ** 0.5
-                bt.logging.debug(
-                    f"Volume statistics - Mean: {mean_volume:.2f}, StdDev: {std_dev_volume:.2f}"
-                )
-            except Exception:
-                bt.logging.error(
-                    f"Exception calculating statistics:\n{traceback.format_exc()}"
-                )
-                return JSONResponse(content=[])
-
-            try:
-                if len(valid_miner_uids) == 1:
-                    rewards = [1]
+            for uid in range(self.validator.metagraph.n):
+                if str(uid) in self.miner_volumes:
+                    miner_volumes[str(uid)] = self.miner_volumes[str(uid)]
                 else:
-                    rewards = []
-                    miner_stats = []
-                    for uid in valid_miner_uids:
-                        volume = miner_volumes[
-                            str(uid)
-                        ]  # Convert UID to string for lookup
-                        reward = self.kurtosis_based_score(
-                            volume, mean_volume, std_dev_volume
-                        )
-                        rewards.append(reward)
-                        miner_stats.append((uid, volume, reward))
-                        bt.logging.debug(
-                            f"Miner {self.format_miner_link(uid)}: volume={volume}, reward={reward:.4f}"
-                        )
+                    miner_volumes[str(uid)] = 0
 
-                    # Sort miners by reward for top/bottom display
-                    sorted_miners = sorted(
-                        miner_stats, key=lambda x: x[2], reverse=True
-                    )
-
-                    # Display top 5 miners
-                    bt.logging.info("+" + "=" * 50 + "+")
+            # Log individual miner volumes
+            bt.logging.info("📊 Miner Volume Report:")
+            for uid, volume in miner_volumes.items():
+                hotkey = self.validator.metagraph.hotkeys[int(uid)]
+                taostats_link = f"https://taostats.io/hotkey/{hotkey}"
+                if volume > 0:
                     bt.logging.info(
-                        "|" + " " * 15 + "TOP 5 MINERS BY REWARD" + " " * 15 + "|"
+                        f"🟢 Miner {uid}: {volume} tweets | {taostats_link}"
                     )
-                    bt.logging.info("+" + "=" * 50 + "+")
-                    for uid, volume, reward in sorted_miners[:5]:
-                        bt.logging.info(
-                            f"Miner: {uid}, Volume: {volume:.0f}, Reward: {reward:.4f}, Link: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
-                        )
+                else:
+                    bt.logging.info(f"⚪ Miner {uid}: No tweets | {taostats_link}")
 
-                    # Display bottom 5 miners
-                    bt.logging.info("\n+" + "=" * 50 + "+")
+            # Calculate rewards based on volumes
+            valid_miner_uids = [
+                uid for uid, vol in miner_volumes.items() if float(vol) > 0
+            ]
+
+            if valid_miner_uids:
+                volumes = torch.tensor(
+                    [float(miner_volumes[str(uid)]) for uid in valid_miner_uids],
+                    dtype=torch.float32,
+                )
+
+                # Calculate kurtosis-based rewards
+                rewards = self.calculate_rewards(volumes)
+
+                # Update scores for miners
+                await self.validator.update_scores(
+                    rewards, [int(uid) for uid in valid_miner_uids]
+                )
+
+                # Add summary statistics with more detail
+                total_volume = sum(
+                    float(miner_volumes[str(uid)]) for uid in valid_miner_uids
+                )
+                avg_volume = total_volume / len(valid_miner_uids)
+                max_volume = max(
+                    float(miner_volumes[str(uid)]) for uid in valid_miner_uids
+                )
+                min_volume = min(
+                    float(miner_volumes[str(uid)]) for uid in valid_miner_uids
+                )
+                avg_reward = sum(rewards) / len(rewards)
+                max_reward = max(rewards)
+                min_reward = min(rewards)
+
+                bt.logging.info("\n📈 Volume Statistics:")
+                bt.logging.info(f"└─ Total Miners: {len(valid_miner_uids)}")
+                bt.logging.info(f"└─ Total Volume: {total_volume:.0f}")
+                bt.logging.info(f"└─ Average Volume: {avg_volume:.0f}")
+                bt.logging.info(f"└─ Volume Range: {min_volume:.0f} - {max_volume:.0f}")
+
+                bt.logging.info("\n🎯 Reward Statistics:")
+                bt.logging.info(f"└─ Average Score: {avg_reward:.4f}")
+                bt.logging.info(f"└─ Score Range: {min_reward:.4f} - {max_reward:.4f}")
+
+                # Log top and bottom performers
+                sorted_miners = sorted(
+                    [(uid, float(miner_volumes[str(uid)])) for uid in valid_miner_uids],
+                    key=lambda x: x[1],
+                    reverse=True,
+                )
+
+                bt.logging.info("\n🏆 Top Performers:")
+                for uid, volume in sorted_miners[:3]:
+                    hotkey = self.validator.metagraph.hotkeys[int(uid)]
+                    taostats_link = f"https://taostats.io/hotkey/{hotkey}"
                     bt.logging.info(
-                        "|" + " " * 13 + "BOTTOM 5 MINERS BY REWARD" + " " * 13 + "|"
+                        f"└─ Miner {uid}: {volume:.0f} tweets | {taostats_link}"
                     )
-                    bt.logging.info("+" + "=" * 50 + "+")
-                    for uid, volume, reward in sorted_miners[-5:]:
-                        bt.logging.info(
-                            f"Miner: {uid}, Volume: {volume:.0f}, Reward: {reward:.4f}, Link: https://taostats.io/hotkey/{self.validator.metagraph.hotkeys[uid]}"
-                        )
 
-                scores = torch.FloatTensor(rewards).to(self.validator.device)
-            except Exception:
-                bt.logging.error(
-                    f"Exception calculating rewards:\n{traceback.format_exc()}"
-                )
-                return JSONResponse(content=[])
+                bt.logging.info("✅ Miner scoring complete")
+            else:
+                bt.logging.warning("⚠️ No valid miner volumes to score")
 
-            try:
-                bt.logging.debug("Calling update_scores...")
-                await self.validator.update_scores(scores, valid_miner_uids)
-                bt.logging.debug("update_scores completed")
-                self.validator.last_scoring_block = current_block
-
-                # Add summary statistics
-                if valid_miner_uids:
-                    total_volume = sum(
-                        float(miner_volumes[str(uid)]) for uid in valid_miner_uids
-                    )
-                    avg_volume = total_volume / len(valid_miner_uids)
-                    max_volume = max(
-                        float(miner_volumes[str(uid)]) for uid in valid_miner_uids
-                    )
-                    min_volume = min(
-                        float(miner_volumes[str(uid)]) for uid in valid_miner_uids
-                    )
-                    avg_reward = sum(rewards) / len(rewards)
-                    max_reward = max(rewards)
-                    min_reward = min(rewards)
-
-                    bt.logging.info(f"Stats: Total Miners={len(valid_miner_uids)}")
-                    bt.logging.info(f"Volume: Total={total_volume:.0f}")
-                    bt.logging.info(f"Volume: Average={avg_volume:.0f}")
-                    bt.logging.info(f"Volume: Min={min_volume:.0f}")
-                    bt.logging.info(f"Volume: Max={max_volume:.0f}")
-                    bt.logging.info(f"Score: Average={avg_reward:.4f}")
-                    bt.logging.info(f"Score: Min={min_reward:.4f}")
-                    bt.logging.info(f"Score: Max={max_reward:.4f}")
-
-                bt.logging.success("Miner tweet volumes scoring complete")
-
-                if volumes:
-                    try:
-                        serializable_volumes = [
-                            {
-                                "uid": uid,
-                                "volume": float(miner_volumes[str(uid)]),
-                                "score": rewards[valid_miner_uids.index(uid)],
-                            }
-                            for uid in valid_miner_uids
-                        ]
-                        return JSONResponse(content=serializable_volumes)
-                    except Exception:
-                        bt.logging.error(
-                            f"Exception serializing volumes:\n{traceback.format_exc()}"
-                        )
-                        return JSONResponse(content=[])
-                return JSONResponse(content=[])
-            except Exception:
-                bt.logging.error(
-                    f"Exception in update_scores:\n{traceback.format_exc()}"
-                )
-                return JSONResponse(content=[])
-        except Exception:
-            bt.logging.error(
-                f"Critical exception in score_miner_volumes:\n{traceback.format_exc()}"
-            )
-            return JSONResponse(content=[])
+        except Exception as e:
+            bt.logging.error(f"Error scoring miner volumes: {str(e)}")
+            raise
 
     def calculate_similarity_percentage(self, response_embedding, source_embedding):
         cosine_similarity = torch.nn.functional.cosine_similarity(

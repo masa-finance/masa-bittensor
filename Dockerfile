@@ -51,4 +51,4 @@ ENV PYTHONUNBUFFERED=1 \
     USE_TORCH=1
 
 # Command to run the application
-CMD ["python", "-m", "startup"]
+CMD ["sh", "-c", "python -m neurons.${ROLE}"]

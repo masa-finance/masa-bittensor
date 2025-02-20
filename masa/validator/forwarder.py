@@ -38,6 +38,7 @@ from masa_ai.tools.validator import TrendingQueries, TweetValidator
 import re
 import sys
 import os
+import logging
 
 
 # Add this class to silence masa-ai output
@@ -496,56 +497,99 @@ class Forwarder:
         """Process responses from miners based on actual response structure."""
         all_valid_tweets = []
         validator = TweetValidator()
+        validation_logger = logging.getLogger("masa.validation")
 
         for response, uid in zip(responses, miner_uids):
             try:
                 uid_int = int(uid)
+                hotkey = self.validator.metagraph.hotkeys[uid_int]
+                taostats_link = f"https://taostats.io/hotkey/{hotkey}"
+
+                # Log start of validation for this miner
+                validation_logger.info(
+                    f"🔍 Starting validation for Miner {uid} | {taostats_link}"
+                )
 
                 # Check if response is None or malformed
                 if not isinstance(response, dict) or "response" not in response:
-                    bt.logging.info(f"Miner {uid}: Invalid response structure")
+                    validation_logger.info(
+                        f"❌ Miner {uid}: Invalid response structure"
+                    )
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
                 # Get the actual response data
                 response_data = response["response"]
                 if response_data is None:
-                    bt.logging.info(f"Miner {uid}: Response data is None")
+                    validation_logger.info(f"❌ Miner {uid}: Response data is None")
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
                 if not isinstance(response_data, list):
-                    bt.logging.info(f"Miner {uid}: Response data is not a list")
+                    validation_logger.info(
+                        f"❌ Miner {uid}: Response data is not a list"
+                    )
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
                 # Filter valid tweets
                 valid_tweets = []
+                validation_failures = []
+
+                validation_logger.info(
+                    f"📝 Processing {len(response_data)} tweets from Miner {uid}"
+                )
+
                 for tweet_obj in response_data:
                     # Check for Error field first
                     if (
                         not isinstance(tweet_obj, dict)
                         or tweet_obj.get("Error") is not None
                     ):
+                        validation_failures.append(
+                            {"reason": "Invalid tweet object structure"}
+                        )
                         continue
 
                     # Get Tweet data
                     tweet_data = tweet_obj.get("Tweet")
                     if not isinstance(tweet_data, dict):
+                        validation_failures.append(
+                            {"reason": "Invalid Tweet data structure"}
+                        )
                         continue
 
                     # Validate required fields
                     required_fields = ["ID", "Name", "Text", "Username", "Timestamp"]
-                    if not all(field in tweet_data for field in required_fields):
+                    missing_fields = [
+                        field for field in required_fields if field not in tweet_data
+                    ]
+                    if missing_fields:
+                        validation_failures.append(
+                            {
+                                "id": tweet_data.get("ID", "unknown"),
+                                "reason": f"Missing fields: {', '.join(missing_fields)}",
+                            }
+                        )
                         continue
 
                     # Normalize hashtags (they might be None)
                     tweet_data["Hashtags"] = tweet_data.get("Hashtags", []) or []
 
+                    # Log successful structure validation
+                    validation_logger.info(
+                        f"✅ Tweet {tweet_data['ID']} passed structure validation"
+                    )
                     valid_tweets.append({"Tweet": tweet_data})
 
                 if not valid_tweets:
-                    bt.logging.info(f"Miner {uid}: No valid tweets found")
+                    validation_logger.info(f"❌ Miner {uid}: No valid tweets found")
+                    if validation_failures:
+                        validation_logger.info(
+                            f"📋 Validation failures for Miner {uid}:"
+                        )
+                        for failure in validation_failures:
+                            validation_logger.info(f"   - {failure.get('reason')}")
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
                     continue
 
@@ -553,21 +597,34 @@ class Forwarder:
                 unique_tweets = list(
                     {tweet["Tweet"]["ID"]: tweet for tweet in valid_tweets}.values()
                 )
+                validation_logger.info(
+                    f"📊 Found {len(unique_tweets)} unique tweets from {len(valid_tweets)} total"
+                )
 
                 # Select random sample for validation
                 sample_size = min(5, len(unique_tweets))
                 tweets_to_validate = random.sample(unique_tweets, sample_size)
+                validation_logger.info(
+                    f"🎲 Selected {sample_size} tweets for detailed validation"
+                )
 
                 validated_tweets = []
+                content_failures = []
+                timestamp_failures = []
+                masa_ai_failures = []
+
                 for tweet in tweets_to_validate:
                     tweet_data = tweet["Tweet"]
+                    tweet_id = tweet_data["ID"]
 
                     # Check timestamp
                     if not self._check_tweet_timestamp(tweet_data["Timestamp"]):
+                        timestamp_failures.append(tweet_id)
                         continue
 
                     # Check content match
                     if not self._check_tweet_content(tweet_data, [random_keyword]):
+                        content_failures.append(tweet_id)
                         continue
 
                     # Do masa-ai validation
@@ -583,9 +640,14 @@ class Forwarder:
                             )
                             if is_valid:
                                 validated_tweets.append(tweet)
+                                validation_logger.info(
+                                    f"✅ Tweet {tweet_id} passed all validations"
+                                )
+                            else:
+                                masa_ai_failures.append(tweet_id)
                     except Exception as e:
-                        bt.logging.error(
-                            f"Error validating tweet {tweet_data['ID']}: {str(e)}"
+                        validation_logger.error(
+                            f"❌ Error validating tweet {tweet_id}: {str(e)}"
                         )
                         continue
 
@@ -593,15 +655,38 @@ class Forwarder:
                 success_rate = (
                     len(validated_tweets) / sample_size if sample_size > 0 else 0
                 )
+                validation_logger.info(
+                    f"📈 Validation success rate: {success_rate:.2%}"
+                )
+
+                # Log validation failures
+                if timestamp_failures:
+                    validation_logger.info(
+                        f"⏰ Timestamp validation failures: {len(timestamp_failures)} tweets"
+                    )
+                if content_failures:
+                    validation_logger.info(
+                        f"📄 Content validation failures: {len(content_failures)} tweets"
+                    )
+                if masa_ai_failures:
+                    validation_logger.info(
+                        f"🤖 Masa-AI validation failures: {len(masa_ai_failures)} tweets"
+                    )
 
                 # Credit miner if success rate is sufficient
                 if success_rate >= 0.8:
+                    validation_logger.info(
+                        f"🎯 Miner {uid} passed validation threshold"
+                    )
                     if not self.validator.tweets_by_uid.get(uid_int):
                         self.validator.tweets_by_uid[uid_int] = {
                             tweet["Tweet"]["ID"] for tweet in unique_tweets
                         }
                         self.validator.scorer.add_volume(
                             uid_int, len(unique_tweets), current_block
+                        )
+                        validation_logger.info(
+                            f"📥 Added {len(unique_tweets)} new tweets to miner's collection"
                         )
                     else:
                         existing_ids = self.validator.tweets_by_uid[uid_int]
@@ -612,12 +697,18 @@ class Forwarder:
                             self.validator.scorer.add_volume(
                                 uid_int, len(updates), current_block
                             )
+                            validation_logger.info(
+                                f"📥 Added {len(updates)} new unique tweets to miner's collection"
+                            )
                     all_valid_tweets.extend(unique_tweets)
                 else:
+                    validation_logger.info(
+                        f"❌ Miner {uid} failed validation threshold"
+                    )
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
 
             except Exception as e:
-                bt.logging.error(f"Error processing miner {uid}: {e}")
+                validation_logger.error(f"❌ Error processing miner {uid}: {e}")
                 if uid_int:
                     self.validator.scorer.add_volume(uid_int, 0, current_block)
                 continue

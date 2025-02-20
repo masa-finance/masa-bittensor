@@ -144,25 +144,46 @@ start_node() {
 echo "Cleaning up existing containers..."
 docker ps -a | grep 'masa_' | awk '{print $1}' | xargs -r docker rm -f
 
+echo "Starting requested nodes:"
+[ "$VALIDATOR_COUNT" -gt 0 ] && echo "- $VALIDATOR_COUNT validator(s)"
+[ "$MINER_COUNT" -gt 0 ] && echo "- $MINER_COUNT miner(s)"
+[ "$ORACLE_COUNT" -gt 0 ] && echo "- $ORACLE_COUNT oracle(s)"
+[ "$TEE_WORKER_COUNT" -gt 0 ] && echo "- $TEE_WORKER_COUNT TEE worker(s)"
+
 # Start validators
-for i in $(seq 1 $VALIDATOR_COUNT); do
-    start_node "validator" $i $VALIDATOR_PORT $VALIDATOR_METRICS_PORT $VALIDATOR_GRAFANA_PORT
-done
+if [ "$VALIDATOR_COUNT" -gt 0 ]; then
+    for i in $(seq 1 $VALIDATOR_COUNT); do
+        echo "Starting validator $i..."
+        start_node "validator" $i $VALIDATOR_PORT $VALIDATOR_METRICS_PORT $VALIDATOR_GRAFANA_PORT
+    done
+fi
 
 # Start miners
-for i in $(seq 1 $MINER_COUNT); do
-    start_node "miner" $i $MINER_PORT $MINER_METRICS_PORT $MINER_GRAFANA_PORT
-done
+if [ "$MINER_COUNT" -gt 0 ]; then
+    for i in $(seq 1 $MINER_COUNT); do
+        echo "Starting miner $i..."
+        start_node "miner" $i $MINER_PORT $MINER_METRICS_PORT $MINER_GRAFANA_PORT
+    done
+fi
 
 # Start oracles
-for i in $(seq 1 $ORACLE_COUNT); do
-    start_node "oracle" $i $ORACLE_PORT $ORACLE_METRICS_PORT $ORACLE_GRAFANA_PORT
-done
+if [ "$ORACLE_COUNT" -gt 0 ]; then
+    for i in $(seq 1 $ORACLE_COUNT); do
+        echo "Starting oracle $i..."
+        start_node "oracle" $i $ORACLE_PORT $ORACLE_METRICS_PORT $ORACLE_GRAFANA_PORT
+    done
+fi
 
 # Start TEE workers
-for i in $(seq 1 $TEE_WORKER_COUNT); do
-    start_node "tee-worker" $i $TEE_WORKER_PORT $TEE_WORKER_METRICS_PORT $TEE_WORKER_GRAFANA_PORT
-done
+if [ "$TEE_WORKER_COUNT" -gt 0 ]; then
+    for i in $(seq 1 $TEE_WORKER_COUNT); do
+        echo "Starting TEE worker $i..."
+        start_node "tee-worker" $i $TEE_WORKER_PORT $TEE_WORKER_METRICS_PORT $TEE_WORKER_GRAFANA_PORT
+    done
+fi
+
+echo -e "\nActual running containers:"
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep masa_
 
 echo "All nodes started. Check logs with:"
 echo "docker logs --tail 50 masa_validator_N  # where N is the validator number"
