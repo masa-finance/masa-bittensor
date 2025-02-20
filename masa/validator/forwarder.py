@@ -30,7 +30,7 @@ from masa.synapses import (
 )
 
 from masa.synapses import PingAxonSynapse
-from masa.base.healthcheck import get_external_ip
+from masa.base.healthcheck import get_external_ip, get_available_uids
 from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
 
 from masa_ai.tools.validator import TrendingQueries, TweetValidator
@@ -155,7 +155,8 @@ class Forwarder:
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         all_responses = []
-        total_axons = len(self.validator.metagraph.axons)
+        miner_uids = get_available_uids(self.validator.metagraph)
+        total_axons = len(miner_uids)
         successful_pings = 0
         failed_pings = 0
 
@@ -165,7 +166,10 @@ class Forwarder:
 
         async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
             for i in range(0, total_axons, sample_size):
-                batch = self.validator.metagraph.axons[i : i + sample_size]
+                batch = [
+                    self.validator.metagraph.axons[uid]
+                    for uid in miner_uids[i : i + sample_size]
+                ]
                 batch_responses = await dendrite(
                     batch,
                     request,
