@@ -350,6 +350,10 @@ class Forwarder:
                             random_tweet.get("Timestamp"),
                             random_tweet.get("Hashtags"),
                         )
+                        bt.logging.info(f"Tweet validation result: {validation_result}")
+                        bt.logging.info(
+                            f"Tweet data being validated:\nID: {random_tweet.get('ID')}\nName: {random_tweet.get('Name')}\nUsername: {random_tweet.get('Username')}\nText: {random_tweet.get('Text')}\nTimestamp: {random_tweet.get('Timestamp')}\nHashtags: {random_tweet.get('Hashtags')}"
+                        )
                         validation_error = None  # Clear error if validation succeeds
                         break
                     except Exception as e:
@@ -363,7 +367,7 @@ class Forwarder:
                             retry_count += 1
                         else:
                             bt.logging.info(
-                                f"⚠️ Tweet validation unavailable (API error: {validation_error}): {self.format_tweet_url(random_tweet.get('ID'))}"
+                                f"⚠️ Tweet validation error: {validation_error} for tweet {self.format_tweet_url(random_tweet.get('ID'))}\nTweet data: {json.dumps(random_tweet, indent=2)}"
                             )
                             break
 
@@ -375,7 +379,7 @@ class Forwarder:
                     # API error - consider it a pass since we couldn't verify
                     is_valid = True
                     bt.logging.info(
-                        f"⚠️ Skipping masa-ai verification (API error: {validation_error}): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"⚠️ Skipping masa-ai verification due to error: {validation_error} for tweet {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                 elif validation_result is None:
                     # Tweet not found
@@ -387,7 +391,7 @@ class Forwarder:
                     # Tweet exists but miner-reported fields don't match Twitter's data
                     is_valid = False
                     bt.logging.info(
-                        f"❌ Tweet data mismatch (miner data differs from Twitter): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"❌ Tweet data mismatch - Miner data: {json.dumps(random_tweet, indent=2)} for tweet {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                 else:
                     # Tweet exists and all fields match
