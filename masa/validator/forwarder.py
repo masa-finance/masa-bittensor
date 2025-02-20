@@ -308,9 +308,10 @@ class Forwarder:
                         "Tweet" in tweet
                         and "ID" in tweet["Tweet"]
                         and tweet["Tweet"]["ID"]
-                    ):  # Ensure ID exists and is not empty
-                        tweet_id = tweet["Tweet"]["ID"].strip()
-                        if tweet_id.isdigit():  # Must be purely numeric
+                    ):
+                        tweet_id = tweet["Tweet"]["ID"]
+                        # Check raw ID first - must be purely numeric with no whitespace
+                        if isinstance(tweet_id, str) and tweet_id.isdigit():
                             valid_tweets.append(tweet)
                             valid_tweet_count += 1
                         else:
@@ -322,6 +323,7 @@ class Forwarder:
                 if invalid_tweet_count > 0:
                     bt.logging.debug(
                         f"Miner {uid} submitted {invalid_tweet_count} invalid tweets out of {len(all_responses)}"
+                        + (f" (invalid IDs: {invalid_ids})" if invalid_ids else "")
                     )
                     # Give zero score for submitting any invalid tweets
                     self.validator.scorer.add_volume(int(uid), 0, current_block)
