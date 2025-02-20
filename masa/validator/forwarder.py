@@ -385,25 +385,25 @@ class Forwarder:
                     # API error - consider it a pass since we couldn't verify
                     is_valid = True
                     bt.logging.info(
-                        f"⚠️ Skipping masa-ai validation due to API error: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"⚠️ Skipping masa-ai verification (API error: {validation_error}): {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                 elif validation_result is None:
-                    # Tweet not found or other lookup error
+                    # Tweet not found
                     is_valid = False
                     bt.logging.info(
-                        f"❌ Tweet validation failed (tweet not found): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"❌ Tweet not found on Twitter: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                 elif validation_result is False:
-                    # Tweet exists but failed validation
+                    # Tweet exists but miner-reported fields don't match Twitter's data
                     is_valid = False
                     bt.logging.info(
-                        f"❌ Tweet validation failed (invalid content): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"❌ Tweet data mismatch (miner data differs from Twitter): {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                 else:
-                    # Tweet passed validation
+                    # Tweet exists and all fields match
                     is_valid = True
                     bt.logging.info(
-                        f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"✅ Tweet verified on Twitter: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
                 query_words = (
@@ -455,7 +455,7 @@ class Forwarder:
                 # note, they passed the spot check!
                 if is_valid and query_in_tweet and is_since_date_requested:
                     bt.logging.info(
-                        f"✅ Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"✅ Tweet verified on Twitter: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                     for tweet in unique_tweets_response:
                         if tweet:
@@ -463,7 +463,7 @@ class Forwarder:
                 else:
                     failures = []
                     if not is_valid:
-                        failures.append("masa-ai validation")
+                        failures.append("masa-ai verification")
                     if not query_in_tweet:
                         failures.append("query match")
                     if not is_since_date_requested:
