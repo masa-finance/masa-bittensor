@@ -89,7 +89,6 @@ class BaseValidatorNeuron(BaseNeuron):
         self.scorer = Scorer(self)
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
-        self.versions = [0] * self.metagraph.n.item()  # Initialize versions with zeros
         # Initialize uncalled_uids with ALL miner UIDs
         miner_uids = [
             uid

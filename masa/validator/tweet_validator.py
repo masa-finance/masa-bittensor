@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import bittensor as bt
 
-DEFAULT_BASE_URL = "http://localhost:8080"
+DEFAULT_BASE_URL = "https://test.protocol-api.masa.ai"
 DEFAULT_TWEET_API_PATH = "/api/v1/data/twitter/tweets"
 
 
