@@ -37,6 +37,7 @@ from masa.utils.uids import (
     get_available_uids,
 )
 
+# Import our new validator
 from masa.validator.tweet_validator import TweetValidator
 
 # Used only for trending queries functionality
@@ -162,8 +163,7 @@ class Forwarder:
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         all_responses = []
-        miner_uids = get_available_uids(self.validator.metagraph)
-        total_axons = len(miner_uids)
+        total_axons = len(self.validator.metagraph.axons)
         successful_pings = 0
         failed_pings = 0
 
@@ -173,10 +173,7 @@ class Forwarder:
 
         async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
             for i in range(0, total_axons, sample_size):
-                batch = [
-                    self.validator.metagraph.axons[uid]
-                    for uid in miner_uids[i : i + sample_size]
-                ]
+                batch = self.validator.metagraph.axons[i : i + sample_size]
                 batch_responses = await dendrite(
                     batch,
                     request,
@@ -216,9 +213,9 @@ class Forwarder:
                 "status_code": response.dendrite.status_code,
                 "status_message": response.dendrite.status_message,
                 "version": response.version,
-                "uid": miner_uids[i],
+                "uid": all_responses.index(response),
             }
-            for i, response in enumerate(all_responses)
+            for response in all_responses
         ]
 
     async def fetch_twitter_queries(self):
