@@ -17,7 +17,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
-from typing import Any, List, Tuple
+from typing import Any, List
 from datetime import datetime, UTC, timedelta
 import aiohttp
 import json
@@ -37,7 +37,10 @@ from masa.utils.uids import (
     get_available_uids,
 )
 
-from masa_ai.tools.validator import TrendingQueries, TweetValidator
+from masa.validator.tweet_validator import TweetValidator
+
+# Used only for trending queries functionality
+from masa_ai.tools.validator import TrendingQueries
 
 import re
 import sys
@@ -335,70 +338,30 @@ class Forwarder:
                     "Tweet", {}
                 )
 
-                # Add exponential backoff for rate limits
-                retry_count = 0
-                max_retries = 3
-                validation_error = None
-                validation_result = None
-                while retry_count < max_retries:
-                    try:
-                        validation_result = validator.validate_tweet(
-                            random_tweet.get("ID"),
-                            random_tweet.get("Name"),
-                            random_tweet.get("Username"),
-                            random_tweet.get("Text"),
-                            random_tweet.get("Timestamp"),
-                            random_tweet.get("Hashtags"),
-                        )
-                        bt.logging.info(f"Tweet validation result: {validation_result}")
-                        bt.logging.info(
-                            f"Tweet data being validated:\nID: {random_tweet.get('ID')}\nName: {random_tweet.get('Name')}\nUsername: {random_tweet.get('Username')}\nText: {random_tweet.get('Text')}\nTimestamp: {random_tweet.get('Timestamp')}\nHashtags: {random_tweet.get('Hashtags')}"
-                        )
-                        validation_error = None  # Clear error if validation succeeds
-                        break
-                    except Exception as e:
-                        validation_error = str(e)
-                        if "429" in validation_error and retry_count < max_retries - 1:
-                            wait_time = (2**retry_count) * 5  # 5, 10, 20 seconds
-                            bt.logging.warning(
-                                f"Rate limited, waiting {wait_time} seconds before retry"
-                            )
-                            await asyncio.sleep(wait_time)
-                            retry_count += 1
-                        else:
-                            bt.logging.info(
-                                f"⚠️ Tweet validation error: {validation_error} for tweet {self.format_tweet_url(random_tweet.get('ID'))}\nTweet data: {json.dumps(random_tweet, indent=2)}"
-                            )
-                            break
+                # Validate tweet using our new validator
+                validation_result = await validator.validate_tweet(
+                    random_tweet.get("ID"),
+                    random_tweet.get("Name"),
+                    random_tweet.get("Username"),
+                    random_tweet.get("Text"),
+                    random_tweet.get("Timestamp"),
+                    random_tweet.get("Hashtags", []),
+                )
 
-                # Always wait at least 2 seconds between validations
+                # Always wait at least 2 seconds between validations to avoid rate limits
                 await asyncio.sleep(2)
 
                 # Determine validation status
-                if validation_error is not None:
-                    # API error - consider it a pass since we couldn't verify
-                    is_valid = True
-                    bt.logging.info(
-                        f"⚠️ Skipping masa-ai verification due to error: {validation_error} for tweet {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
-                elif validation_result is None:
-                    # Tweet not found
-                    is_valid = False
-                    bt.logging.info(
-                        f"❌ Tweet not found on Twitter: {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
-                elif validation_result is False:
-                    # Tweet exists but miner-reported fields don't match Twitter's data
-                    is_valid = False
-                    bt.logging.info(
-                        f"❌ Tweet data mismatch - Miner data: {json.dumps(random_tweet, indent=2)} for tweet {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
-                else:
-                    # Tweet exists and all fields match
-                    is_valid = True
+                if validation_result:
                     bt.logging.info(
                         f"✅ Tweet verified on Twitter: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
+                    is_valid = True
+                else:
+                    bt.logging.info(
+                        f"❌ Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
+                    is_valid = False
 
                 query_words = (
                     self.normalize_whitespace(random_keyword.replace('"', ""))
@@ -457,7 +420,7 @@ class Forwarder:
                 else:
                     failures = []
                     if not is_valid:
-                        failures.append("masa-ai verification")
+                        failures.append("masa-api verification")
                     if not query_in_tweet:
                         failures.append("query match")
                     if not is_since_date_requested:
