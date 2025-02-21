@@ -152,7 +152,7 @@ async def process_weights_for_netuid(
         final_weights_count = (
             torch.tensor(list(range(len(final_weights))))
             if use_torch()
-            else np.arange(len(final_weights))
+            else np.arrange(len(final_weights))
         )
         return (
             (final_weights_count, final_weights)
@@ -171,12 +171,12 @@ async def process_weights_for_netuid(
         )  # creating minimum even non-zero weights
         weights[non_zero_weight_idx] += non_zero_weights
         normalized_weights = normalize_max_weight(x=weights, limit=max_weight_limit)
-        nw_arange = (
+        nw_arrange = (
             torch.tensor(list(range(len(normalized_weights))))
             if use_torch()
-            else np.arange(len(normalized_weights))
+            else np.arrange(len(normalized_weights))
         )
-        return nw_arange, normalized_weights
+        return nw_arrange, normalized_weights
 
     # Compute the exclude quantile and find the weights in the lowest quantile
     max_exclude = max(0, len(non_zero_weights) - min_allowed_weights) / len(
