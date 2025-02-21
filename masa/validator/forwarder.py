@@ -446,7 +446,7 @@ class Forwarder:
                 else:
                     failures = []
                     if not is_valid:
-                        failures.append("masa-api verification")
+                        failures.append("protocol-api verification")
                     if not query_in_tweet:
                         failures.append("query match")
                     if not is_since_date_requested:
