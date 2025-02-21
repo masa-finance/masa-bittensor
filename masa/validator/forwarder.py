@@ -163,17 +163,21 @@ class Forwarder:
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         all_responses = []
-        total_axons = len(self.validator.metagraph.axons)
+        miner_uids = list(
+            self.validator.uncalled_uids
+        )  # Convert set to list for indexing
+        total_miners = len(miner_uids)
         successful_pings = 0
         failed_pings = 0
 
         bt.logging.info(
-            f"Starting to ping {total_axons} axons in batches of {sample_size}"
+            f"Starting to ping {total_miners} miners in batches of {sample_size}"
         )
 
         async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
-            for i in range(0, total_axons, sample_size):
-                batch = self.validator.metagraph.axons[i : i + sample_size]
+            for i in range(0, total_miners, sample_size):
+                batch_uids = miner_uids[i : i + sample_size]
+                batch = [self.validator.metagraph.axons[uid] for uid in batch_uids]
                 batch_responses = await dendrite(
                     batch,
                     request,
@@ -191,7 +195,7 @@ class Forwarder:
                 failed_pings += batch_failed
 
                 # Progress update every batch
-                progress = min(100, (i + len(batch)) * 100 // total_axons)
+                progress = min(100, (i + len(batch)) * 100 // total_miners)
                 bt.logging.info(
                     f"Ping progress: {progress}% | "
                     f"Success: {successful_pings} | "
@@ -213,7 +217,7 @@ class Forwarder:
                 "status_code": response.dendrite.status_code,
                 "status_message": response.dendrite.status_message,
                 "version": response.version,
-                "uid": all_responses.index(response),
+                "uid": miner_uids[all_responses.index(response)],  # Use actual UID
             }
             for response in all_responses
         ]
