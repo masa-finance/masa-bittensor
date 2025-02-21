@@ -38,7 +38,7 @@ from masa.utils.uids import (
 )
 
 # Import our new validator
-from masa.validator.tweet_validator import TweetValidator
+from masa.validator.tweet_validator import TweetValidator as ProtocolTweetValidator
 
 # Used only for trending queries functionality
 from masa_ai.tools.validator import TrendingQueries
@@ -303,8 +303,9 @@ class Forwarder:
         )
 
         all_valid_tweets = []
-        # Create a single validator instance to reuse
-        validator = TweetValidator()  # Using our new validator
+        validator = (
+            ProtocolTweetValidator()
+        )  # Use our new validator that hits the protocol API
 
         for response, uid in zip(responses, miner_uids):
             try:
