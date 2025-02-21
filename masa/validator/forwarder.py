@@ -264,6 +264,31 @@ class Forwarder:
         if len(self.validator.subnet_config) == 0 or self.check_tempo(current_block):
             await self.fetch_subnet_config()
 
+        # Reset uncalled_uids if empty
+        if len(self.validator.uncalled_uids) == 0:
+            bt.logging.info("Resetting uncalled UIDs pool with all available miners...")
+            # Generic sanitation
+            avail_uids = get_available_uids(self.validator.metagraph)
+            subnet_params = await self.validator.subtensor.get_subnet_hyperparameters(
+                self.validator.config.netuid
+            )
+            weights_version = subnet_params.weights_version
+
+            # Ensure versions list is properly sized
+            if len(self.validator.versions) < self.validator.metagraph.n.item():
+                self.validator.versions = [0] * self.validator.metagraph.n.item()
+
+            version_checked_uids = [
+                uid
+                for uid in avail_uids
+                if uid < len(self.validator.versions)
+                and self.validator.versions[uid] >= weights_version
+            ]
+            self.validator.uncalled_uids = set(version_checked_uids)
+            bt.logging.info(
+                f"Reset pool with {len(self.validator.uncalled_uids)} miners"
+            )
+
         random_keyword = random.choice(self.validator.keywords)
         query = f'"{random_keyword.strip()}"'
         bt.logging.info(f"Volume checking for: {query}")
@@ -281,9 +306,8 @@ class Forwarder:
         )
 
         all_valid_tweets = []
-        validator = (
-            TweetValidator()
-        )  # Create a single validator instance to reuse guest token
+        # Create a single validator instance to reuse
+        validator = TweetValidator()  # Using our new validator
 
         for response, uid in zip(responses, miner_uids):
             try:
@@ -354,12 +378,12 @@ class Forwarder:
                 # Determine validation status
                 if validation_result:
                     bt.logging.info(
-                        f"✅ Tweet verified on Twitter: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"✅ Tweet verified via protocol API: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                     is_valid = True
                 else:
                     bt.logging.info(
-                        f"❌ Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"❌ Tweet validation failed via protocol API: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
                     is_valid = False
 
