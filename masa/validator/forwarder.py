@@ -37,9 +37,6 @@ from masa.utils.uids import (
     get_available_uids,
 )
 
-# Import our new validator
-from masa.validator.tweet_validator import TweetValidator as ProtocolTweetValidator
-
 # Used only for trending queries functionality
 from masa_ai.tools.validator import TrendingQueries
 
@@ -163,9 +160,7 @@ class Forwarder:
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         all_responses = []
-        miner_uids = list(
-            self.validator.uncalled_uids
-        )  # Convert set to list for indexing
+        miner_uids = get_available_uids(self.validator.metagraph)
         total_miners = len(miner_uids)
         successful_pings = 0
         failed_pings = 0
@@ -307,9 +302,6 @@ class Forwarder:
         )
 
         all_valid_tweets = []
-        validator = (
-            ProtocolTweetValidator()
-        )  # Use our new validator that hits the protocol API
 
         for response, uid in zip(responses, miner_uids):
             try:
@@ -364,31 +356,6 @@ class Forwarder:
                     "Tweet", {}
                 )
 
-                # Validate tweet using our new validator
-                validation_result = await validator.validate_tweet(
-                    random_tweet.get("ID"),
-                    random_tweet.get("Name"),
-                    random_tweet.get("Username"),
-                    random_tweet.get("Text"),
-                    random_tweet.get("Timestamp"),
-                    random_tweet.get("Hashtags", []),
-                )
-
-                # Always wait at least 2 seconds between validations to avoid rate limits
-                await asyncio.sleep(2)
-
-                # Determine validation status
-                if validation_result:
-                    bt.logging.info(
-                        f"✅ Tweet verified via protocol API: {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
-                    is_valid = True
-                else:
-                    bt.logging.info(
-                        f"❌ Tweet validation failed via protocol API: {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
-                    is_valid = False
-
                 query_words = (
                     self.normalize_whitespace(random_keyword.replace('"', ""))
                     .strip()
@@ -436,7 +403,7 @@ class Forwarder:
                     )
 
                 # note, they passed the spot check!
-                if is_valid and query_in_tweet and is_since_date_requested:
+                if query_in_tweet and is_since_date_requested:
                     bt.logging.info(
                         f"✅ Tweet verified on Twitter: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
@@ -445,8 +412,6 @@ class Forwarder:
                             valid_tweets.append(tweet)
                 else:
                     failures = []
-                    if not is_valid:
-                        failures.append("protocol-api verification")
                     if not query_in_tweet:
                         failures.append("query match")
                     if not is_since_date_requested:
