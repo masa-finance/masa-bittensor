@@ -246,6 +246,15 @@ class BaseValidatorNeuron(BaseNeuron):
         import datetime
         import json
 
+        # Log all registered miners' scores
+        bt.logging.info("Miner scores (including zeros):")
+        for uid in range(len(self.metagraph.hotkeys)):
+            hotkey = self.metagraph.hotkeys[uid]
+            score = float(self.scores[uid]) if uid < len(self.scores) else 0.0
+            bt.logging.info(
+                f"Miner {uid} (https://taostats.io/hotkey/{hotkey}): {score:.6f}"
+            )
+
         # Convert weights to the format in scores.log
         weights_list = [
             {"uid": int(uid), "weight": float(weight * 65535)}  # Scale to u16::MAX
