@@ -388,7 +388,7 @@ class Forwarder:
 
                 if not query_in_tweet:
                     bt.logging.debug(
-                        f"Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"❌ Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
                 tweet_timestamp = datetime.fromtimestamp(
@@ -402,14 +402,18 @@ class Forwarder:
 
                 if not is_since_date_requested:
                     bt.logging.debug(
-                        f"Tweet timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"❌ Timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
+
+                # Log validation results for both checks
+                bt.logging.info(
+                    f"Tweet validation results for {self.format_tweet_url(random_tweet.get('ID'))}:"
+                    f"\n    Query match: {'✅' if query_in_tweet else '❌'}"
+                    f"\n    Timestamp: {'✅' if is_since_date_requested else '❌'}"
+                )
 
                 # Only add tweets if both ID validation passed AND random tweet passes other checks
                 if query_in_tweet and is_since_date_requested:
-                    bt.logging.info(
-                        f"✅ Tweet verified on Twitter: {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
                     valid_tweets.extend(
                         unique_tweets_response
                     )  # Add all tweets from batch that passed ID check
@@ -420,7 +424,7 @@ class Forwarder:
                     if not is_since_date_requested:
                         failures.append("timestamp")
                     bt.logging.info(
-                        f"❌ Tweet validation failed ({', '.join(failures)}): {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"❌ Sample tweet failed local validation ({', '.join(failures)}): {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
                 all_valid_tweets.extend(valid_tweets)
