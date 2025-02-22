@@ -314,6 +314,9 @@ class Forwarder:
                 valid_tweet_count = 0
                 invalid_tweet_count = 0
                 invalid_ids = []
+                potential_tweets = (
+                    []
+                )  # Store tweets that pass ID validation but await further checks
                 for tweet in all_responses:
                     if (
                         "Tweet" in tweet
@@ -322,7 +325,7 @@ class Forwarder:
                     ):
                         tweet_id = tweet["Tweet"]["ID"]
                         if tweet_id.isdigit():  # Must be purely numeric
-                            valid_tweets.append(tweet)
+                            potential_tweets.append(tweet)
                             valid_tweet_count += 1
                         else:
                             invalid_ids.append(tweet_id)
@@ -344,7 +347,7 @@ class Forwarder:
 
                 # Deduplicate valid tweets using numeric IDs
                 unique_tweets_response = list(
-                    {tweet["Tweet"]["ID"]: tweet for tweet in valid_tweets}.values()
+                    {tweet["Tweet"]["ID"]: tweet for tweet in potential_tweets}.values()
                 )
 
                 if not unique_tweets_response:  # If no valid tweets after filtering
@@ -402,14 +405,14 @@ class Forwarder:
                         f"Tweet timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
 
-                # note, they passed the spot check!
+                # Only add tweets if both ID validation passed AND random tweet passes other checks
                 if query_in_tweet and is_since_date_requested:
                     bt.logging.info(
                         f"✅ Tweet verified on Twitter: {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
-                    for tweet in unique_tweets_response:
-                        if tweet:
-                            valid_tweets.append(tweet)
+                    valid_tweets.extend(
+                        unique_tweets_response
+                    )  # Add all tweets from batch that passed ID check
                 else:
                     failures = []
                     if not query_in_tweet:
