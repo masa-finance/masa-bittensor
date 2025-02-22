@@ -346,9 +346,21 @@ class Forwarder:
                     )
 
                 # Deduplicate valid tweets using numeric IDs
+                original_count = len(potential_tweets)
                 unique_tweets_response = list(
                     {tweet["Tweet"]["ID"]: tweet for tweet in potential_tweets}.values()
                 )
+                duplicate_count = original_count - len(unique_tweets_response)
+
+                if duplicate_count > 0:
+                    bt.logging.info(
+                        f"Found {duplicate_count} duplicate tweets from {self.format_miner_info(int(uid))} "
+                        f"(reduced from {original_count} to {len(unique_tweets_response)} tweets)"
+                    )
+                else:
+                    bt.logging.debug(
+                        f"No duplicates found in {original_count} tweets from {self.format_miner_info(int(uid))}"
+                    )
 
                 if not unique_tweets_response:  # If no valid tweets after filtering
                     bt.logging.debug(f"Miner {uid} had no valid tweets after filtering")
@@ -438,22 +450,32 @@ class Forwarder:
                     self.validator.tweets_by_uid[uid_int] = {
                         tweet["Tweet"]["ID"] for tweet in valid_tweets
                     }
+                    new_tweet_count = len(valid_tweets)
                     self.validator.scorer.add_volume(
-                        uid_int, len(valid_tweets), current_block
+                        uid_int, new_tweet_count, current_block
                     )
-                    bt.logging.debug(
-                        f"Miner {uid_int} produced {len(valid_tweets)} new tweets"
+                    bt.logging.info(
+                        f"First submission from {self.format_miner_info(uid_int)}: {new_tweet_count} new tweets"
                     )
                 else:
                     existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
                     new_tweet_ids = {tweet["Tweet"]["ID"] for tweet in valid_tweets}
                     updates = new_tweet_ids - existing_tweet_ids
+                    duplicate_with_history = len(new_tweet_ids) - len(updates)
+
+                    if duplicate_with_history > 0:
+                        bt.logging.info(
+                            f"Found {duplicate_with_history} previously seen tweets from {self.format_miner_info(uid_int)} "
+                            f"(reduced from {len(new_tweet_ids)} to {len(updates)} new tweets)"
+                        )
+                    else:
+                        bt.logging.debug(
+                            f"All {len(new_tweet_ids)} tweets from {self.format_miner_info(uid_int)} are new"
+                        )
+
                     self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
                     self.validator.scorer.add_volume(
                         uid_int, len(updates), current_block
-                    )
-                    bt.logging.debug(
-                        f"Miner {uid_int} produced {len(updates)} new tweets"
                     )
             except Exception as e:
                 bt.logging.error(f"Error processing miner {uid}: {e}")
