@@ -408,10 +408,10 @@ class Forwarder:
                 # Log validation results for both checks
                 tweet_url = self.format_tweet_url(random_tweet.get("ID"))
                 bt.logging.info(
-                    f"{'✅' if query_in_tweet else '❌'} Query match: {tweet_url}"
+                    f"{'✅' if query_in_tweet else '❌'} Query match ({random_keyword}): {tweet_url}"
                 )
                 bt.logging.info(
-                    f"{'✅' if is_since_date_requested else '❌'} Timestamp: {tweet_url}"
+                    f"{'✅' if is_since_date_requested else '❌'} Timestamp ({tweet_timestamp.strftime('%Y-%m-%d %H:%M:%S')} >= {yesterday.strftime('%Y-%m-%d')}): {tweet_url}"
                 )
 
                 # Only add tweets if both ID validation passed AND random tweet passes other checks
