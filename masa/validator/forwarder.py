@@ -263,24 +263,13 @@ class Forwarder:
         # Reset uncalled_uids if empty
         if len(self.validator.uncalled_uids) == 0:
             bt.logging.info("Resetting uncalled UIDs pool with all available miners...")
-            # Generic sanitation
-            avail_uids = get_available_uids(self.validator.metagraph)
-            subnet_params = await self.validator.subtensor.get_subnet_hyperparameters(
-                self.validator.config.netuid
-            )
-            weights_version = subnet_params.weights_version
-
-            # Ensure versions list is properly sized
-            if len(self.validator.versions) < self.validator.metagraph.n.item():
-                self.validator.versions = [0] * self.validator.metagraph.n.item()
-
-            version_checked_uids = [
+            # Reset to ALL miner UIDs (those with validator_trust = 0)
+            miner_uids = [
                 uid
-                for uid in avail_uids
-                if uid < len(self.validator.versions)
-                and self.validator.versions[uid] >= weights_version
+                for uid in range(self.validator.metagraph.n.item())
+                if self.validator.metagraph.validator_trust[uid] == 0
             ]
-            self.validator.uncalled_uids = set(version_checked_uids)
+            self.validator.uncalled_uids = set(miner_uids)
             bt.logging.info(
                 f"Reset pool with {len(self.validator.uncalled_uids)} miners"
             )
