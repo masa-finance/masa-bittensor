@@ -335,7 +335,7 @@ class Forwarder:
                             f"❌ {self.format_miner_info(int(uid))} FAILED - malformed tweet"
                         )
                         self.validator.scorer.add_volume(int(uid), 0, current_block)
-                        continue  # Next miner
+                        break  # Break inner loop
 
                     tweet_id = tweet["Tweet"]["ID"]
                     if not (
@@ -346,16 +346,30 @@ class Forwarder:
                             f"❌ {self.format_miner_info(int(uid))} FAILED - invalid tweet ID"
                         )
                         self.validator.scorer.add_volume(int(uid), 0, current_block)
-                        continue  # Next miner
+                        break  # Break inner loop
+
+                # If we broke early due to invalid tweets, skip to next miner
+                if tweet != all_responses[-1]:
+                    continue  # Next miner
 
                 bt.logging.info(
                     f"✅ {self.format_miner_info(int(uid))} PASSED - {len(all_responses)} valid tweets"
                 )
 
-                # All tweets passed validation, now deduplicate
-                unique_tweets = list(
-                    {tweet["Tweet"]["ID"]: tweet for tweet in all_responses}.values()
-                )
+                # Check for duplicates
+                seen_ids = set()
+                for tweet in all_responses:
+                    tweet_id = tweet["Tweet"]["ID"]
+                    if tweet_id in seen_ids:
+                        bt.logging.info(
+                            f"❌ {self.format_miner_info(int(uid))} FAILED - duplicate tweet ID found"
+                        )
+                        self.validator.scorer.add_volume(int(uid), 0, current_block)
+                        continue  # Next miner
+                    seen_ids.add(tweet_id)
+
+                # All tweets passed validation and no duplicates found
+                unique_tweets = list(all_responses)
 
                 if not unique_tweets:  # If no valid tweets after filtering
                     bt.logging.debug(f"Miner {uid} had no valid tweets after filtering")
