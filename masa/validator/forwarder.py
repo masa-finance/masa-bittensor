@@ -316,13 +316,26 @@ class Forwarder:
             sequential=True,
         )
 
+        bt.logging.info(f"📋 Selected {len(miner_uids)} miners | UIDs: {miner_uids}")
+        processed_uids = set()
+
         all_valid_tweets = []
 
         for response, uid in zip(responses, miner_uids):
             try:
+                processed_uids.add(uid)
+                if not response:
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(int(uid))} FAILED - no response received"
+                    )
+                    continue
+
                 valid_tweets = []
                 all_responses = dict(response).get("response", [])
                 if not all_responses:
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(int(uid))} FAILED - empty response"
+                    )
                     continue
 
                 for tweet in all_responses:
@@ -491,6 +504,13 @@ class Forwarder:
             list({tweet["Tweet"]["ID"]: tweet for tweet in all_valid_tweets}.values()),
             query.strip().replace('"', ""),
         )
+
+        # Log summary of all miners
+        unprocessed_uids = set(miner_uids) - processed_uids
+        if unprocessed_uids:
+            bt.logging.info(
+                f"⚠️ {len(unprocessed_uids)} miners did not return any response | UIDs: {sorted(unprocessed_uids)}"
+            )
 
         # note, set the last volume block to the current block
         self.validator.last_volume_block = current_block
