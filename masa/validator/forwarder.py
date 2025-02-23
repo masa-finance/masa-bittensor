@@ -316,26 +316,34 @@ class Forwarder:
             sequential=True,
         )
 
+        # Convert tensor UIDs to regular integers for consistent logging
+        miner_uids = [int(uid) for uid in miner_uids]
         bt.logging.info(f"📋 Selected {len(miner_uids)} miners | UIDs: {miner_uids}")
-        processed_uids = set()
+
+        # Track different outcomes
+        no_response_uids = set()
+        empty_response_uids = set()
+        invalid_tweet_uids = set()
+        successful_uids = set()
 
         all_valid_tweets = []
 
         for response, uid in zip(responses, miner_uids):
             try:
-                processed_uids.add(uid)
                 if not response:
                     bt.logging.info(
-                        f"❌ {self.format_miner_info(int(uid))} FAILED - no response received"
+                        f"❌ {self.format_miner_info(uid)} FAILED - no response received"
                     )
+                    no_response_uids.add(uid)
                     continue
 
                 valid_tweets = []
                 all_responses = dict(response).get("response", [])
                 if not all_responses:
                     bt.logging.info(
-                        f"❌ {self.format_miner_info(int(uid))} FAILED - empty response"
+                        f"❌ {self.format_miner_info(uid)} FAILED - empty response"
                     )
+                    empty_response_uids.add(uid)
                     continue
 
                 for tweet in all_responses:
@@ -345,9 +353,10 @@ class Forwarder:
                         and tweet["Tweet"]["ID"]
                     ):
                         bt.logging.info(
-                            f"❌ {self.format_miner_info(int(uid))} FAILED - malformed tweet"
+                            f"❌ {self.format_miner_info(uid)} FAILED - malformed tweet"
                         )
-                        self.validator.scorer.add_volume(int(uid), 0, current_block)
+                        self.validator.scorer.add_volume(uid, 0, current_block)
+                        invalid_tweet_uids.add(uid)
                         break  # Break inner loop
 
                     tweet_id = tweet["Tweet"]["ID"]
@@ -356,9 +365,10 @@ class Forwarder:
                         and not tweet_id.startswith("0")
                     ):
                         bt.logging.info(
-                            f"❌ {self.format_miner_info(int(uid))} FAILED - invalid tweet ID: {tweet_id}"
+                            f"❌ {self.format_miner_info(uid)} FAILED - invalid tweet ID: {tweet_id}"
                         )
-                        self.validator.scorer.add_volume(int(uid), 0, current_block)
+                        self.validator.scorer.add_volume(uid, 0, current_block)
+                        invalid_tweet_uids.add(uid)
                         break  # Break inner loop
 
                 # If we broke early due to invalid tweets, skip to next miner
@@ -366,17 +376,18 @@ class Forwarder:
                     continue  # Next miner
 
                 bt.logging.info(
-                    f"✅ {self.format_miner_info(int(uid))} PASSED - {len(all_responses)} valid tweets"
+                    f"✅ {self.format_miner_info(uid)} PASSED - {len(all_responses)} valid tweets"
                 )
+                successful_uids.add(uid)
 
                 # Check for duplicates - if number of unique IDs doesn't match total tweets, batch has duplicates
                 if len({tweet["Tweet"]["ID"] for tweet in all_responses}) != len(
                     all_responses
                 ):
                     bt.logging.info(
-                        f"❌ {self.format_miner_info(int(uid))} FAILED - batch contains duplicates"
+                        f"❌ {self.format_miner_info(uid)} FAILED - batch contains duplicates"
                     )
-                    self.validator.scorer.add_volume(int(uid), 0, current_block)
+                    self.validator.scorer.add_volume(uid, 0, current_block)
                     continue  # Next miner
 
                 # All tweets passed validation and no duplicates
@@ -505,11 +516,23 @@ class Forwarder:
             query.strip().replace('"', ""),
         )
 
-        # Log summary of all miners
-        unprocessed_uids = set(miner_uids) - processed_uids
-        if unprocessed_uids:
+        # Log detailed summary of all miners
+        bt.logging.info("📊 Miner Response Summary:")
+        if no_response_uids:
             bt.logging.info(
-                f"⚠️ {len(unprocessed_uids)} miners did not return any response | UIDs: {sorted(unprocessed_uids)}"
+                f"  No Response ({len(no_response_uids)}): {sorted(no_response_uids)}"
+            )
+        if empty_response_uids:
+            bt.logging.info(
+                f"  Empty Response ({len(empty_response_uids)}): {sorted(empty_response_uids)}"
+            )
+        if invalid_tweet_uids:
+            bt.logging.info(
+                f"  Invalid Tweets ({len(invalid_tweet_uids)}): {sorted(invalid_tweet_uids)}"
+            )
+        if successful_uids:
+            bt.logging.info(
+                f"  Successful ({len(successful_uids)}): {sorted(successful_uids)}"
             )
 
         # note, set the last volume block to the current block
