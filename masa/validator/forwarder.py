@@ -86,6 +86,9 @@ class Forwarder:
             sample_size = self.validator.subnet_config.get("organic").get("sample_size")
         if not timeout:
             timeout = self.validator.subnet_config.get("organic").get("timeout")
+
+        bt.logging.debug(f"Request timeout set to {timeout}s with no retries")
+
         if sequential:
             miner_uids = await get_uncalled_miner_uids(self.validator, k=sample_size)
         else:
@@ -95,12 +98,19 @@ class Forwarder:
             return [], []
 
         async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
-            responses = await dendrite(
-                [self.validator.metagraph.axons[uid] for uid in miner_uids],
-                request,
-                deserialize=True,
-                timeout=timeout,
+            bt.logging.debug(
+                f"Sending request to {len(miner_uids)} miners with {timeout}s timeout"
             )
+            try:
+                responses = await dendrite(
+                    [self.validator.metagraph.axons[uid] for uid in miner_uids],
+                    request,
+                    deserialize=True,
+                    timeout=timeout,
+                )
+            except Exception as e:
+                bt.logging.error(f"Dendrite request failed: {e}")
+                return [], []
 
             formatted_responses = [
                 {"uid": int(uid), "response": response}
@@ -303,16 +313,21 @@ class Forwarder:
         random_keyword = random.choice(self.validator.keywords)
         query = f'"{random_keyword.strip()}"'
         bt.logging.info(f"Volume checking for: {query}")
+
+        timeout = self.validator.subnet_config.get("synthetic").get("timeout")
+        sample_size = self.validator.subnet_config.get("synthetic").get("sample_size")
+        bt.logging.info(
+            f"Using timeout of {timeout}s for batch of {sample_size} miners"
+        )
+
         request = RecentTweetsSynapse(
             query=query,
-            timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
+            timeout=timeout,
         )
         responses, miner_uids = await self.forward_request(
             request,
-            sample_size=self.validator.subnet_config.get("synthetic").get(
-                "sample_size"
-            ),
-            timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
+            sample_size=sample_size,
+            timeout=timeout,
             sequential=True,
         )
 
@@ -339,6 +354,16 @@ class Forwarder:
 
                 valid_tweets = []
                 try:
+                    # First check if we got a None response inside a valid dict
+                    if isinstance(response, dict) and response.get("response") is None:
+                        bt.logging.info(
+                            f"❌ {self.format_miner_info(uid)} FAILED - miner returned None response (likely timeout)"
+                        )
+                        no_response_uids.add(
+                            uid
+                        )  # This is actually a timeout/no response case
+                        continue
+
                     all_responses = dict(response).get("response", [])
                     bt.logging.debug(
                         f"Raw response from {self.format_miner_info(uid)}: {response}"
@@ -352,7 +377,7 @@ class Forwarder:
 
                 if not all_responses:
                     bt.logging.info(
-                        f"❌ {self.format_miner_info(uid)} FAILED - empty response | Response type: {type(response)} | Raw: {response}"
+                        f"❌ {self.format_miner_info(uid)} FAILED - empty response array | Response: {response}"
                     )
                     empty_response_uids.add(uid)
                     continue
