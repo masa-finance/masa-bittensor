@@ -49,6 +49,32 @@ class Forwarder:
     def __init__(self, validator):
         self.validator = validator
 
+    def strict_tweet_id_validation(self, tweet_id: str) -> bool:
+        """
+        Strictly validate a tweet ID.
+        - Must be a string of pure ASCII digits
+        - No leading zeros
+        - No invisible/zero-width characters
+        - Must be between 15-20 digits (valid tweet ID length range)
+        """
+        if not isinstance(tweet_id, str):
+            return False
+
+        # Convert to ASCII-only and check if anything was removed
+        ascii_id = tweet_id.encode("ascii", "ignore").decode()
+        if ascii_id != tweet_id:
+            return False
+
+        # Check if it's a valid numeric string with no leading zeros
+        if not ascii_id.isdigit() or ascii_id.startswith("0"):
+            return False
+
+        # Check length (Twitter IDs are typically 15-20 digits)
+        if not (15 <= len(ascii_id) <= 20):
+            return False
+
+        return True
+
     async def forward_request(
         self,
         request: Any,
@@ -313,11 +339,23 @@ class Forwarder:
                         and tweet["Tweet"]["ID"]
                     ):
                         tweet_id = tweet["Tweet"]["ID"]
-                        if tweet_id.isdigit():  # Must be purely numeric
+                        if all(
+                            c in "0123456789" for c in tweet_id
+                        ) and not tweet_id.startswith(
+                            "0"
+                        ):  # Must be purely numeric 0-9 and no leading zeros
                             potential_tweets.append(tweet)
                             valid_tweet_count += 1
                         else:
                             invalid_ids.append(tweet_id)
+                            if tweet_id.startswith("0"):
+                                bt.logging.info(
+                                    f"❌ Invalid tweet ID (starts with 0): {tweet_id}"
+                                )
+                            else:
+                                bt.logging.info(
+                                    f"❌ Invalid tweet ID (non-numeric chars): {tweet_id}"
+                                )
                             invalid_tweet_count += 1
                     else:
                         invalid_tweet_count += 1
@@ -331,7 +369,7 @@ class Forwarder:
                     continue  # Skip further processing for this miner
                 else:
                     bt.logging.info(
-                        f"✅ {self.format_miner_info(int(uid))} PASSED ID validation - all {valid_tweet_count} tweets had valid IDs"
+                        f"✅ {self.format_miner_info(int(uid))} PASSED validation - {valid_tweet_count} tweets with clean numeric IDs"
                     )
 
                 # Deduplicate valid tweets using numeric IDs
