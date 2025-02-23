@@ -343,7 +343,7 @@ class Forwarder:
                         and not tweet_id.startswith("0")
                     ):
                         bt.logging.info(
-                            f"❌ {self.format_miner_info(int(uid))} FAILED - invalid tweet ID"
+                            f"❌ {self.format_miner_info(int(uid))} FAILED - invalid tweet ID: {tweet_id}"
                         )
                         self.validator.scorer.add_volume(int(uid), 0, current_block)
                         break  # Break inner loop
@@ -356,19 +356,17 @@ class Forwarder:
                     f"✅ {self.format_miner_info(int(uid))} PASSED - {len(all_responses)} valid tweets"
                 )
 
-                # Check for duplicates
-                seen_ids = set()
-                for tweet in all_responses:
-                    tweet_id = tweet["Tweet"]["ID"]
-                    if tweet_id in seen_ids:
-                        bt.logging.info(
-                            f"❌ {self.format_miner_info(int(uid))} FAILED - duplicate tweet ID found"
-                        )
-                        self.validator.scorer.add_volume(int(uid), 0, current_block)
-                        continue  # Next miner
-                    seen_ids.add(tweet_id)
+                # Check for duplicates - if number of unique IDs doesn't match total tweets, batch has duplicates
+                if len({tweet["Tweet"]["ID"] for tweet in all_responses}) != len(
+                    all_responses
+                ):
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(int(uid))} FAILED - batch contains duplicates"
+                    )
+                    self.validator.scorer.add_volume(int(uid), 0, current_block)
+                    continue  # Next miner
 
-                # All tweets passed validation and no duplicates found
+                # All tweets passed validation and no duplicates
                 unique_tweets = list(all_responses)
 
                 if not unique_tweets:  # If no valid tweets after filtering
