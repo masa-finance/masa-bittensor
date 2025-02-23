@@ -325,78 +325,44 @@ class Forwarder:
                 if not all_responses:
                     continue
 
-                # First filter out any tweets with non-numeric IDs and log bad miners
-                valid_tweet_count = 0
-                invalid_tweet_count = 0
-                invalid_ids = []
-                potential_tweets = (
-                    []
-                )  # Store tweets that pass ID validation but await further checks
                 for tweet in all_responses:
-                    if (
+                    if not (
                         "Tweet" in tweet
                         and "ID" in tweet["Tweet"]
                         and tweet["Tweet"]["ID"]
                     ):
-                        tweet_id = tweet["Tweet"]["ID"]
-                        if all(
-                            c in "0123456789" for c in tweet_id
-                        ) and not tweet_id.startswith(
-                            "0"
-                        ):  # Must be purely numeric 0-9 and no leading zeros
-                            potential_tweets.append(tweet)
-                            valid_tweet_count += 1
-                        else:
-                            invalid_ids.append(tweet_id)
-                            if tweet_id.startswith("0"):
-                                bt.logging.info(
-                                    f"❌ Invalid tweet ID (starts with 0): {tweet_id}"
-                                )
-                            else:
-                                bt.logging.info(
-                                    f"❌ Invalid tweet ID (non-numeric chars): {tweet_id}"
-                                )
-                            invalid_tweet_count += 1
-                    else:
-                        invalid_tweet_count += 1
+                        bt.logging.info(
+                            f"❌ {self.format_miner_info(int(uid))} FAILED - malformed tweet"
+                        )
+                        self.validator.scorer.add_volume(int(uid), 0, current_block)
+                        continue  # Next miner
 
-                if invalid_tweet_count > 0:
-                    bt.logging.info(
-                        f"❌ {self.format_miner_info(int(uid))} FAILED ID validation - {invalid_tweet_count} invalid tweets out of {len(all_responses)}"
-                    )
-                    # Give zero score for submitting any invalid tweets
-                    self.validator.scorer.add_volume(int(uid), 0, current_block)
-                    continue  # Skip further processing for this miner
-                else:
-                    bt.logging.info(
-                        f"✅ {self.format_miner_info(int(uid))} PASSED validation - {valid_tweet_count} tweets with clean numeric IDs"
-                    )
+                    tweet_id = tweet["Tweet"]["ID"]
+                    if not (
+                        all(c in "0123456789" for c in tweet_id)
+                        and not tweet_id.startswith("0")
+                    ):
+                        bt.logging.info(
+                            f"❌ {self.format_miner_info(int(uid))} FAILED - invalid tweet ID"
+                        )
+                        self.validator.scorer.add_volume(int(uid), 0, current_block)
+                        continue  # Next miner
 
-                # Deduplicate valid tweets using numeric IDs
-                original_count = len(potential_tweets)
-                unique_tweets_response = list(
-                    {tweet["Tweet"]["ID"]: tweet for tweet in potential_tweets}.values()
+                bt.logging.info(
+                    f"✅ {self.format_miner_info(int(uid))} PASSED - {len(all_responses)} valid tweets"
                 )
-                duplicate_count = original_count - len(unique_tweets_response)
 
-                if duplicate_count > 0:
-                    bt.logging.info(
-                        f"Found {duplicate_count} duplicate tweets from {self.format_miner_info(int(uid))} "
-                        f"(reduced from {original_count} to {len(unique_tweets_response)} tweets)"
-                    )
-                else:
-                    bt.logging.debug(
-                        f"No duplicates found in {original_count} tweets from {self.format_miner_info(int(uid))}"
-                    )
+                # All tweets passed validation, now deduplicate
+                unique_tweets = list(
+                    {tweet["Tweet"]["ID"]: tweet for tweet in all_responses}.values()
+                )
 
-                if not unique_tweets_response:  # If no valid tweets after filtering
+                if not unique_tweets:  # If no valid tweets after filtering
                     bt.logging.debug(f"Miner {uid} had no valid tweets after filtering")
                     continue
 
                 # Continue with validation of a random tweet from the valid set
-                random_tweet = dict(random.choice(unique_tweets_response)).get(
-                    "Tweet", {}
-                )
+                random_tweet = dict(random.choice(unique_tweets)).get("Tweet", {})
 
                 query_words = (
                     self.normalize_whitespace(random_keyword.replace('"', ""))
@@ -456,7 +422,7 @@ class Forwarder:
                 # Only add tweets if both ID validation passed AND random tweet passes other checks
                 if query_in_tweet and is_since_date_requested:
                     valid_tweets.extend(
-                        unique_tweets_response
+                        unique_tweets
                     )  # Add all tweets from batch that passed ID check
                 else:
                     failures = []
