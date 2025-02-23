@@ -332,28 +332,43 @@ class Forwarder:
             try:
                 if not response:
                     bt.logging.info(
-                        f"❌ {self.format_miner_info(uid)} FAILED - no response received | Raw response: {response}"
+                        f"❌ {self.format_miner_info(uid)} FAILED - no response received | Raw: {response}"
                     )
                     no_response_uids.add(uid)
                     continue
 
                 valid_tweets = []
-                all_responses = dict(response).get("response", [])
-                if not all_responses:
+                try:
+                    all_responses = dict(response).get("response", [])
+                    bt.logging.debug(
+                        f"Raw response from {self.format_miner_info(uid)}: {response}"
+                    )
+                except Exception as e:
                     bt.logging.info(
-                        f"❌ {self.format_miner_info(uid)} FAILED - empty response | Raw response: {response}"
+                        f"❌ {self.format_miner_info(uid)} FAILED - malformed response | Error: {e} | Raw: {response}"
                     )
                     empty_response_uids.add(uid)
                     continue
 
-                for tweet in all_responses:
+                if not all_responses:
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(uid)} FAILED - empty response | Response type: {type(response)} | Raw: {response}"
+                    )
+                    empty_response_uids.add(uid)
+                    continue
+
+                bt.logging.debug(
+                    f"Processing {len(all_responses)} tweets from {self.format_miner_info(uid)}"
+                )
+
+                for i, tweet in enumerate(all_responses, 1):
                     if not (
                         "Tweet" in tweet
                         and "ID" in tweet["Tweet"]
                         and tweet["Tweet"]["ID"]
                     ):
                         bt.logging.info(
-                            f"❌ {self.format_miner_info(uid)} FAILED - malformed tweet"
+                            f"❌ {self.format_miner_info(uid)} FAILED - malformed tweet at position {i}/{len(all_responses)} | Tweet: {tweet}"
                         )
                         self.validator.scorer.add_volume(uid, 0, current_block)
                         invalid_tweet_uids.add(uid)
@@ -365,7 +380,7 @@ class Forwarder:
                         and not tweet_id.startswith("0")
                     ):
                         bt.logging.info(
-                            f"❌ {self.format_miner_info(uid)} FAILED - invalid tweet ID: {tweet_id}"
+                            f"❌ {self.format_miner_info(uid)} FAILED - invalid tweet ID at position {i}/{len(all_responses)} | ID: {tweet_id}"
                         )
                         self.validator.scorer.add_volume(uid, 0, current_block)
                         invalid_tweet_uids.add(uid)
