@@ -332,7 +332,7 @@ class Forwarder:
             try:
                 if not response:
                     bt.logging.info(
-                        f"❌ {self.format_miner_info(uid)} FAILED - no response received"
+                        f"❌ {self.format_miner_info(uid)} FAILED - no response received | Raw response: {response}"
                     )
                     no_response_uids.add(uid)
                     continue
@@ -341,7 +341,7 @@ class Forwarder:
                 all_responses = dict(response).get("response", [])
                 if not all_responses:
                     bt.logging.info(
-                        f"❌ {self.format_miner_info(uid)} FAILED - empty response"
+                        f"❌ {self.format_miner_info(uid)} FAILED - empty response | Raw response: {response}"
                     )
                     empty_response_uids.add(uid)
                     continue
