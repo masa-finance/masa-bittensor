@@ -290,7 +290,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 uids=uint_uids,
                 weights=uint_weights,
                 version_key=self.spec_version,
-                wait_for_inclusion=True,
+                wait_for_inclusion=False,
                 wait_for_finalization=False,
             )
 
