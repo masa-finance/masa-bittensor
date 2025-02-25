@@ -556,10 +556,10 @@ class Forwarder:
                         )
 
                     # Add TimeParsed field to each tweet before export
-                    current_time_unix = int(datetime.now().timestamp())
+                    current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
                     for tweet in all_responses:
                         if "Tweet" in tweet:
-                            tweet["Tweet"]["TimeParsed"] = current_time_unix
+                            tweet["Tweet"]["TimeParsed"] = current_time_str
 
                     # Log details of what's being exported without redundant deduplication
                     for i, tweet in enumerate(
