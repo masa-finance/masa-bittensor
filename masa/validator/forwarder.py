@@ -377,7 +377,7 @@ class Forwarder:
                         )  # This is actually a timeout/no response case
                         continue
 
-                    all_responses = dict(response).get("response", [])
+                    all_responses = response.get("response", [])
                     bt.logging.debug(
                         f"Raw response from {self.format_miner_info(uid)}: {response}"
                     )
