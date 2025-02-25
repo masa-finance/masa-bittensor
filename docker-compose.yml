@@ -38,7 +38,6 @@ services:
       - ./startup:/app/startup
       - ./masa:/app/masa
       - ./neurons:/app/neurons
-      - ./config.json:/app/config.json
     entrypoint: ["python", "-u", "-m", "startup"]
     ports:
       - "${MINER_PORT}:${MINER_PORT:-8091}"
@@ -65,7 +64,6 @@ services:
       - ./startup:/app/startup
       - ./masa:/app/masa
       - ./neurons:/app/neurons
-      - ./config.json:/app/config.json
     entrypoint: ["python", "-u", "-m", "startup"]
     ports:
       - "${MINER_PORT}:${MINER_PORT:-8091}"
@@ -82,7 +80,7 @@ services:
       - SUBTENSOR_NETWORK=${SUBTENSOR_NETWORK:-main}
       - WALLET_NAME=${VALIDATOR_WALLET_NAME:-validator}
       - HOTKEY_NAME=${VALIDATOR_HOTKEY_NAME:-default}
-      - VALIDATOR_AXON_PORT=${VALIDATOR_AXON_PORT:-8093}
+      - VALIDATOR_AXON_PORT=${VALIDATOR_PORT:-8093}
       - VALIDATOR_METRICS_PORT=${VALIDATOR_METRICS_PORT:-8094}
       - VALIDATOR_GRAFANA_PORT=${VALIDATOR_GRAFANA_PORT:-3001}
       - REPLICA_NUM=${REPLICA_NUM:-1}
@@ -92,10 +90,9 @@ services:
       - ./startup:/app/startup
       - ./masa:/app/masa
       - ./neurons:/app/neurons
-      - ./config.json:/app/config.json
     entrypoint: ["python", "-u", "-m", "startup"]
     ports:
-      - "${MINER_PORT}:${MINER_PORT:-8093}"
+      - "${VALIDATOR_AXON_PORT}:${VALIDATOR_AXON_PORT:-8093}"
       - "${METRICS_PORT}:${METRICS_PORT:-8094}"
       - "${GRAFANA_PORT}:${GRAFANA_PORT:-3001}"
     restart: unless-stopped
