@@ -293,8 +293,9 @@ class Forwarder:
             return await self.ping_axons(current_block)
         if len(self.validator.keywords) == 0 or self.check_tempo(current_block):
             await self.fetch_twitter_queries()
-        if len(self.validator.subnet_config) == 0 or self.check_tempo(current_block):
-            await self.fetch_subnet_config()
+        # Comment out the GitHub config fetch to use only the local config
+        # if len(self.validator.subnet_config) == 0 or self.check_tempo(current_block):
+        #     await self.fetch_subnet_config()
 
         # Reset uncalled_uids if empty
         if len(self.validator.uncalled_uids) == 0:
@@ -314,8 +315,20 @@ class Forwarder:
         query = f'"{random_keyword.strip()}"'
         bt.logging.info(f"Volume checking for: {query}")
 
+        # Add debug logging to check the subnet_config
+        bt.logging.info(f"DEBUG - subnet_config: {self.validator.subnet_config}")
+        bt.logging.info(
+            f"DEBUG - synthetic config: {self.validator.subnet_config.get('synthetic', {})}"
+        )
+
         timeout = self.validator.subnet_config.get("synthetic").get("timeout")
         sample_size = self.validator.subnet_config.get("synthetic").get("sample_size")
+
+        # Add debug logging to check the timeout and sample_size
+        bt.logging.info(
+            f"DEBUG - synthetic timeout: {timeout}, sample_size: {sample_size}"
+        )
+
         bt.logging.info(
             f"Using timeout of {timeout}s for batch of {sample_size} miners"
         )
@@ -382,10 +395,11 @@ class Forwarder:
                     empty_response_uids.add(uid)
                     continue
 
-                bt.logging.debug(
+                bt.logging.info(
                     f"Processing {len(all_responses)} tweets from {self.format_miner_info(uid)}"
                 )
 
+                valid_tweets = []  # Initialize empty list for valid tweets
                 for i, tweet in enumerate(all_responses, 1):
                     if not (
                         "Tweet" in tweet
@@ -400,10 +414,7 @@ class Forwarder:
                         break  # Break inner loop
 
                     tweet_id = tweet["Tweet"]["ID"]
-                    if not (
-                        all(c in "0123456789" for c in tweet_id)
-                        and not tweet_id.startswith("0")
-                    ):
+                    if not self.strict_tweet_id_validation(tweet_id):
                         bt.logging.info(
                             f"❌ {self.format_miner_info(uid)} FAILED - invalid tweet ID at position {i}/{len(all_responses)} | ID: {tweet_id}"
                         )
@@ -411,19 +422,24 @@ class Forwarder:
                         invalid_tweet_uids.add(uid)
                         break  # Break inner loop
 
+                    # If we reach here, the tweet passed ID validation
+                    valid_tweets.append(tweet)
+
                 # If we broke early due to invalid tweets, skip to next miner
-                if tweet != all_responses[-1]:
+                if len(valid_tweets) != len(all_responses):
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(uid)} FAILED - {len(all_responses) - len(valid_tweets)} tweets failed validation"
+                    )
                     continue  # Next miner
 
                 bt.logging.info(
-                    f"✅ {self.format_miner_info(uid)} PASSED - {len(all_responses)} valid tweets"
+                    f"✅ {self.format_miner_info(uid)} PASSED - {len(valid_tweets)} valid tweets"
                 )
                 successful_uids.add(uid)
 
                 # Check for duplicates - if number of unique IDs doesn't match total tweets, batch has duplicates
-                if len({tweet["Tweet"]["ID"] for tweet in all_responses}) != len(
-                    all_responses
-                ):
+                unique_ids = {tweet["Tweet"]["ID"] for tweet in valid_tweets}
+                if len(unique_ids) != len(valid_tweets):
                     bt.logging.info(
                         f"❌ {self.format_miner_info(uid)} FAILED - batch contains duplicates"
                     )
@@ -431,7 +447,7 @@ class Forwarder:
                     continue  # Next miner
 
                 # All tweets passed validation and no duplicates
-                unique_tweets = list(all_responses)
+                unique_tweets = valid_tweets
 
                 if not unique_tweets:  # If no valid tweets after filtering
                     bt.logging.debug(f"Miner {uid} had no valid tweets after filtering")
@@ -495,11 +511,12 @@ class Forwarder:
                     f"{'✅' if is_since_date_requested else '❌'} Timestamp ({tweet_timestamp.strftime('%Y-%m-%d %H:%M:%S')} >= {yesterday.strftime('%Y-%m-%d')}): {tweet_url}"
                 )
 
-                # Only add tweets if both ID validation passed AND random tweet passes other checks
+                # Only add tweets to all_valid_tweets if both ID validation passed AND random tweet passes other checks
                 if query_in_tweet and is_since_date_requested:
-                    valid_tweets.extend(
-                        unique_tweets
-                    )  # Add all tweets from batch that passed ID check
+                    all_valid_tweets.extend(unique_tweets)
+                    bt.logging.info(
+                        f"✅ Adding {len(unique_tweets)} validated tweets from {self.format_miner_info(uid)}"
+                    )
                 else:
                     failures = []
                     if not query_in_tweet:
@@ -509,8 +526,8 @@ class Forwarder:
                     bt.logging.info(
                         f"❌ Sample tweet failed local validation ({', '.join(failures)}): {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
-
-                all_valid_tweets.extend(valid_tweets)
+                    # Don't add any tweets from this miner if the sample tweet fails validation
+                    continue
 
                 # note, score only unique tweets per miner (uid)
                 uid_int = int(uid)
