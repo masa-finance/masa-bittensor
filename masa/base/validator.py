@@ -411,16 +411,17 @@ class BaseValidatorNeuron(BaseNeuron):
         api_url = self.config.validator.export_url
         if api_url:
             try:
-                # Debug: Randomly sample and print 3 tweets from the batch
+                # Randomly sample and print 3 tweets from the batch with more details
                 if tweets:
                     sample_size = min(3, len(tweets))
                     sample_tweets = random.sample(tweets, sample_size)
-                    bt.logging.info(
-                        f"DEBUG - Randomly sampled {sample_size} tweets before sending to protocol API:"
+                    bt.logging.debug(
+                        f"Randomly sampled {sample_size} tweets before sending to protocol API:"
                     )
                     for i, tweet in enumerate(sample_tweets):
-                        tweet_id = tweet.get("Tweet", {}).get("ID", "unknown")
-                        bt.logging.info(
+                        tweet_data = tweet.get("Tweet", {})
+                        tweet_id = tweet_data.get("ID", "unknown")
+                        bt.logging.debug(
                             f"  Sample tweet {i+1}: ID={tweet_id}, Type={type(tweet_id)}, ASCII={tweet_id.encode('ascii', 'ignore').decode() == tweet_id}"
                         )
 
