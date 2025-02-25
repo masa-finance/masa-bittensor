@@ -429,6 +429,21 @@ class BaseValidatorNeuron(BaseNeuron):
         api_url = self.config.validator.export_url
         if api_url:
             try:
+                # Add debug logging for TimeParsed field checks
+                if tweets:
+                    bt.logging.info(
+                        f"DEBUG EXPORT: Tweet count before export: {len(tweets)}"
+                    )
+
+                    # Check if TimeParsed exists in the first few tweets
+                    for i, tweet in enumerate(tweets[:3]):
+                        tweet_data = tweet.get("Tweet", {})
+                        tweet_id = tweet_data.get("ID", "unknown")
+                        time_parsed = tweet_data.get("TimeParsed", "MISSING")
+                        bt.logging.info(
+                            f"DEBUG EXPORT: Tweet {i+1} ID={tweet_id}, TimeParsed={time_parsed}"
+                        )
+
                 # Randomly sample and print 3 tweets from the batch with more details
                 if tweets:
                     sample_size = min(3, len(tweets))
@@ -451,7 +466,19 @@ class BaseValidatorNeuron(BaseNeuron):
                             "Query": query,
                             "Tweets": chunk,
                         }
+
+                        # Debug log the payload structure (first tweet only)
+                        if chunk and "Tweet" in chunk[0]:
+                            first_tweet = chunk[0]["Tweet"]
+                            bt.logging.info(
+                                f"DEBUG EXPORT: Payload first tweet TimeParsed: {first_tweet.get('TimeParsed', 'MISSING')}"
+                            )
+                            bt.logging.info(
+                                f"DEBUG EXPORT: Payload first tweet keys: {list(first_tweet.keys())}"
+                            )
+
                         async with session.post(api_url, json=payload) as response:
+                            response_text = await response.text()
                             if response.status == 200 or response.status == 206:
                                 bt.logging.info(
                                     f"Data sent to protocol API for chunk {i}"
@@ -460,6 +487,7 @@ class BaseValidatorNeuron(BaseNeuron):
                                 bt.logging.error(
                                     f"Failed to send data to protocol API for chunk {i}: {response.status}"
                                 )
+                                bt.logging.error(f"Response body: {response_text}")
                         await asyncio.sleep(1)  # Wait for 1 second between requests
             except Exception as e:
                 bt.logging.error(

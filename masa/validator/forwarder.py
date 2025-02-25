@@ -569,7 +569,8 @@ class Forwarder:
                             f"  Tweet {i+1}/{min(3, len(all_responses))} Sample:\n"
                             f"    ID: {tweet['Tweet']['ID']}\n"
                             f"    Text: {tweet['Tweet'].get('Text', '')[:100]}...\n"
-                            f"    URL: {self.format_tweet_url(tweet['Tweet']['ID'])}"
+                            f"    URL: {self.format_tweet_url(tweet['Tweet']['ID'])}\n"
+                            f"    TimeParsed: {tweet['Tweet']['TimeParsed']}\n"
                         )
 
                     if len(all_responses) > 3:
