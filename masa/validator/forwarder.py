@@ -555,6 +555,12 @@ class Forwarder:
                             f"Sample IDs: {sample_ids}{' + more...' if len(tweet_ids) > sample_size else ''}"
                         )
 
+                    # Add TimeParsed field to each tweet before export
+                    current_time_unix = int(datetime.now().timestamp())
+                    for tweet in all_responses:
+                        if "Tweet" in tweet:
+                            tweet["Tweet"]["TimeParsed"] = current_time_unix
+
                     # Log details of what's being exported without redundant deduplication
                     for i, tweet in enumerate(
                         all_responses[:3]
