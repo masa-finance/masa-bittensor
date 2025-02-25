@@ -24,6 +24,7 @@ import asyncio
 import aiohttp
 import argparse
 import bittensor as bt
+import random
 
 from typing import List
 
@@ -410,6 +411,19 @@ class BaseValidatorNeuron(BaseNeuron):
         api_url = self.config.validator.export_url
         if api_url:
             try:
+                # Debug: Randomly sample and print 3 tweets from the batch
+                if tweets:
+                    sample_size = min(3, len(tweets))
+                    sample_tweets = random.sample(tweets, sample_size)
+                    bt.logging.info(
+                        f"DEBUG - Randomly sampled {sample_size} tweets before sending to protocol API:"
+                    )
+                    for i, tweet in enumerate(sample_tweets):
+                        tweet_id = tweet.get("Tweet", {}).get("ID", "unknown")
+                        bt.logging.info(
+                            f"  Sample tweet {i+1}: ID={tweet_id}, Type={type(tweet_id)}, ASCII={tweet_id.encode('ascii', 'ignore').decode() == tweet_id}"
+                        )
+
                 async with aiohttp.ClientSession() as session:
                     for i in range(0, len(tweets), 1000):
                         chunk = tweets[i : i + 1000]
@@ -419,7 +433,7 @@ class BaseValidatorNeuron(BaseNeuron):
                             "Tweets": chunk,
                         }
                         async with session.post(api_url, json=payload) as response:
-                            if response.status == 200:
+                            if response.status == 200 or response.status == 206:
                                 bt.logging.info(
                                     f"Data sent to protocol API for chunk {i}"
                                 )
