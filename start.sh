@@ -183,41 +183,21 @@ start_bootnode() {
         exit 1
     fi
 
-    # Launch bootnode with host networking
+    # Launch bootnode with bridge networking
     docker run -d \
         --name "masa_bootnode" \
-        --hostname "masa_bootnode" \
-        --network host \
-        -v $(pwd)/bootnode.env:/home/masa/.env \
-        -v $(pwd)/.masa-bootnode:/home/masa/.masa \
+        --hostname "bootnode" \
+        --network masa_network \
+        -p 4001:4001/udp \
+        -p 8080:8080 \
+        -v ./bootnode.env:/home/masa/.env \
+        -v ./.masa-bootnode:/home/masa/.masa \
         $ORACLE_IMAGE \
         --masaDir=/home/masa/.masa \
         --env=hometest \
         --api-enabled \
         --logLevel=debug \
         --port=$port
-}
-
-# Function to get the bootnode address
-get_bootnode_address() {
-    echo "Waiting 15 seconds for bootnode to start..."
-    sleep 15
-    
-    # IMPORTANT: Display full logs to terminal FIRST
-    echo "==== FULL BOOTNODE LOGS ===="
-    docker logs masa_bootnode
-    echo "==== END BOOTNODE LOGS ===="
-    
-    # Get the complete multiaddress directly
-    BOOTNODE_ADDRESS=$(docker logs masa_bootnode 2>&1 | grep -o "/ip4/[^ ]*" | head -1)
-    
-    if [ -n "$BOOTNODE_ADDRESS" ]; then
-        echo "Found complete multiaddress: $BOOTNODE_ADDRESS"
-        return 0
-    fi
-    
-    echo "Failed to extract bootnode multiaddress from logs."
-    return 1
 }
 
 # Function to start an oracle worker
@@ -241,8 +221,8 @@ start_oracle_worker() {
     # Validate bootnode address
     if [[ "$bootnodes" != /* ]]; then
         echo "WARNING: Invalid bootnode address format: $bootnodes"
-        echo "Using default bootnode address format with host IP"
-        bootnodes="/ip4/$HOST_IP/udp/4001/quic-v1"
+        echo "Using DNS-based bootnode address format"
+        bootnodes="/dns4/bootnode/udp/4001/quic-v1"
     fi
     
     echo "  Using bootnode: $bootnodes"
@@ -253,19 +233,22 @@ start_oracle_worker() {
         exit 1
     fi
 
-    # Launch oracle worker with host networking and IP-based bootnode address
+    # Launch oracle worker with bridge networking
     docker run -d \
         --name "masa_oracle_worker_${instance_num}" \
-        --network host \
+        --hostname "worker_${instance_num}" \
+        --network masa_network \
+        -p $((4002 + instance_num - 1)):4001/udp \
+        -p $((8081 + instance_num - 1)):8081 \
         --env-file worker.env \
-        -v $(pwd)/.masa-worker:/home/masa/.masa \
+        -v ./.masa-worker:/home/masa/.masa \
+        -v ./worker.env:/home/masa/.env \
         $ORACLE_IMAGE \
         --masaDir=/home/masa/.masa \
         --env=hometest \
         --api-enabled \
         --logLevel=debug \
-        --port=$port \
-        --bootnodes=$bootnodes
+        --port=$port
 }
 
 # Function to display node info
@@ -371,59 +354,17 @@ if [ "$MINER_COUNT" -gt 0 ]; then
     done
 fi
 
-# Start bootnode if requested
-BOOTNODE_ADDRESS=""
-BOOTNODE_PEER_ID=${BOOTNODE_PEER_ID:-""}
-
 if [ "$ENABLE_BOOTNODE" = "true" ]; then
     echo "Starting bootnode..."
     start_bootnode
-    
-    if [ "$ORACLE_WORKER_COUNT" -gt 0 ]; then
-        if [ -n "$BOOTNODE_PEER_ID" ]; then
-            # Use provided BOOTNODE_PEER_ID if specified
-            echo "Using provided bootnode peer ID: $BOOTNODE_PEER_ID"
-            BOOTNODE_ADDRESS="/ip4/$HOST_IP/udp/4001/quic-v1/p2p/$BOOTNODE_PEER_ID"
-        else
-            echo "Getting bootnode address for worker configuration..."
-            # Get the bootnode address
-            get_bootnode_address
-            
-            if [ -z "$BOOTNODE_ADDRESS" ] || [[ "$BOOTNODE_ADDRESS" != /* ]]; then
-                echo "Warning: Failed to get valid bootnode address."
-                echo "Options:"
-                echo "1) Continue with basic bootstrap address (workers may not connect properly)"
-                echo "2) Skip oracle worker setup (recommended to inspect bootnode logs first)"
-                
-                read -p "Enter your choice (1/2, default: 2): " choice
-                choice=${choice:-2}
-                
-                case "$choice" in
-                    1)
-                        echo "Continuing with basic bootstrap address"
-                        BOOTNODE_ADDRESS="/ip4/$HOST_IP/udp/4001/quic-v1"
-                        ;;
-                    *)
-                        echo "Skipping oracle worker setup. You can manually inspect bootnode logs with:"
-                        echo "docker logs masa_bootnode | grep -A 10 \"Multiaddresses:\""
-                        ORACLE_WORKER_COUNT=0
-                        ;;
-                esac
-            fi
-        fi
-    fi
 fi
 
 # Start oracle workers
-if [ "$ORACLE_WORKER_COUNT" -gt 0 ]; then
-    if [ "$ENABLE_BOOTNODE" = "true" ] && [ -n "$BOOTNODE_ADDRESS" ]; then
-        for i in $(seq 1 $ORACLE_WORKER_COUNT); do
-            echo "Starting oracle worker $i..."
-            start_oracle_worker $i "$BOOTNODE_ADDRESS"
-        done
-    else
-        echo "Warning: Cannot start oracle workers without a bootnode"
-    fi
+if [ "$ORACLE_WORKER_COUNT" -gt 0 ] && [ "$ENABLE_BOOTNODE" = "true" ]; then
+    for i in $(seq 1 $ORACLE_WORKER_COUNT); do
+        echo "Starting oracle worker $i..."
+        start_oracle_worker $i
+    done
 fi
 
 # Start TEE workers

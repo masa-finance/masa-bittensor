@@ -348,6 +348,15 @@ class BaseValidatorNeuron(BaseNeuron):
             if hasattr(e, "debug_info"):
                 bt.logging.debug(f"Debug info: {e.debug_info}")
 
+            # Exit the program if this is a timeout error
+            if "Timed out" in str(e):
+                bt.logging.error(
+                    "❌ Detected timeout error. Exiting program for PM2 to restart."
+                )
+                import sys
+
+                sys.exit(1)
+
     async def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
 
