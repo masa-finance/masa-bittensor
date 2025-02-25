@@ -17,7 +17,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
-from typing import Any, List, Tuple
+from typing import Any, List
 from datetime import datetime, UTC, timedelta
 import aiohttp
 import json
@@ -31,33 +31,44 @@ from masa.synapses import (
 
 from masa.synapses import PingAxonSynapse
 from masa.base.healthcheck import get_external_ip
-from masa.utils.uids import get_random_miner_uids, get_uncalled_miner_uids
+from masa.utils.uids import (
+    get_random_miner_uids,
+    get_uncalled_miner_uids,
+    get_available_uids,
+)
 
-from masa_ai.tools.validator import TrendingQueries, TweetValidator
+# Used only for trending queries functionality
+from masa_ai.tools.validator import TrendingQueries
 
 import re
 import sys
 import os
 
 
-# Add this class to silence masa-ai output
-class SilentOutput:
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        self._original_stderr = sys.stderr
-        sys.stdout = open(os.devnull, "w")
-        sys.stderr = open(os.devnull, "w")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout.close()
-        sys.stdout = self._original_stdout
-        sys.stderr.close()
-        sys.stderr = self._original_stderr
-
-
 class Forwarder:
     def __init__(self, validator):
         self.validator = validator
+
+    def strict_tweet_id_validation(self, tweet_id: str) -> bool:
+        """
+        Strictly validate a tweet ID.
+        - Must be a string of pure ASCII digits
+        - No leading zeros
+        - No invisible/zero-width characters
+        """
+        if not isinstance(tweet_id, str):
+            return False
+
+        # Convert to ASCII-only and check if anything was removed
+        ascii_id = tweet_id.encode("ascii", "ignore").decode()
+        if ascii_id != tweet_id:
+            return False
+
+        # Check if it's a valid numeric string with no leading zeros
+        if not ascii_id.isdigit() or ascii_id.startswith("0"):
+            return False
+
+        return True
 
     async def forward_request(
         self,
@@ -70,6 +81,9 @@ class Forwarder:
             sample_size = self.validator.subnet_config.get("organic").get("sample_size")
         if not timeout:
             timeout = self.validator.subnet_config.get("organic").get("timeout")
+
+        bt.logging.debug(f"Request timeout set to {timeout}s with no retries")
+
         if sequential:
             miner_uids = await get_uncalled_miner_uids(self.validator, k=sample_size)
         else:
@@ -79,12 +93,19 @@ class Forwarder:
             return [], []
 
         async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
-            responses = await dendrite(
-                [self.validator.metagraph.axons[uid] for uid in miner_uids],
-                request,
-                deserialize=True,
-                timeout=timeout,
+            bt.logging.debug(
+                f"Sending request to {len(miner_uids)} miners with {timeout}s timeout"
             )
+            try:
+                responses = await dendrite(
+                    [self.validator.metagraph.axons[uid] for uid in miner_uids],
+                    request,
+                    deserialize=True,
+                    timeout=timeout,
+                )
+            except Exception as e:
+                bt.logging.error(f"Dendrite request failed: {e}")
+                return [], []
 
             formatted_responses = [
                 {"uid": int(uid), "response": response}
@@ -170,17 +191,19 @@ class Forwarder:
         )
         sample_size = self.validator.subnet_config.get("healthcheck").get("sample_size")
         all_responses = []
-        total_axons = len(self.validator.metagraph.axons)
+        miner_uids = get_available_uids(self.validator.metagraph)
+        total_miners = len(miner_uids)
         successful_pings = 0
         failed_pings = 0
 
         bt.logging.info(
-            f"Starting to ping {total_axons} axons in batches of {sample_size}"
+            f"Starting to ping {total_miners} miners in batches of {sample_size}"
         )
 
         async with bt.dendrite(wallet=self.validator.wallet) as dendrite:
-            for i in range(0, total_axons, sample_size):
-                batch = self.validator.metagraph.axons[i : i + sample_size]
+            for i in range(0, total_miners, sample_size):
+                batch_uids = miner_uids[i : i + sample_size]
+                batch = [self.validator.metagraph.axons[uid] for uid in batch_uids]
                 batch_responses = await dendrite(
                     batch,
                     request,
@@ -198,7 +221,7 @@ class Forwarder:
                 failed_pings += batch_failed
 
                 # Progress update every batch
-                progress = min(100, (i + len(batch)) * 100 // total_axons)
+                progress = min(100, (i + len(batch)) * 100 // total_miners)
                 bt.logging.info(
                     f"Ping progress: {progress}% | "
                     f"Success: {successful_pings} | "
@@ -220,15 +243,14 @@ class Forwarder:
                 "status_code": response.dendrite.status_code,
                 "status_message": response.dendrite.status_message,
                 "version": response.version,
-                "uid": all_responses.index(response),
+                "uid": miner_uids[all_responses.index(response)],  # Use actual UID
             }
             for response in all_responses
         ]
 
     async def fetch_twitter_queries(self):
         try:
-            with SilentOutput():
-                trending_queries = TrendingQueries().fetch()
+            trending_queries = TrendingQueries().fetch()
             self.validator.keywords = [
                 query["query"] for query in trending_queries[:10]  # top 10 trends
             ]
@@ -266,112 +288,161 @@ class Forwarder:
             return await self.ping_axons(current_block)
         if len(self.validator.keywords) == 0 or self.check_tempo(current_block):
             await self.fetch_twitter_queries()
-        if len(self.validator.subnet_config) == 0 or self.check_tempo(current_block):
-            await self.fetch_subnet_config()
+        # Comment out the GitHub config fetch to use only the local config
+        # if len(self.validator.subnet_config) == 0 or self.check_tempo(current_block):
+        #     await self.fetch_subnet_config()
+
+        # Reset uncalled_uids if empty
+        if len(self.validator.uncalled_uids) == 0:
+            bt.logging.info("Resetting uncalled UIDs pool with all available miners...")
+            # Reset to ALL miner UIDs (those with validator_trust = 0)
+            miner_uids = [
+                uid
+                for uid in range(self.validator.metagraph.n.item())
+                if self.validator.metagraph.validator_trust[uid] == 0
+            ]
+            self.validator.uncalled_uids = set(miner_uids)
+            bt.logging.info(
+                f"Reset pool with {len(self.validator.uncalled_uids)} miners"
+            )
 
         random_keyword = random.choice(self.validator.keywords)
         query = f'"{random_keyword.strip()}"'
         bt.logging.info(f"Volume checking for: {query}")
+
+        # Add debug logging to check the subnet_config
+        bt.logging.info(f"DEBUG - subnet_config: {self.validator.subnet_config}")
+        bt.logging.info(
+            f"DEBUG - synthetic config: {self.validator.subnet_config.get('synthetic', {})}"
+        )
+
+        timeout = self.validator.subnet_config.get("synthetic").get("timeout")
+        sample_size = self.validator.subnet_config.get("synthetic").get("sample_size")
+
+        # Add debug logging to check the timeout and sample_size
+        bt.logging.info(
+            f"DEBUG - synthetic timeout: {timeout}, sample_size: {sample_size}"
+        )
+
+        bt.logging.info(
+            f"Using timeout of {timeout}s for batch of {sample_size} miners"
+        )
+
         request = RecentTweetsSynapse(
             query=query,
-            timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
+            timeout=timeout,
         )
         responses, miner_uids = await self.forward_request(
             request,
-            sample_size=self.validator.subnet_config.get("synthetic").get(
-                "sample_size"
-            ),
-            timeout=self.validator.subnet_config.get("synthetic").get("timeout"),
+            sample_size=sample_size,
+            timeout=timeout,
             sequential=True,
         )
 
-        all_valid_tweets = []
-        validator = None
-        with SilentOutput():
-            validator = (
-                TweetValidator()
-            )  # Create a single validator instance to reuse guest token
+        # Convert tensor UIDs to regular integers for consistent logging
+        miner_uids = [int(uid) for uid in miner_uids]
+        bt.logging.info(f"📋 Selected {len(miner_uids)} miners | UIDs: {miner_uids}")
+
+        # Track different outcomes
+        no_response_uids = set()
+        empty_response_uids = set()
+        invalid_tweet_uids = set()
+        successful_uids = set()
 
         for response, uid in zip(responses, miner_uids):
             try:
-                valid_tweets = []
-                all_responses = dict(response).get("response", [])
-                if not all_responses:
+                if not response:
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(uid)} FAILED - no response received | Raw: {response}"
+                    )
+                    no_response_uids.add(uid)
                     continue
 
-                # First filter out any tweets with non-numeric IDs and log bad miners
-                valid_tweet_count = 0
-                invalid_tweet_count = 0
-                invalid_ids = []
-                for tweet in all_responses:
-                    if (
+                try:
+                    # First check if we got a None response inside a valid dict
+                    if isinstance(response, dict) and response.get("response") is None:
+                        bt.logging.info(
+                            f"❌ {self.format_miner_info(uid)} FAILED - miner returned None response (likely timeout)"
+                        )
+                        no_response_uids.add(
+                            uid
+                        )  # This is actually a timeout/no response case
+                        continue
+
+                    all_responses = response.get("response", [])
+                    bt.logging.debug(
+                        f"Raw response from {self.format_miner_info(uid)}: {response}"
+                    )
+                except Exception as e:
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(uid)} FAILED - malformed response | Error: {e} | Raw: {response}"
+                    )
+                    empty_response_uids.add(uid)
+                    continue
+
+                if not all_responses:
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(uid)} FAILED - empty response array | Response: {response}"
+                    )
+                    empty_response_uids.add(uid)
+                    continue
+
+                bt.logging.info(
+                    f"Processing {len(all_responses)} tweets from {self.format_miner_info(uid)}"
+                )
+
+                # Flag to track if all tweets passed validation
+                all_tweets_valid = True
+
+                # Validate all tweets first
+                for i, tweet in enumerate(all_responses, 1):
+                    if not (
                         "Tweet" in tweet
                         and "ID" in tweet["Tweet"]
                         and tweet["Tweet"]["ID"]
-                    ):  # Ensure ID exists and is not empty
-                        tweet_id = tweet["Tweet"]["ID"].strip()
-                        if tweet_id.isdigit():  # Must be purely numeric
-                            valid_tweets.append(tweet)
-                            valid_tweet_count += 1
-                        else:
-                            invalid_ids.append(tweet_id)
-                            invalid_tweet_count += 1
-                    else:
-                        invalid_tweet_count += 1
-
-                if invalid_tweet_count > 0:
-                    bt.logging.debug(
-                        f"Miner {uid} submitted {invalid_tweet_count} invalid tweets out of {len(all_responses)}"
-                    )
-                    # Give zero score for submitting any invalid tweets
-                    self.validator.scorer.add_volume(int(uid), 0, current_block)
-                    continue  # Skip further processing for this miner
-
-                # Deduplicate valid tweets using numeric IDs
-                unique_tweets_response = list(
-                    {tweet["Tweet"]["ID"]: tweet for tweet in valid_tweets}.values()
-                )
-
-                if not unique_tweets_response:  # If no valid tweets after filtering
-                    bt.logging.debug(f"Miner {uid} had no valid tweets after filtering")
-                    continue
-
-                # Continue with validation of a random tweet from the valid set
-                random_tweet = dict(random.choice(unique_tweets_response)).get(
-                    "Tweet", {}
-                )
-
-                # Add exponential backoff for rate limits
-                retry_count = 0
-                max_retries = 3
-                while retry_count < max_retries:
-                    try:
-                        is_valid = validator.validate_tweet(
-                            random_tweet.get("ID"),
-                            random_tweet.get("Name"),
-                            random_tweet.get("Username"),
-                            random_tweet.get("Text"),
-                            random_tweet.get("Timestamp"),
-                            random_tweet.get("Hashtags"),
+                    ):
+                        bt.logging.info(
+                            f"❌ {self.format_miner_info(uid)} FAILED - malformed tweet at position {i}/{len(all_responses)} | Tweet: {tweet}"
                         )
-                        break
-                    except Exception as e:
-                        if "429" in str(e) and retry_count < max_retries - 1:
-                            wait_time = (2**retry_count) * 5  # 5, 10, 20 seconds
-                            bt.logging.warning(
-                                f"Rate limited, waiting {wait_time} seconds before retry"
-                            )
-                            await asyncio.sleep(wait_time)
-                            retry_count += 1
-                        else:
-                            bt.logging.error(
-                                f"Failed to validate tweet after {retry_count} retries: {e}"
-                            )
-                            is_valid = False
-                            break
+                        all_tweets_valid = False
+                        break  # Break inner loop
 
-                # Always wait at least 2 seconds between validations
-                await asyncio.sleep(2)
+                    tweet_id = tweet["Tweet"]["ID"]
+                    if not self.strict_tweet_id_validation(tweet_id):
+                        bt.logging.info(
+                            f"❌ {self.format_miner_info(uid)} FAILED - invalid tweet ID at position {i}/{len(all_responses)} | ID: {tweet_id}\n"
+                            f"    Tweet Text: {tweet['Tweet'].get('Text', 'NO_TEXT')}\n"
+                            f"    Full Tweet: {tweet}"
+                        )
+                        all_tweets_valid = False
+                        break  # Break inner loop
+
+                bt.logging.info(
+                    f"✅ {self.format_miner_info(uid)} PASSED - {len(all_responses)} valid tweets"
+                )
+
+                # Check for duplicates - if number of unique IDs doesn't match total tweets, batch has duplicates
+                unique_ids = {tweet["Tweet"]["ID"] for tweet in all_responses}
+                if len(unique_ids) != len(all_responses):
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(uid)} FAILED - batch contains duplicates"
+                    )
+                    all_tweets_valid = False
+                    continue  # Skip to next miner
+
+                # Continue with validation of a random tweet from the set
+                random_tweet = dict(random.choice(all_responses)).get("Tweet", {})
+
+                # Add detailed logging of the sample tweet
+                bt.logging.info(
+                    f"\n🔍 Sample Tweet Validation Details for {self.format_miner_info(uid)}:\n"
+                    f"    ID: {random_tweet.get('ID')}\n"
+                    f"    Text: {random_tweet.get('Text', 'NO_TEXT')}\n"
+                    f"    Username: {random_tweet.get('Username', 'NO_USERNAME')}\n"
+                    f"    Name: {random_tweet.get('Name', 'NO_NAME')}\n"
+                    f"    Timestamp: {datetime.fromtimestamp(random_tweet.get('Timestamp', 0), UTC)}\n"
+                    f"    URL: {self.format_tweet_url(random_tweet.get('ID'))}"
+                )
 
                 query_words = (
                     self.normalize_whitespace(random_keyword.replace('"', ""))
@@ -401,9 +472,10 @@ class Forwarder:
                 )
 
                 if not query_in_tweet:
-                    bt.logging.debug(
-                        f"Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                    bt.logging.info(
+                        f"❌ Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
+                    all_tweets_valid = False
 
                 tweet_timestamp = datetime.fromtimestamp(
                     random_tweet.get("Timestamp", 0), UTC
@@ -416,57 +488,129 @@ class Forwarder:
 
                 if not is_since_date_requested:
                     bt.logging.debug(
-                        f"Tweet timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                        f"❌ Timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
+                    all_tweets_valid = False
 
-                # note, they passed the spot check!
-                if is_valid and query_in_tweet and is_since_date_requested:
-                    bt.logging.info(
-                        f"Tweet validation passed: {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
-                    for tweet in unique_tweets_response:
-                        if tweet:
-                            valid_tweets.append(tweet)
-                else:
-                    bt.logging.info(
-                        f"Tweet validation failed: {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
-
-                all_valid_tweets.extend(valid_tweets)
+                # Log validation results for both checks
+                tweet_url = self.format_tweet_url(random_tweet.get("ID"))
+                bt.logging.info(
+                    f"{'✅' if query_in_tweet else '❌'} Query match ({random_keyword}): {tweet_url}"
+                )
+                bt.logging.info(
+                    f"{'✅' if is_since_date_requested else '❌'} Timestamp ({tweet_timestamp.strftime('%Y-%m-%d %H:%M:%S')} >= {yesterday.strftime('%Y-%m-%d')}): {tweet_url}"
+                )
 
                 # note, score only unique tweets per miner (uid)
                 uid_int = int(uid)
 
                 if not self.validator.tweets_by_uid.get(uid_int):
                     self.validator.tweets_by_uid[uid_int] = {
-                        tweet["Tweet"]["ID"] for tweet in valid_tweets
+                        tweet["Tweet"]["ID"] for tweet in all_responses
                     }
+                    new_tweet_count = len(all_responses)
                     self.validator.scorer.add_volume(
-                        uid_int, len(valid_tweets), current_block
+                        uid_int, new_tweet_count, current_block
                     )
-                    bt.logging.debug(
-                        f"Miner {uid_int} produced {len(valid_tweets)} new tweets"
+                    bt.logging.info(
+                        f"First submission from {self.format_miner_info(uid_int)}: {new_tweet_count} new tweets"
                     )
                 else:
                     existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
-                    new_tweet_ids = {tweet["Tweet"]["ID"] for tweet in valid_tweets}
+                    new_tweet_ids = {tweet["Tweet"]["ID"] for tweet in all_responses}
                     updates = new_tweet_ids - existing_tweet_ids
+                    duplicate_with_history = len(new_tweet_ids) - len(updates)
+
+                    if duplicate_with_history > 0:
+                        bt.logging.info(
+                            f"Found {duplicate_with_history} previously seen tweets from {self.format_miner_info(uid_int)} "
+                            f"(reduced from {len(new_tweet_ids)} to {len(updates)} new tweets)"
+                        )
+                    else:
+                        bt.logging.debug(
+                            f"All {len(new_tweet_ids)} tweets from {self.format_miner_info(uid_int)} are new"
+                        )
+
                     self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
                     self.validator.scorer.add_volume(
                         uid_int, len(updates), current_block
                     )
-                    bt.logging.debug(
-                        f"Miner {uid_int} produced {len(updates)} new tweets"
+
+                # If all tweets passed validation, export this batch
+                if all_tweets_valid:
+                    bt.logging.info(
+                        f"✅ All tweets from {self.format_miner_info(uid)} passed validation, exporting batch"
                     )
+
+                    # DETAILED EXPORT LOGGING
+                    tweet_ids = [tweet["Tweet"]["ID"] for tweet in all_responses]
+                    bt.logging.info(
+                        f"🚀 EXPORTING {len(all_responses)} tweets from {self.format_miner_info(uid)}"
+                    )
+                    # Show just the first few IDs as examples
+                    sample_size = min(3, len(tweet_ids))
+                    if sample_size > 0:
+                        sample_ids = tweet_ids[:sample_size]
+                        bt.logging.info(
+                            f"Sample IDs: {sample_ids}{' + more...' if len(tweet_ids) > sample_size else ''}"
+                        )
+
+                    # Add TimeParsed field to each tweet before export
+                    current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                    for tweet in all_responses:
+                        if "Tweet" in tweet:
+                            tweet["Tweet"]["TimeParsed"] = current_time_str
+
+                    # Log details of what's being exported without redundant deduplication
+                    for i, tweet in enumerate(
+                        all_responses[:3]
+                    ):  # Log first 3 tweets as sample
+                        bt.logging.info(
+                            f"  Tweet {i+1}/{min(3, len(all_responses))} Sample:\n"
+                            f"    ID: {tweet['Tweet']['ID']}\n"
+                            f"    Text: {tweet['Tweet'].get('Text', '')[:100]}...\n"
+                            f"    URL: {self.format_tweet_url(tweet['Tweet']['ID'])}\n"
+                            f"    TimeParsed: {tweet['Tweet']['TimeParsed']}\n"
+                        )
+
+                    if len(all_responses) > 3:
+                        bt.logging.info(
+                            f"  ... and {len(all_responses) - 3} more tweets"
+                        )
+
+                    # Export valid batch directly to API
+                    await self.validator.export_tweets(
+                        all_responses,
+                        query.strip().replace('"', ""),
+                    )
+                    successful_uids.add(uid)
+                else:
+                    bt.logging.info(
+                        f"❌ Not all tweets from {self.format_miner_info(uid)} passed validation, skipping batch"
+                    )
+                    invalid_tweet_uids.add(uid)
             except Exception as e:
                 bt.logging.error(f"Error processing miner {uid}: {e}")
                 continue
 
-        # Send tweets to API
-        await self.validator.export_tweets(
-            list({tweet["Tweet"]["ID"]: tweet for tweet in all_valid_tweets}.values()),
-            query.strip().replace('"', ""),
-        )
+        # Log detailed summary of all miners
+        bt.logging.info("📊 Miner Response Summary:")
+        if no_response_uids:
+            bt.logging.info(
+                f"  No Response ({len(no_response_uids)}): {sorted(no_response_uids)}"
+            )
+        if empty_response_uids:
+            bt.logging.info(
+                f"  Empty Response ({len(empty_response_uids)}): {sorted(empty_response_uids)}"
+            )
+        if invalid_tweet_uids:
+            bt.logging.info(
+                f"  Invalid Tweets ({len(invalid_tweet_uids)}): {sorted(invalid_tweet_uids)}"
+            )
+        if successful_uids:
+            bt.logging.info(
+                f"  Successful ({len(successful_uids)}): {sorted(successful_uids)}"
+            )
 
         # note, set the last volume block to the current block
         self.validator.last_volume_block = current_block
@@ -550,3 +694,13 @@ class Forwarder:
         except Exception as e:
             bt.logging.error(f"Error in spot check for miner {uid}: {e}")
             return False
+
+    # Helper function to format miner info
+    def format_miner_info(self, uid: int) -> str:
+        """Format miner info with TaoStats link using hotkey."""
+        try:
+            hotkey = self.validator.metagraph.hotkeys[uid]
+            return f"Miner {uid} (https://taostats.io/hotkey/{hotkey})"
+        except (IndexError, AttributeError):
+            # Fallback if we can't get the hotkey for some reason
+            return f"Miner {uid}"

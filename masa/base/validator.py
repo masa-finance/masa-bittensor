@@ -24,11 +24,13 @@ import asyncio
 import aiohttp
 import argparse
 import bittensor as bt
+import random
 
 from typing import List
 
 from masa.base.neuron import BaseNeuron
 from masa.utils.config import add_validator_args
+from masa.utils.uids import get_available_uids
 
 from masa.validator.scorer import Scorer
 from masa.validator.forwarder import Forwarder
@@ -51,7 +53,6 @@ class BaseValidatorNeuron(BaseNeuron):
     def __init__(self, config=None):
         self.versions = []
         self.keywords = []
-        self.uncalled_uids = set()
         self.volume_window = 6
         self.tweets_by_uid = {}
         self.volumes = []
@@ -63,7 +64,7 @@ class BaseValidatorNeuron(BaseNeuron):
         """Run the validator forever."""
         while True:
             current_block = await self.block
-            bt.logging.info(f"Syncing at block {current_block}")
+            bt.logging.info(f"🔄 Syncing at block {current_block}")
             # Sync the metagraph
             # This is in neuron.py
             # It will check registration
@@ -89,6 +90,13 @@ class BaseValidatorNeuron(BaseNeuron):
         self.scorer = Scorer(self)
 
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+        # Initialize uncalled_uids with ALL miner UIDs
+        miner_uids = [
+            uid
+            for uid in range(self.metagraph.n.item())
+            if self.metagraph.validator_trust[uid] == 0
+        ]
+        self.uncalled_uids = set(miner_uids)
         subnet_params = await self.subtensor.get_subnet_hyperparameters(
             self.config.netuid
         )
@@ -102,16 +110,16 @@ class BaseValidatorNeuron(BaseNeuron):
         self.last_healthcheck_block = 0
         self.last_weights_block = await self.block  # Set this to current block at init
 
-        # load config file for subnet specific settings as default
-        # note, every tempo we fetch the latest config file from github main branch
+        # Load subnet configuration from local config.json file
         with open("config.json", "r") as config_file:
             config = json.load(config_file)
-            network = (
+            network_type = (
                 "testnet" if self.config.subtensor.network == "test" else "mainnet"
             )
-            subnet_config = config.get(network, {})
-            bt.logging.info(f"Loaded subnet config: {subnet_config}")
-            self.subnet_config = subnet_config
+            self.subnet_config = config.get(network_type, {})
+            bt.logging.info(
+                f"Loaded {network_type} subnet config from local file: {self.subnet_config}"
+            )
 
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.scores = torch.zeros(
@@ -119,16 +127,18 @@ class BaseValidatorNeuron(BaseNeuron):
         )
         bt.logging.info("Loading state...")
         self.load_state()
+
         # Serve axon to enable external connections.
-        if not self.config.neuron.axon_off:
-            await self.serve_axon()
-        else:
-            bt.logging.warning("axon off, not serving ip to chain.")
+        await self.serve_axon()
 
         self._is_initialized = True
 
     async def serve_axon(self):
         """Serve axon to enable external connections."""
+        if self.config.neuron.axon_off:
+            bt.logging.info("🥷 Axon disabled, not serving to chain")
+            return
+
         bt.logging.info("serving ip to chain...")
         try:
             self.axon = bt.axon(
@@ -141,7 +151,7 @@ class BaseValidatorNeuron(BaseNeuron):
                     axon=self.axon,
                 )
                 bt.logging.info(
-                    f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+                    f"Running validator {self.axon} on network: {self.config.subtensor.network} with netuid: {self.config.netuid}"
                 )
             except Exception as e:
                 bt.logging.error(f"Failed to serve Axon with exception: {e}")
@@ -150,7 +160,7 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
 
     async def healthcheck(self):
-        """Run health check and auto-update."""
+        """Run health check."""
         try:
             # Check if current endpoint is responsive
             try:
@@ -158,51 +168,54 @@ class BaseValidatorNeuron(BaseNeuron):
             except Exception as e:
                 bt.logging.error(f"Failed to get current block: {e}")
 
-            # Fetch latest config from GitHub
-            await self.update_config()
-
         except Exception as e:
             bt.logging.error(f"Error in health check: {e}")
             # Don't raise, let it continue to next loop
 
-    async def update_config(self):
-        """Update config from GitHub."""
-        try:
-            # Implement config update logic here
-            pass
-        except Exception as e:
-            bt.logging.error(f"Error updating config: {e}")
-
     async def should_set_weights(self) -> bool:
-        bt.logging.info("Checking if we should set weights")
+        bt.logging.info("🔍 Checking weight setting conditions...")
+
         # Skip if weights are disabled in config
         if self.config.neuron.disable_set_weights:
-            bt.logging.info("❌ Weights disabled in config")
+            bt.logging.info("❌ Weight setting disabled in config")
             return False
 
         # Count how many UIDs have non-zero scores
         scored_uids = (self.scores > 0).sum().item()
-        if scored_uids < 150:
-            bt.logging.info(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
-            return False
+        bt.logging.info(f"📊 Current state: {scored_uids} UIDs with non-zero scores")
+
+        # Get network type from subnet_config loaded earlier from config.json
+        # Check if we loaded a mainnet configuration
+        is_mainnet = self.subnet_config.get("network_type", "") == "mainnet"
+
+        # Check for minimum scored UIDs only on mainnet
+        if is_mainnet:
+            # For mainnet, require at least 150 scored UIDs
+            if scored_uids < 150:
+                bt.logging.info(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
+                return False
+        else:
+            # For all other networks (testnet, etc.), don't enforce the minimum scored UIDs
+            bt.logging.info(
+                "📊 Not running on mainnet - bypassing minimum scored UIDs requirement"
+            )
 
         # Check if enough blocks have elapsed since last update
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]
-        bt.logging.info(f"Blocks elapsed since last update: {blocks_elapsed}")
 
         # Only allow setting weights if enough blocks elapsed
         if blocks_elapsed <= 100 and not self.first_run:
             bt.logging.info(
-                f"{blocks_elapsed} blocks elapsed since last weight setting"
+                f"⏳ Too soon to set weights ({blocks_elapsed}/100 blocks since last update)"
             )
             return False
 
         if self.first_run:
-            bt.logging.info("✅ Initial weight setting")
+            bt.logging.info("✅ First run - will attempt to set initial weights")
             self.first_run = False
         else:
             bt.logging.info(
-                f"✅ Will set weights: {scored_uids} scored UIDs and {blocks_elapsed} blocks elapsed > 100"
+                f"✅ Ready to set weights ({scored_uids} scored UIDs, {blocks_elapsed} blocks elapsed)"
             )
 
         return True
@@ -224,13 +237,19 @@ class BaseValidatorNeuron(BaseNeuron):
             return
 
         # Use raw scores directly - let process_weights_for_netuid handle normalization
-        bt.logging.info(f"🛰️ Setting weights on {self.config.subtensor.network} ...")
+        bt.logging.info(
+            f"Attempting to set weights on {self.config.subtensor.network} ..."
+        )
+
+        # Always convert to NumPy array - known to work in prod
+        raw_weights = self.scores.to("cpu").numpy()
+
         (
             processed_weight_uids,
             processed_weights,
         ) = await process_weights_for_netuid(
             uids=self.metagraph.uids,
-            weights=self.scores.to("cpu").numpy(),  # Pass raw scores
+            weights=raw_weights,  # Pass raw scores
             netuid=self.config.netuid,
             subtensor=self.subtensor,
             metagraph=self.metagraph,
@@ -250,6 +269,15 @@ class BaseValidatorNeuron(BaseNeuron):
         import datetime
         import json
 
+        # Log all registered miners' scores
+        bt.logging.info("Miner scores (including zeros):")
+        for uid in range(len(self.metagraph.hotkeys)):
+            hotkey = self.metagraph.hotkeys[uid]
+            score = float(self.scores[uid]) if uid < len(self.scores) else 0.0
+            bt.logging.info(
+                f"Miner {uid} (https://taostats.io/hotkey/{hotkey}): {score:.6f}"
+            )
+
         # Convert weights to the format in scores.log
         weights_list = [
             {"uid": int(uid), "weight": float(weight * 65535)}  # Scale to u16::MAX
@@ -268,8 +296,8 @@ class BaseValidatorNeuron(BaseNeuron):
         try:
             with open(log_file, "a") as f:
                 f.write(json.dumps(log_entry) + "\n")
-            bt.logging.info(
-                f"Successfully logged weights for {len(uint_uids)} uids to {log_file}"
+            bt.logging.success(
+                f"Logged weights for {len(uint_uids)} uids to {log_file}"
             )
             bt.logging.info(
                 f"Weight stats - Min: {self.scores.min():.6f}, Max: {self.scores.max():.6f}, Mean: {self.scores.mean():.6f}"
@@ -343,9 +371,17 @@ class BaseValidatorNeuron(BaseNeuron):
             if hasattr(e, "debug_info"):
                 bt.logging.debug(f"Debug info: {e.debug_info}")
 
+            # Exit the program if this is a timeout error
+            if "Timed out" in str(e):
+                bt.logging.error(
+                    "❌ Detected timeout error. Exiting program for PM2 to restart."
+                )
+                import sys
+
+                sys.exit(1)
+
     async def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
-        bt.logging.info("resync_metagraph()")
 
         # Copies state of metagraph before syncing.
         previous_metagraph = copy.deepcopy(self.metagraph)
@@ -397,6 +433,33 @@ class BaseValidatorNeuron(BaseNeuron):
         api_url = self.config.validator.export_url
         if api_url:
             try:
+                # Add debug logging for TimeParsed field checks
+                if tweets:
+                    bt.logging.info(f"Tweet count before export: {len(tweets)}")
+
+                    # Check if TimeParsed exists in the first few tweets
+                    for i, tweet in enumerate(tweets[:3]):
+                        tweet_data = tweet.get("Tweet", {})
+                        tweet_id = tweet_data.get("ID", "unknown")
+                        time_parsed = tweet_data.get("TimeParsed", "MISSING")
+                        bt.logging.info(
+                            f"Tweet {i+1} ID={tweet_id}, TimeParsed={time_parsed}"
+                        )
+
+                # Randomly sample and print 3 tweets from the batch with more details
+                if tweets:
+                    sample_size = min(3, len(tweets))
+                    sample_tweets = random.sample(tweets, sample_size)
+                    bt.logging.debug(
+                        f"Randomly sampled {sample_size} tweets before sending to protocol API:"
+                    )
+                    for i, tweet in enumerate(sample_tweets):
+                        tweet_data = tweet.get("Tweet", {})
+                        tweet_id = tweet_data.get("ID", "unknown")
+                        bt.logging.debug(
+                            f"  Sample tweet {i+1}: ID={tweet_id}, Type={type(tweet_id)}, ASCII={tweet_id.encode('ascii', 'ignore').decode() == tweet_id}"
+                        )
+
                 async with aiohttp.ClientSession() as session:
                     for i in range(0, len(tweets), 1000):
                         chunk = tweets[i : i + 1000]
@@ -405,8 +468,20 @@ class BaseValidatorNeuron(BaseNeuron):
                             "Query": query,
                             "Tweets": chunk,
                         }
+
+                        # Debug log the payload structure (first tweet only)
+                        if chunk and "Tweet" in chunk[0]:
+                            first_tweet = chunk[0]["Tweet"]
+                            bt.logging.info(
+                                f"Payload first tweet TimeParsed: {first_tweet.get('TimeParsed', 'MISSING')}"
+                            )
+                            bt.logging.info(
+                                f"Payload first tweet keys: {list(first_tweet.keys())}"
+                            )
+
                         async with session.post(api_url, json=payload) as response:
-                            if response.status == 200:
+                            response_text = await response.text()
+                            if response.status == 200 or response.status == 206:
                                 bt.logging.info(
                                     f"Data sent to protocol API for chunk {i}"
                                 )
@@ -414,6 +489,7 @@ class BaseValidatorNeuron(BaseNeuron):
                                 bt.logging.error(
                                     f"Failed to send data to protocol API for chunk {i}: {response.status}"
                                 )
+                                bt.logging.error(f"Response body: {response_text}")
                         await asyncio.sleep(1)  # Wait for 1 second between requests
             except Exception as e:
                 bt.logging.error(
@@ -448,7 +524,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 None, lambda: os.replace(temp_path, save_path)
             )
 
-            bt.logging.info(f"Successfully saved state to {save_path}")
+            bt.logging.success(f"Saved state to {save_path}")
 
         except Exception as e:
             bt.logging.error(f"Failed to save state: {str(e)}")

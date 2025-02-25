@@ -6,29 +6,30 @@ from typing import List
 
 def check_uid_availability(metagraph: "bt.metagraph.Metagraph", uid: int) -> bool:
     """
-    Check if uid is available. The UID should be available if it is serving and has less
-    than vpermit_tao_limit stake
+    Check if uid is available. The UID should be available if:
+    1. It is not a validator (validator_trust == 0)
+    2. It is serving
+    3. Has proper validator permit configuration
 
     Args:
         metagraph (:obj: bt.metagraph.Metagraph): Metagraph object
         uid (int): uid to be checked
-        vpermit_tao_limit (int): Validator permit tao limit
     Returns:
         bool: True if uid is available, False otherwise
     """
-    # Filter non serving axons.
-    if not metagraph.axons[uid].is_serving:
-        bt.logging.info(f"UID: {uid} is not serving")
+    # First filter out validators
+    if metagraph.validator_trust[uid] > 0:
         return False
 
-    # Filter out non validator permit.
-    if metagraph.validator_permit[uid]:
+    # Then filter non serving axons
+    if not metagraph.axons[uid].is_serving:
+        hotkey = metagraph.hotkeys[uid]
+        bt.logging.info(
+            f"Miner {uid} is not serving - https://taostats.io/hotkey/{hotkey}"
+        )
+        return False
 
-        # Filter out uid without IP.
-        if metagraph.neurons[uid].axon_info.ip == "0.0.0.0":
-            return False
-
-    # Available otherwise.
+    # Available if it's a serving miner
     return True
 
 
@@ -107,15 +108,27 @@ async def get_uncalled_miner_uids(
                 self.config.netuid
             )
             weights_version = subnet_params.weights_version
+
+            # Ensure versions list is properly sized
+            if len(self.versions) < self.metagraph.n.item():
+                self.versions = [0] * self.metagraph.n.item()
+
             version_checked_uids = [
-                uid for uid in healthy_uids if self.versions[uid] >= weights_version
+                uid
+                for uid in healthy_uids
+                if uid < len(self.versions) and self.versions[uid] >= weights_version
             ]
             self.uncalled_uids = set(version_checked_uids)
 
         k = min(k, len(self.uncalled_uids))
+        if k == 0:
+            bt.logging.warning("No available uncalled UIDs found")
+            return None
+
         random_sample = random.sample(list(self.uncalled_uids), k)
-        bt.logging.info(f"Selected {len(random_sample)} miners to query")
-        bt.logging.info(f"Selected UIDs: {random_sample}")
+        bt.logging.info(
+            f"📋 Selected {len(random_sample)} miners | UIDs: {random_sample}"
+        )
         self.uncalled_uids.difference_update(random_sample)
         bt.logging.debug(f"Remaining UIDs in pool: {list(self.uncalled_uids)}")
         uids = torch.tensor(random_sample)

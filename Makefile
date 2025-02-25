@@ -7,12 +7,11 @@ NETWORK ?= main
 
 # Network-specific configurations
 ifeq ($(NETWORK),test)
-    SUBTENSOR_NETWORK = network test
-    SUBTENSOR_CHAIN = chain_endpoint wss://test.finney.opentensor.ai
+    SUBTENSOR_CHAIN = network test
     NETUID = 165
 else ifeq ($(NETWORK),main)
-    SUBTENSOR_NETWORK = network finney
-    SUBTENSOR_CHAIN = chain_endpoint wss://entrypoint-finney.masa.ai
+    SUBTENSOR_CHAIN = network finney 
+#    SUBTENSOR_CHAIN = network wss://entrypoint-finney.masa.ai
     NETUID = 42
 else
     $(error Invalid network specified. Use NETWORK=test or NETWORK=main)
@@ -26,45 +25,45 @@ list-wallets:
 	btcli wallet list
 
 overview-all:
-	btcli wallet overview --all --subtensor.$(SUBTENSOR_NETWORK)
+	btcli wallet overview --all --subtensor.$(SUBTENSOR_CHAIN)
 
 balance-all:
-	btcli wallet balance --all --subtensor.$(SUBTENSOR_NETWORK)
+	btcli wallet balance --all --subtensor.$(SUBTENSOR_CHAIN)
 
 list-subnets:
-	btcli subnets list --subtensor.$(SUBTENSOR_NETWORK)
+	btcli subnets list --subtensor.$(SUBTENSOR_CHAIN)
 
 register-miner:
-	btcli subnet register --wallet.name miner --wallet.hotkey default --subtensor.$(SUBTENSOR_NETWORK) --netuid $(NETUID)
+	btcli subnet register --wallet.name miner --wallet.hotkey default --subtensor.$(SUBTENSOR_CHAIN) --netuid $(NETUID)
 
 register-validator:
-	btcli subnet register --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_NETWORK) --netuid $(NETUID)
+	btcli subnet register --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_CHAIN) --netuid $(NETUID)
 
 register-validator-root:
-	btcli root register --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_NETWORK)
+	btcli root register --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_CHAIN)
 
 stake-validator:
-	btcli stake add --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_NETWORK) --netuid $(NETUID)
+	btcli stake add --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_CHAIN) --netuid $(NETUID)
 
 boost-root:
-	btcli root boost --netuid $(NETUID) --increase 1 --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_NETWORK)
+	btcli root boost --netuid $(NETUID) --increase 1 --wallet.name validator --wallet.hotkey default --subtensor.$(SUBTENSOR_CHAIN)
 
 set-weights:
-	btcli root weights --subtensor.$(SUBTENSOR_NETWORK)
+	btcli root weights --subtensor.$(SUBTENSOR_CHAIN)
 
 run-miner:
 	@echo "Running miner on $(NETWORK)net (netuid: $(NETUID))"
-	python3 neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_NETWORK) --subtensor.$(SUBTENSOR_CHAIN) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug --blacklist.force_validator_permit
+	python neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_CHAIN) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug --blacklist.force_validator_permit
 
 run-validator:
 	@echo "Running validator on $(NETWORK)net (netuid: $(NETUID))"
-	python3 neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_NETWORK) --subtensor.$(SUBTENSOR_CHAIN) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.info --logging.info --neuron.axon_off
+	python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_CHAIN) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.info --logging.info --neuron.axon_off
 
 hyperparameters:
-	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_NETWORK) --netuid $(NETUID)
+	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_CHAIN) --netuid $(NETUID)
 
 metagraph:
-	btcli subnets metagraph --subtensor.$(SUBTENSOR_NETWORK) --netuid $(NETUID)
+	btcli subnets metagraph --subtensor.$(SUBTENSOR_CHAIN) --netuid $(NETUID)
 
 test-miner:
 	pytest -s -p no:warnings tests/test_miner.py

@@ -257,3 +257,6 @@ widgetsnbextension==4.0.13
 xattr==1.1.0
 xxhash==3.5.0
 yarl==1.18.3
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.0

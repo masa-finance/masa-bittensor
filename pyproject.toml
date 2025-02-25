@@ -7,7 +7,7 @@ packages = ["masa"]
 
 [project]
 name = "masa"
-version = "1.2.0"
+version = "1.5.0"
 description = "bittensor subnet for masa protocol"
 authors = [
     { name = "masa.ai", email = "hello@masa.ai" }
@@ -29,5 +29,18 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-
-
+dependencies = [
+    "bittensor>=9.0.0",
+    "masa-ai>=0.2.7",
+    "aiohttp>=3.10.11",
+    "fastapi>=0.110.3",
+    "loguru>=0.7.3",
+    "python-dotenv>=1.0.1",
+    "pydantic>=2.2.3",
+    "uvicorn>=0.30.5",
+    "tqdm>=4.67.1",
+    "numpy>=2.0.2",
+    "pandas>=2.2.3",
+    "torch>=2.3.0",
+    "scipy>=1.15.0"
+]

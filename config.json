@@ -21,8 +21,8 @@
       "timeout": 10
     },
     "synthetic": {
-      "timeout": 10,
-      "sample_size": 5,
+      "timeout": 60,
+      "sample_size": 20,
       "blocks": 1
     },
     "healthcheck": {

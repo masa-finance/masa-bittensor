@@ -64,9 +64,7 @@ class BaseNeuron(ABC):
 
     def __init__(self, config=None):
         """Synchronous initialization of basic attributes."""
-        base_config = copy.deepcopy(config or self.config())
-
-        self.config = base_config
+        self.config = config  # Just store the config, don't initialize
         self.device = None
         self.wallet = None
         self.subtensor = None
@@ -80,6 +78,12 @@ class BaseNeuron(ABC):
         if self._is_initialized:
             return
 
+        # Initialize config if not already set
+        if not self.config:
+            self.config = self.config()
+        elif config:  # If new config passed to initialize
+            self.config = config
+
         self.check_config(self.config)
 
         # Set up logging with the provided configuration and directory.
@@ -92,14 +96,13 @@ class BaseNeuron(ABC):
         # If a gpu is required, set the device to cuda:N (e.g. cuda:0)
         self.device = self.config.neuron.device
 
-        # Log the configuration for reference.
-        bt.logging.info(self.config)
-
         # Build Bittensor objects
         # These are core Bittensor classes to interact with the network.
         bt.logging.info("Setting up bittensor objects.")
+        bt.logging.info(f"Using network: {self.config.subtensor.network}")
 
         self.wallet = bt.wallet(config=self.config)
+        # Initialize subtensor with only chain endpoint
         self.subtensor = bt.AsyncSubtensor(config=self.config)
         await self.subtensor.initialize()
 
@@ -123,12 +126,12 @@ class BaseNeuron(ABC):
                 f"🟡 Code is outdated based on subnet requirements!  Required: {weights_version}, Current: {self.spec_version}.  Please update your code to the latest release!"
             )
         else:
-            bt.logging.success(f"🟢 Code is up to date based on subnet requirements!")
+            bt.logging.success("🟢 Code is up to date based on subnet requirements!")
 
         # Each miner gets a unique identity (UID) in the network for differentiation.
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
-        bt.logging.info(
-            f"Running neuron on subnet: {self.config.netuid} with uid {self.uid} using network: {self.subtensor.chain_endpoint}"
+        bt.logging.success(
+            f"🚀 Running neuron on subnet: {self.config.netuid} with uid {self.uid}"
         )
         self.step = 0
         self._is_initialized = True

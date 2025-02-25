@@ -260,6 +260,13 @@ def add_validator_args(cls, parser):
         default="https://test.protocol-api.masa.ai/v1.0.0/subnet/tweets",
     )
 
+    parser.add_argument(
+        "--validator.use_masa_ai_validation",
+        action="store_true",
+        help="Use masa-ai for tweet validation",
+        default=False,
+    )
+
 
 def config(cls):
     """

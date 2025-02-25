@@ -6,7 +6,7 @@ class RecentTweetsSynapse(bt.Synapse):
     query: str
     count: Optional[int] = None
     response: Optional[Any] = None
-    timeout: Optional[int] = 10
+    timeout: Optional[int] = 60
 
     def deserialize(self) -> Optional[Any]:
         return self.response
