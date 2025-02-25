@@ -160,8 +160,8 @@ class ProcessManager:
             f"--axon.port={axon_port}",
             f"--prometheus.port={prometheus_port}",
             f"--grafana.port={grafana_port}",
-            "--logging.info",
-            "--neuron.info",
+            "--logging.debug",
+            "--neuron.debug",
         ]
 
         if network == "test":

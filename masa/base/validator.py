@@ -240,12 +240,21 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.info(
             f"Attempting to set weights on {self.config.subtensor.network} ..."
         )
+
+        # Add debug logging to understand the types and use_torch value
+        from bittensor.utils.registration import use_torch
+
+        raw_weights = self.scores.to("cpu").numpy()
+        bt.logging.debug(f"DIAGNOSTIC - use_torch() returns: {use_torch()}")
+        bt.logging.debug(f"DIAGNOSTIC - self.scores type: {type(self.scores)}")
+        bt.logging.debug(f"DIAGNOSTIC - raw_weights type: {type(raw_weights)}")
+
         (
             processed_weight_uids,
             processed_weights,
         ) = await process_weights_for_netuid(
             uids=self.metagraph.uids,
-            weights=self.scores.to("cpu").numpy(),  # Pass raw scores
+            weights=raw_weights,  # Pass raw scores
             netuid=self.config.netuid,
             subtensor=self.subtensor,
             metagraph=self.metagraph,
@@ -431,9 +440,7 @@ class BaseValidatorNeuron(BaseNeuron):
             try:
                 # Add debug logging for TimeParsed field checks
                 if tweets:
-                    bt.logging.info(
-                        f"DEBUG EXPORT: Tweet count before export: {len(tweets)}"
-                    )
+                    bt.logging.info(f"Tweet count before export: {len(tweets)}")
 
                     # Check if TimeParsed exists in the first few tweets
                     for i, tweet in enumerate(tweets[:3]):
@@ -441,7 +448,7 @@ class BaseValidatorNeuron(BaseNeuron):
                         tweet_id = tweet_data.get("ID", "unknown")
                         time_parsed = tweet_data.get("TimeParsed", "MISSING")
                         bt.logging.info(
-                            f"DEBUG EXPORT: Tweet {i+1} ID={tweet_id}, TimeParsed={time_parsed}"
+                            f"Tweet {i+1} ID={tweet_id}, TimeParsed={time_parsed}"
                         )
 
                 # Randomly sample and print 3 tweets from the batch with more details
@@ -471,10 +478,10 @@ class BaseValidatorNeuron(BaseNeuron):
                         if chunk and "Tweet" in chunk[0]:
                             first_tweet = chunk[0]["Tweet"]
                             bt.logging.info(
-                                f"DEBUG EXPORT: Payload first tweet TimeParsed: {first_tweet.get('TimeParsed', 'MISSING')}"
+                                f"Payload first tweet TimeParsed: {first_tweet.get('TimeParsed', 'MISSING')}"
                             )
                             bt.logging.info(
-                                f"DEBUG EXPORT: Payload first tweet keys: {list(first_tweet.keys())}"
+                                f"Payload first tweet keys: {list(first_tweet.keys())}"
                             )
 
                         async with session.post(api_url, json=payload) as response:

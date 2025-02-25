@@ -116,12 +116,28 @@ async def process_weights_for_netuid(
     if metagraph is None:
         metagraph = await subtensor.metagraph(netuid)
 
+    # Add debug logging for weights type and use_torch
+    logging.debug(f"PROCESS WEIGHTS - weights type: {type(weights)}")
+    logging.debug(
+        f"PROCESS WEIGHTS - weights is torch.Tensor: {isinstance(weights, torch.Tensor)}"
+    )
+    logging.debug(
+        f"PROCESS WEIGHTS - weights is np.ndarray: {isinstance(weights, np.ndarray)}"
+    )
+    logging.debug(f"PROCESS WEIGHTS - use_torch() returns: {use_torch()}")
+
     # Cast weights to floats.
     if use_torch():
         if not isinstance(weights, torch.FloatTensor):
+            logging.debug(
+                f"PROCESS WEIGHTS - Attempting to convert weights with type() method"
+            )
             weights = weights.type(torch.float32)
     else:
         if not isinstance(weights, np.float32):
+            logging.debug(
+                f"PROCESS WEIGHTS - Attempting to convert weights with astype() method"
+            )
             weights = weights.astype(np.float32)
 
     # Network configuration parameters from an subtensor.
