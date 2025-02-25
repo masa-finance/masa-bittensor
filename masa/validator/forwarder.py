@@ -541,13 +541,39 @@ class Forwarder:
                     bt.logging.info(
                         f"✅ All tweets from {self.format_miner_info(uid)} passed validation, exporting batch"
                     )
+
+                    # DETAILED EXPORT LOGGING
+                    tweet_ids = [tweet["Tweet"]["ID"] for tweet in all_responses]
+                    bt.logging.info(
+                        f"🚀 EXPORTING {len(all_responses)} tweets from {self.format_miner_info(uid)}"
+                    )
+                    # Show just the first few IDs as examples
+                    sample_size = min(3, len(tweet_ids))
+                    if sample_size > 0:
+                        sample_ids = tweet_ids[:sample_size]
+                        bt.logging.info(
+                            f"Sample IDs: {sample_ids}{' + more...' if len(tweet_ids) > sample_size else ''}"
+                        )
+
+                    # Log details of what's being exported without redundant deduplication
+                    for i, tweet in enumerate(
+                        all_responses[:3]
+                    ):  # Log first 3 tweets as sample
+                        bt.logging.info(
+                            f"  Tweet {i+1}/{min(3, len(all_responses))} Sample:\n"
+                            f"    ID: {tweet['Tweet']['ID']}\n"
+                            f"    Text: {tweet['Tweet'].get('Text', '')[:100]}...\n"
+                            f"    URL: {self.format_tweet_url(tweet['Tweet']['ID'])}"
+                        )
+
+                    if len(all_responses) > 3:
+                        bt.logging.info(
+                            f"  ... and {len(all_responses) - 3} more tweets"
+                        )
+
                     # Export valid batch directly to API
                     await self.validator.export_tweets(
-                        list(
-                            {
-                                tweet["Tweet"]["ID"]: tweet for tweet in all_responses
-                            }.values()
-                        ),
+                        all_responses,
                         query.strip().replace('"', ""),
                     )
                     successful_uids.add(uid)
