@@ -3,7 +3,7 @@
 ########################################################################
 
 # Default to mainnet if not specified
-NETWORK ?= main
+NETWORK ?= test
 
 # Network-specific configurations
 ifeq ($(NETWORK),test)
