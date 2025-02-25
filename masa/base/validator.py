@@ -113,8 +113,13 @@ class BaseValidatorNeuron(BaseNeuron):
         # Load subnet configuration from local config.json file
         with open("config.json", "r") as config_file:
             config = json.load(config_file)
-            self.subnet_config = config.get("mainnet", {})
-            bt.logging.debug(f"Loaded subnet config: {self.subnet_config}")
+            network_type = (
+                "testnet" if self.config.subtensor.network == "test" else "mainnet"
+            )
+            self.subnet_config = config.get(network_type, {})
+            bt.logging.info(
+                f"Loaded {network_type} subnet config from local file: {self.subnet_config}"
+            )
 
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.scores = torch.zeros(
@@ -178,9 +183,22 @@ class BaseValidatorNeuron(BaseNeuron):
         # Count how many UIDs have non-zero scores
         scored_uids = (self.scores > 0).sum().item()
         bt.logging.info(f"📊 Current state: {scored_uids} UIDs with non-zero scores")
-        if scored_uids < 150:
-            bt.logging.info(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
-            return False
+
+        # Get network type from subnet_config loaded earlier from config.json
+        # Check if we loaded a mainnet configuration
+        is_mainnet = self.subnet_config.get("network_type", "") == "mainnet"
+
+        # Check for minimum scored UIDs only on mainnet
+        if is_mainnet:
+            # For mainnet, require at least 150 scored UIDs
+            if scored_uids < 150:
+                bt.logging.info(f"❌ Not enough scored UIDs ({scored_uids} < 150)")
+                return False
+        else:
+            # For all other networks (testnet, etc.), don't enforce the minimum scored UIDs
+            bt.logging.info(
+                "📊 Not running on mainnet - bypassing minimum scored UIDs requirement"
+            )
 
         # Check if enough blocks have elapsed since last update
         blocks_elapsed = await self.block - self.metagraph.last_update[self.uid]

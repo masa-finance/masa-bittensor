@@ -2,8 +2,10 @@ import os
 import requests
 import bittensor as bt
 
-# Set to 90 to account for discord/guilds/all on oracle node taking around 1 minute
-REQUEST_TIMEOUT_IN_SECONDS = 90
+# Default connection timeout
+CONNECTION_TIMEOUT = 30
+# Higher read timeout to prevent "Read timed out" errors
+READ_TIMEOUT = 60
 
 
 class MasaProtocolRequest:
@@ -11,19 +13,21 @@ class MasaProtocolRequest:
         self.base_url = os.getenv("ORACLE_BASE_URL", "http://localhost:8080/api/v1")
         self.headers = {"Authorization": ""}
 
-    def get(self, path, timeout=REQUEST_TIMEOUT_IN_SECONDS) -> requests.Response:
+    def get(self, path, timeout=CONNECTION_TIMEOUT) -> requests.Response:
+        # Always use a tuple with the specified connection timeout and our fixed read timeout
         return requests.get(
             f"{self.base_url}{path}",
             headers=self.headers,
-            timeout=timeout,
+            timeout=(timeout, READ_TIMEOUT),
         )
 
-    def post(self, path, body, timeout=REQUEST_TIMEOUT_IN_SECONDS) -> requests.Response:
+    def post(self, path, body, timeout=CONNECTION_TIMEOUT) -> requests.Response:
+        # Always use a tuple with the specified connection timeout and our fixed read timeout
         return requests.post(
             f"{self.base_url}{path}",
             json=body,
             headers=self.headers,
-            timeout=timeout,
+            timeout=(timeout, READ_TIMEOUT),
         )
 
     def format(self, response: requests.Response):
