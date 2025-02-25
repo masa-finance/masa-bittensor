@@ -53,11 +53,11 @@ set-weights:
 
 run-miner:
 	@echo "Running miner on $(NETWORK)net (netuid: $(NETUID))"
-	python3 neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_CHAIN) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug --blacklist.force_validator_permit
+	python neurons/miner.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_CHAIN) --wallet.name miner --wallet.hotkey default --axon.port 8091 --neuron.debug --logging.debug --blacklist.force_validator_permit
 
 run-validator:
 	@echo "Running validator on $(NETWORK)net (netuid: $(NETUID))"
-	python3 neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_CHAIN) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.info --logging.info --neuron.axon_off
+	python neurons/validator.py --netuid $(NETUID) --subtensor.$(SUBTENSOR_CHAIN) --wallet.name validator --wallet.hotkey default --axon.port 8092 --neuron.info --logging.info --neuron.axon_off
 
 hyperparameters:
 	btcli subnets hyperparameters --subtensor.$(SUBTENSOR_CHAIN) --netuid $(NETUID)
