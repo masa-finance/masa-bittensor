@@ -93,10 +93,7 @@ async def process_weights_for_netuid(
     subtensor: "Subtensor",
     metagraph: Optional["Metagraph"] = None,
     exclude_quantile: int = 0,
-) -> Union[
-    tuple["torch.Tensor", "torch.FloatTensor"],
-    tuple[NDArray[np.int64], NDArray[np.float32]],
-]:
+) -> tuple[NDArray[np.int64], NDArray[np.float32]]:
     """
     Processes weight tensors for a given subnet id using the provided weight and UID arrays, applying constraints and normalization based on the subtensor and metagraph data. This function can handle both NumPy arrays and PyTorch tensors.
 
@@ -109,7 +106,7 @@ async def process_weights_for_netuid(
         exclude_quantile (int): Quantile threshold for excluding lower weights. Defaults to ``0``.
 
     Returns:
-        Union[tuple["torch.Tensor", "torch.FloatTensor"], tuple[NDArray[np.int64], NDArray[np.float32]]]: tuple containing the array of user IDs and the corresponding normalized weights. The data type of the return matches the type of the input weights (NumPy or PyTorch).
+        tuple[NDArray[np.int64], NDArray[np.float32]]: tuple containing the array of user IDs and the corresponding normalized weights.
     """
 
     # Get latest metagraph from chain if metagraph is None.
