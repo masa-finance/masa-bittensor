@@ -30,11 +30,11 @@ services:
       - VALIDATOR_METRICS_PORT=${VALIDATOR_METRICS_PORT:-8094}
       - VALIDATOR_GRAFANA_PORT=${VALIDATOR_GRAFANA_PORT:-3001}
       - REPLICA_NUM=${REPLICA_NUM:-1}
-      - MASA_BASE_URL=${MASA_BASE_URL:-https://test.protocol-api.masa.ai}
+      - MASA_BASE_URL=${MASA_BASE_URL}
       - API_URL=${API_URL}
     volumes:
       - ./.env:/app/.env
-      - ./.bittensor:/root/.bittensor
+      - ~/.bittensor:/root/.bittensor
       - ./startup:/app/startup
       - ./masa:/app/masa
       - ./neurons:/app/neurons
