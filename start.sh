@@ -11,7 +11,8 @@ NETUID=${NETUID}
 # Set default counts if not provided
 VALIDATOR_COUNT=${VALIDATOR_COUNT:-0}
 MINER_COUNT=${MINER_COUNT:-1}
-ORACLE_COUNT=${ORACLE_COUNT:-0}
+ENABLE_BOOTNODE=${ENABLE_BOOTNODE:-false}
+ORACLE_WORKER_COUNT=${ORACLE_WORKER_COUNT:-0}
 TEE_WORKER_COUNT=${TEE_WORKER_COUNT:-0}
 
 # Image configuration
@@ -22,7 +23,8 @@ TEE_WORKER_IMAGE=${TEE_WORKER_IMAGE:-"masaengineering/tee-worker:latest"}
 echo "Starting nodes for network: $SUBTENSOR_NETWORK (subnet $NETUID)"
 echo "Validator count: $VALIDATOR_COUNT"
 echo "Miner count: $MINER_COUNT"
-echo "Oracle count: $ORACLE_COUNT"
+echo "Enable bootnode: $ENABLE_BOOTNODE"
+echo "Oracle worker count: $ORACLE_WORKER_COUNT"
 echo "TEE Worker count: $TEE_WORKER_COUNT"
 echo "Using Bittensor image: $BITTENSOR_IMAGE"
 echo "Using Oracle image: $ORACLE_IMAGE"
@@ -31,12 +33,24 @@ echo "Using TEE Worker image: $TEE_WORKER_IMAGE"
 # Pull latest images
 echo "Pulling latest images..."
 docker pull $BITTENSOR_IMAGE
-docker pull $ORACLE_IMAGE
+if [ "$ENABLE_BOOTNODE" = "true" ] || [ "$ORACLE_WORKER_COUNT" -gt 0 ]; then
+    docker pull $ORACLE_IMAGE
+fi
 [ "$TEE_WORKER_COUNT" -gt 0 ] && docker pull $TEE_WORKER_IMAGE
 
-# Create .bittensor directory if it doesn't exist
+# Create necessary directories if they don't exist
 mkdir -p .bittensor
 chmod 777 .bittensor
+
+if [ "$ENABLE_BOOTNODE" = "true" ] || [ "$ORACLE_WORKER_COUNT" -gt 0 ]; then
+    mkdir -p .masa-bootnode
+    chmod 777 .masa-bootnode
+    
+    if [ "$ORACLE_WORKER_COUNT" -gt 0 ]; then
+        mkdir -p .masa-worker
+        chmod 777 .masa-worker
+    fi
+fi
 
 # Base ports - use environment variables with defaults
 VALIDATOR_PORT=${VALIDATOR_PORT:-8091}
@@ -47,13 +61,17 @@ MINER_PORT=${MINER_PORT:-8092}
 MINER_METRICS_PORT=${MINER_METRICS_PORT:-8882}
 MINER_GRAFANA_PORT=${MINER_GRAFANA_PORT:-3002}
 
-ORACLE_PORT=${ORACLE_PORT:-8093}
-ORACLE_METRICS_PORT=${ORACLE_METRICS_PORT:-8883}
-ORACLE_GRAFANA_PORT=${ORACLE_GRAFANA_PORT:-3003}
+BOOTNODE_PORT=${BOOTNODE_PORT:-18201}
+BOOTNODE_METRICS_PORT=${BOOTNODE_METRICS_PORT:-8893}
+BOOTNODE_GRAFANA_PORT=${BOOTNODE_GRAFANA_PORT:-3103}
 
-TEE_WORKER_PORT=${TEE_WORKER_PORT:-8094}
-TEE_WORKER_METRICS_PORT=${TEE_WORKER_METRICS_PORT:-8884}
-TEE_WORKER_GRAFANA_PORT=${TEE_WORKER_GRAFANA_PORT:-3004}
+ORACLE_WORKER_PORT=${ORACLE_WORKER_PORT:-18202}
+ORACLE_WORKER_METRICS_PORT=${ORACLE_WORKER_METRICS_PORT:-8894}
+ORACLE_WORKER_GRAFANA_PORT=${ORACLE_WORKER_GRAFANA_PORT:-3104}
+
+TEE_WORKER_PORT=${TEE_WORKER_PORT:-8095}
+TEE_WORKER_METRICS_PORT=${TEE_WORKER_METRICS_PORT:-8885}
+TEE_WORKER_GRAFANA_PORT=${TEE_WORKER_GRAFANA_PORT:-3005}
 
 # Function to check if a port is available
 check_port() {
@@ -73,7 +91,7 @@ check_port() {
     return 0  # Port is available
 }
 
-# Function to start a node
+# Function to start a bittensor node (validator or miner)
 start_node() {
     local role=$1
     local instance_num=$2
@@ -86,10 +104,16 @@ start_node() {
     local metrics_port=$((base_metrics_port + instance_num - 1))
     local grafana_port=$((base_grafana_port + instance_num - 1))
 
+    # Generate wallet and hotkey names for this instance
+    local wallet_name="subnet_${NETUID}"
+    local hotkey_name="${role}_${instance_num}"
+    
     echo "Starting $role $instance_num with ports:"
     echo "  Port: $port"
     echo "  Metrics: $metrics_port"
     echo "  Grafana: $grafana_port"
+    echo "  Using wallet: $wallet_name"
+    echo "  Using hotkey: $hotkey_name"
 
     # Check if ports are available
     if ! check_port $port || ! check_port $metrics_port || ! check_port $grafana_port; then
@@ -100,54 +124,250 @@ start_node() {
     # Set role-specific environment variables and image
     case "$role" in
         "validator")
-            ENV_VARS="-e VALIDATOR_PORT=$port -e VALIDATOR_METRICS_PORT=$metrics_port -e VALIDATOR_GRAFANA_PORT=$grafana_port"
+            ENV_VARS="-e VALIDATOR_PORT=$port -e VALIDATOR_METRICS_PORT=$metrics_port -e VALIDATOR_GRAFANA_PORT=$grafana_port -e VALIDATOR_AXON_PORT=$port"
             IMAGE=$BITTENSOR_IMAGE
-            ;;
-        "oracle")
-            ENV_VARS="-e ORACLE_PORT=$port -e ORACLE_METRICS_PORT=$metrics_port -e ORACLE_GRAFANA_PORT=$grafana_port"
-            IMAGE=$ORACLE_IMAGE
             ;;
         "tee-worker")
             ENV_VARS="-e TEE_WORKER_PORT=$port -e TEE_WORKER_METRICS_PORT=$metrics_port -e TEE_WORKER_GRAFANA_PORT=$grafana_port"
             IMAGE=$TEE_WORKER_IMAGE
             ;;
         *)  # miner
-            ENV_VARS="-e MINER_PORT=$port -e MINER_METRICS_PORT=$metrics_port -e MINER_GRAFANA_PORT=$grafana_port"
+            ENV_VARS="-e MINER_PORT=$port -e MINER_METRICS_PORT=$metrics_port -e MINER_GRAFANA_PORT=$grafana_port -e MINER_AXON_PORT=$port"
             IMAGE=$BITTENSOR_IMAGE
             ;;
     esac
 
+    # Launch bittensor nodes
     docker run -d \
         --name "masa_${role}_${instance_num}" \
+        --network masa_network \
         --env-file .env \
         -e ROLE=$role \
         -e NETUID=$NETUID \
         -e SUBTENSOR_NETWORK=$SUBTENSOR_NETWORK \
         -e REPLICA_NUM=$instance_num \
-        -e WALLET_NAME=${WALLET_NAME} \
-        -e HOTKEY_NAME=${HOTKEY_NAME} \
+        -e WALLET_NAME=$wallet_name \
+        -e HOTKEY_NAME=$hotkey_name \
         -e MASA_BASE_URL=${MASA_BASE_URL} \
         -e API_URL=${API_URL} \
+        -e COLDKEY_MNEMONIC="$COLDKEY_MNEMONIC" \
         $ENV_VARS \
         -v $(pwd)/.env:/app/.env \
         -v $(pwd)/.bittensor:/root/.bittensor \
         -v $(pwd)/startup:/app/startup \
         -v $(pwd)/masa:/app/masa \
         -v $(pwd)/neurons:/app/neurons \
+        -v $(pwd)/config.json:/app/config.json \
         -p $port:$port \
         -p $metrics_port:$metrics_port \
         -p $grafana_port:$grafana_port \
-        $IMAGE
+        $IMAGE python -m startup
+}
+
+# Function to start a bootnode
+start_bootnode() {
+    local port=$BOOTNODE_PORT
+    local metrics_port=$BOOTNODE_METRICS_PORT
+    local grafana_port=$BOOTNODE_GRAFANA_PORT
+    
+    echo "Starting bootnode with ports:"
+    echo "  Port: $port"
+    echo "  Metrics: $metrics_port"
+    echo "  Grafana: $grafana_port"
+
+    # Check if ports are available
+    if ! check_port $port || ! check_port $metrics_port || ! check_port $grafana_port; then
+        echo "Error: One or more ports are already in use for bootnode"
+        exit 1
+    fi
+
+    # Launch bootnode
+    docker run -d \
+        --name "masa_bootnode" \
+        --hostname "masa_bootnode" \
+        --network masa_network \
+        -v $(pwd)/bootnode.env:/home/masa/.env \
+        -v $(pwd)/.masa-bootnode:/home/masa/.masa \
+        -p $port:8080 \
+        -p 4001:4001/udp \
+        -p $metrics_port:$metrics_port \
+        -p $grafana_port:$grafana_port \
+        $ORACLE_IMAGE \
+        --masaDir=/home/masa/.masa \
+        --env=hometest \
+        --api-enabled \
+        --logLevel=debug
+}
+
+# Function to get the bootnode peer ID
+get_bootnode_peer_id() {
+    echo "Waiting 15 seconds for bootnode to start..."
+    sleep 15
+    
+    # IMPORTANT: Display full logs to terminal FIRST
+    echo "==== FULL BOOTNODE LOGS ===="
+    docker logs masa_bootnode
+    echo "==== END BOOTNODE LOGS ===="
+    
+    # Now extract the peer ID
+    docker logs masa_bootnode 2>&1 | grep -o "p2p/[a-zA-Z0-9]*" | head -1 | cut -d "/" -f2 > /tmp/peer_id.txt
+    
+    if [ -s /tmp/peer_id.txt ]; then
+        peer_id=$(cat /tmp/peer_id.txt)
+        echo "Found peer ID: $peer_id"
+        echo "/dns4/masa_bootnode/udp/4001/quic-v1/p2p/$peer_id"
+        return 0
+    fi
+    
+    # Try another pattern if first method failed
+    docker logs masa_bootnode 2>&1 | grep "\[+\] Starting node with ID:" | awk '{print $NF}' > /tmp/peer_id.txt
+    
+    if [ -s /tmp/peer_id.txt ]; then
+        peer_id=$(cat /tmp/peer_id.txt)
+        echo "Found peer ID: $peer_id"
+        echo "/dns4/masa_bootnode/udp/4001/quic-v1/p2p/$peer_id"
+        return 0
+    fi
+    
+    echo "Failed to extract peer ID from logs."
+    return 1
+}
+
+# Function to start an oracle worker
+start_oracle_worker() {
+    local instance_num=$1
+    local bootnodes=$2
+    local base_port=$ORACLE_WORKER_PORT
+    local base_metrics_port=$ORACLE_WORKER_METRICS_PORT
+    local base_grafana_port=$ORACLE_WORKER_GRAFANA_PORT
+
+    # Calculate ports for this instance
+    local port=$((base_port + instance_num - 1))
+    local metrics_port=$((base_metrics_port + instance_num - 1))
+    local grafana_port=$((base_grafana_port + instance_num - 1))
+    
+    echo "Starting oracle worker $instance_num with ports:"
+    echo "  Port: $port"
+    echo "  Metrics: $metrics_port"
+    echo "  Grafana: $grafana_port"
+    
+    # Validate bootnode address
+    if [[ "$bootnodes" != /* ]]; then
+        echo "WARNING: Invalid bootnode address format: $bootnodes"
+        echo "Using default bootnode address format"
+        bootnodes="/dns4/masa_bootnode/udp/4001/quic-v1"
+    fi
+    
+    echo "  Using bootnode: $bootnodes"
+
+    # Check if ports are available
+    if ! check_port $port || ! check_port $metrics_port || ! check_port $grafana_port; then
+        echo "Error: One or more ports are already in use for oracle worker $instance_num"
+        exit 1
+    fi
+
+    # Launch oracle worker with dynamically determined bootnode
+    docker run -d \
+        --name "masa_oracle_worker_${instance_num}" \
+        --network masa_network \
+        -v $(pwd)/worker.env:/home/masa/.env \
+        -v $(pwd)/.masa-worker:/home/masa/.masa \
+        -p $port:8080 \
+        -p $metrics_port:$metrics_port \
+        -p $grafana_port:$grafana_port \
+        $ORACLE_IMAGE \
+        --masaDir=/home/masa/.masa \
+        --env=hometest \
+        --api-enabled \
+        --logLevel=debug \
+        --bootnodes=$bootnodes
+}
+
+# Function to display node info
+display_node_info() {
+    echo -e "\n============= Node Information =============\n"
+    
+    # Display miner info if any running
+    if [ "$MINER_COUNT" -gt 0 ]; then
+        echo -e "===== MINER NODES =====\n"
+        for i in $(seq 1 $MINER_COUNT); do
+            echo "Miner $i:"
+            docker logs masa_miner_$i 2>&1 | grep -i "hotkey" | tail -1
+            docker logs masa_miner_$i 2>&1 | grep -i "coldkey" | tail -1
+        done
+        echo ""
+    fi
+    
+    # Display bootnode info if running
+    if [ "$ENABLE_BOOTNODE" = "true" ]; then
+        echo -e "===== BOOTNODE =====\n"
+        
+        # Extract and display peer ID directly
+        peer_id=$(docker logs masa_bootnode 2>&1 | grep -o "p2p/[a-zA-Z0-9]*" | head -1 | cut -d "/" -f2)
+        [ -n "$peer_id" ] && echo "Peer ID: $peer_id"
+        
+        # Find ETH public key
+        eth_key=$(docker logs masa_bootnode 2>&1 | grep -o "Public Key:[[:space:]]*0x[0-9a-fA-F]*" | awk '{print $3}')
+        [ -n "$eth_key" ] && echo "ETH Address: $eth_key"
+        echo ""
+    fi
+    
+    # Display oracle worker info if any running
+    if [ "$ORACLE_WORKER_COUNT" -gt 0 ]; then
+        echo -e "===== ORACLE WORKERS =====\n"
+        for i in $(seq 1 $ORACLE_WORKER_COUNT); do
+            container_name="masa_oracle_worker_$i"
+            if docker ps -q -f name=$container_name >/dev/null 2>&1; then
+                echo "Oracle Worker $i:"
+                
+                # Extract and display peer ID directly
+                peer_id=$(docker logs $container_name 2>&1 | grep -o "p2p/[a-zA-Z0-9]*" | head -1 | cut -d "/" -f2)
+                [ -n "$peer_id" ] && echo "Peer ID: $peer_id"
+                
+                # Find ETH public key
+                eth_key=$(docker logs $container_name 2>&1 | grep -o "Public Key:[[:space:]]*0x[0-9a-fA-F]*" | awk '{print $3}')
+                [ -n "$eth_key" ] && echo "ETH Address: $eth_key"
+                echo ""
+            else
+                echo "Oracle Worker $i: Not running or failed to start"
+                echo ""
+            fi
+        done
+    fi
+    
+    # Display TEE worker info if any running
+    if [ "$TEE_WORKER_COUNT" -gt 0 ]; then
+        echo -e "===== TEE WORKERS =====\n"
+        for i in $(seq 1 $TEE_WORKER_COUNT); do
+            echo "TEE Worker $i:"
+            docker logs masa_tee-worker_$i 2>&1 | grep -i "key" | tail -5
+            echo ""
+        done
+    fi
+    
+    echo -e "============= End Node Information =============\n"
 }
 
 # Clean up any existing containers
 echo "Cleaning up existing containers..."
+# First clean up all containers with masa_ prefix
 docker ps -a | grep 'masa_' | awk '{print $1}' | xargs -r docker rm -f
+# Also clean up any potential bootnode or oracle containers that might be running
+docker ps -a | grep 'bootnode\|oracle\|worker' | awk '{print $1}' | xargs -r docker rm -f 2>/dev/null || true
+# Ensure ports are released (give a little time for cleanup)
+sleep 2
+
+# Create masa_network if it doesn't exist
+echo "Setting up Docker network..."
+if ! docker network inspect masa_network >/dev/null 2>&1; then
+    docker network create masa_network
+fi
 
 echo "Starting requested nodes:"
 [ "$VALIDATOR_COUNT" -gt 0 ] && echo "- $VALIDATOR_COUNT validator(s)"
 [ "$MINER_COUNT" -gt 0 ] && echo "- $MINER_COUNT miner(s)"
-[ "$ORACLE_COUNT" -gt 0 ] && echo "- $ORACLE_COUNT oracle(s)"
+[ "$ENABLE_BOOTNODE" = "true" ] && echo "- 1 bootnode"
+[ "$ORACLE_WORKER_COUNT" -gt 0 ] && echo "- $ORACLE_WORKER_COUNT oracle worker(s)"
 [ "$TEE_WORKER_COUNT" -gt 0 ] && echo "- $TEE_WORKER_COUNT TEE worker(s)"
 
 # Start validators
@@ -166,12 +386,75 @@ if [ "$MINER_COUNT" -gt 0 ]; then
     done
 fi
 
-# Start oracles
-if [ "$ORACLE_COUNT" -gt 0 ]; then
-    for i in $(seq 1 $ORACLE_COUNT); do
-        echo "Starting oracle $i..."
-        start_node "oracle" $i $ORACLE_PORT $ORACLE_METRICS_PORT $ORACLE_GRAFANA_PORT
-    done
+# Start bootnode if requested
+BOOTNODE_ADDRESS=""
+BOOTNODE_PEER_ID=${BOOTNODE_PEER_ID:-""}
+
+if [ "$ENABLE_BOOTNODE" = "true" ]; then
+    echo "Starting bootnode..."
+    start_bootnode
+    
+    if [ "$ORACLE_WORKER_COUNT" -gt 0 ]; then
+        if [ -n "$BOOTNODE_PEER_ID" ]; then
+            # Use provided BOOTNODE_PEER_ID if specified
+            echo "Using provided bootnode peer ID: $BOOTNODE_PEER_ID"
+            BOOTNODE_ADDRESS="/dns4/masa_bootnode/udp/4001/quic-v1/p2p/$BOOTNODE_PEER_ID"
+        else
+            echo "Getting bootnode peer ID for worker configuration..."
+            # Run the function WITHOUT capturing its output
+            get_bootnode_peer_id
+            # Read the last line which should contain our bootnode address
+            BOOTNODE_ADDRESS=$(docker logs masa_bootnode 2>&1 | grep -o "p2p/[a-zA-Z0-9]*" | head -1)
+            if [ -n "$BOOTNODE_ADDRESS" ]; then
+                BOOTNODE_ADDRESS="/dns4/masa_bootnode/udp/4001/quic-v1/$BOOTNODE_ADDRESS"
+            fi
+
+            if [ -z "$BOOTNODE_ADDRESS" ] || [[ "$BOOTNODE_ADDRESS" != /* ]]; then
+                echo "Warning: Failed to get valid bootnode address."
+                echo "Options:"
+                echo "1) Continue with basic bootstrap address (workers may not connect properly)"
+                echo "2) Skip oracle worker setup (recommended to inspect bootnode logs first)"
+                echo "3) Provide bootnode peer ID manually"
+                
+                read -p "Enter your choice (1/2/3, default: 2): " choice
+                choice=${choice:-2}
+                
+                case "$choice" in
+                    1)
+                        echo "Continuing with basic bootstrap address"
+                        BOOTNODE_ADDRESS="/dns4/masa_bootnode/udp/4001/quic-v1"
+                        ;;
+                    3)
+                        read -p "Enter bootnode peer ID: " manual_peer_id
+                        if [ -n "$manual_peer_id" ]; then
+                            BOOTNODE_ADDRESS="/dns4/masa_bootnode/udp/4001/quic-v1/p2p/$manual_peer_id"
+                            echo "Using manual bootnode peer ID: $manual_peer_id"
+                        else
+                            echo "No peer ID provided, skipping oracle worker setup"
+                            ORACLE_WORKER_COUNT=0
+                        fi
+                        ;;
+                    *)
+                        echo "Skipping oracle worker setup. You can manually inspect bootnode logs with:"
+                        echo "docker logs masa_bootnode | grep -A 10 \"Multiaddresses:\""
+                        ORACLE_WORKER_COUNT=0
+                        ;;
+                esac
+            fi
+        fi
+    fi
+fi
+
+# Start oracle workers
+if [ "$ORACLE_WORKER_COUNT" -gt 0 ]; then
+    if [ "$ENABLE_BOOTNODE" = "true" ] && [ -n "$BOOTNODE_ADDRESS" ]; then
+        for i in $(seq 1 $ORACLE_WORKER_COUNT); do
+            echo "Starting oracle worker $i..."
+            start_oracle_worker $i "$BOOTNODE_ADDRESS"
+        done
+    else
+        echo "Warning: Cannot start oracle workers without a bootnode"
+    fi
 fi
 
 # Start TEE workers
@@ -185,8 +468,16 @@ fi
 echo -e "\nActual running containers:"
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep masa_
 
+# Wait a bit for logs to be available
+sleep 5
+
+# Display node information
+display_node_info
+
 echo "All nodes started. Check logs with:"
-echo "docker logs --tail 50 masa_validator_N  # where N is the validator number"
-echo "docker logs --tail 50 masa_miner_N      # where N is the miner number"
-echo "docker logs --tail 50 masa_oracle_N     # where N is the oracle number"
-echo "docker logs --tail 50 masa_tee-worker_N # where N is the worker number" 
+echo "docker logs -f masa_validator_N      # where N is the validator number"
+echo "docker logs -f masa_miner_N          # where N is the miner number"
+echo "docker logs -f masa_bootnode         # for the bootnode"
+echo "docker logs -f masa_oracle_worker_N  # where N is the oracle worker number"
+echo "docker logs -f masa_tee-worker_N     # where N is the TEE worker number" 
+

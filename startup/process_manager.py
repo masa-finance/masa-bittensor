@@ -97,7 +97,7 @@ class ProcessManager:
         command = [
             "python3",
             "-u",  # Force unbuffered output
-            "scripts/run_validator.py",
+            "neurons/validator.py",
             f"--netuid={netuid}",
             f"--wallet.name={wallet_name}",
             f"--wallet.hotkey={wallet_hotkey}",
@@ -160,7 +160,7 @@ class ProcessManager:
         command = [
             "python3",
             "-u",  # Force unbuffered output
-            "scripts/run_miner.py",
+            "neurons/miner.py",
             f"--netuid={netuid}",
             f"--wallet.name={wallet_name}",
             f"--wallet.hotkey={wallet_hotkey}",
