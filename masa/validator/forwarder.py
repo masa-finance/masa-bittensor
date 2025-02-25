@@ -55,7 +55,6 @@ class Forwarder:
         - Must be a string of pure ASCII digits
         - No leading zeros
         - No invisible/zero-width characters
-        - Must be between 15-20 digits (valid tweet ID length range)
         """
         if not isinstance(tweet_id, str):
             return False
@@ -68,6 +67,8 @@ class Forwarder:
         # Check if it's a valid numeric string with no leading zeros
         if not ascii_id.isdigit() or ascii_id.startswith("0"):
             return False
+
+        return True
 
     async def forward_request(
         self,
@@ -410,7 +411,9 @@ class Forwarder:
                     tweet_id = tweet["Tweet"]["ID"]
                     if not self.strict_tweet_id_validation(tweet_id):
                         bt.logging.info(
-                            f"❌ {self.format_miner_info(uid)} FAILED - invalid tweet ID at position {i}/{len(all_responses)} | ID: {tweet_id}"
+                            f"❌ {self.format_miner_info(uid)} FAILED - invalid tweet ID at position {i}/{len(all_responses)} | ID: {tweet_id}\n"
+                            f"    Tweet Text: {tweet['Tweet'].get('Text', 'NO_TEXT')}\n"
+                            f"    Full Tweet: {tweet}"
                         )
                         self.validator.scorer.add_volume(uid, 0, current_block)
                         invalid_tweet_uids.add(uid)
