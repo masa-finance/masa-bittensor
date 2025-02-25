@@ -194,11 +194,12 @@ start_bootnode() {
         --masaDir=/home/masa/.masa \
         --env=hometest \
         --api-enabled \
-        --logLevel=debug
+        --logLevel=debug \
+        --port=$port
 }
 
-# Function to get the bootnode peer ID
-get_bootnode_peer_id() {
+# Function to get the bootnode address
+get_bootnode_address() {
     echo "Waiting 15 seconds for bootnode to start..."
     sleep 15
     
@@ -207,29 +208,15 @@ get_bootnode_peer_id() {
     docker logs masa_bootnode
     echo "==== END BOOTNODE LOGS ===="
     
-    # Now extract the peer ID
-    docker logs masa_bootnode 2>&1 | grep -o "p2p/[a-zA-Z0-9]*" | head -1 | cut -d "/" -f2 > /tmp/peer_id.txt
+    # Get the complete multiaddress directly
+    BOOTNODE_ADDRESS=$(docker logs masa_bootnode 2>&1 | grep -o "/ip4/[^ ]*" | head -1)
     
-    if [ -s /tmp/peer_id.txt ]; then
-        peer_id=$(cat /tmp/peer_id.txt)
-        echo "Found peer ID: $peer_id"
-        # Use actual IP instead of container name
-        echo "/ip4/$HOST_IP/udp/4001/quic-v1/p2p/$peer_id"
+    if [ -n "$BOOTNODE_ADDRESS" ]; then
+        echo "Found complete multiaddress: $BOOTNODE_ADDRESS"
         return 0
     fi
     
-    # Try another pattern if first method failed
-    docker logs masa_bootnode 2>&1 | grep "\[+\] Starting node with ID:" | awk '{print $NF}' > /tmp/peer_id.txt
-    
-    if [ -s /tmp/peer_id.txt ]; then
-        peer_id=$(cat /tmp/peer_id.txt)
-        echo "Found peer ID: $peer_id"
-        # Use actual IP instead of container name
-        echo "/ip4/$HOST_IP/udp/4001/quic-v1/p2p/$peer_id"
-        return 0
-    fi
-    
-    echo "Failed to extract peer ID from logs."
+    echo "Failed to extract bootnode multiaddress from logs."
     return 1
 }
 
@@ -270,13 +257,14 @@ start_oracle_worker() {
     docker run -d \
         --name "masa_oracle_worker_${instance_num}" \
         --network host \
-        -v $(pwd)/worker.env:/home/masa/.env \
+        --env-file worker.env \
         -v $(pwd)/.masa-worker:/home/masa/.masa \
         $ORACLE_IMAGE \
         --masaDir=/home/masa/.masa \
         --env=hometest \
         --api-enabled \
         --logLevel=debug \
+        --port=$port \
         --bootnodes=$bootnodes
 }
 
@@ -289,8 +277,7 @@ display_node_info() {
         echo -e "===== MINER NODES =====\n"
         for i in $(seq 1 $MINER_COUNT); do
             echo "Miner $i:"
-            docker logs masa_miner_$i 2>&1 | grep -i "hotkey" | tail -1
-            docker logs masa_miner_$i 2>&1 | grep -i "coldkey" | tail -1
+            docker logs masa_miner_$i 2>&1 | grep -i "hotkey" | tail -1 || echo "No hotkey info found"
         done
         echo ""
     fi
@@ -299,13 +286,12 @@ display_node_info() {
     if [ "$ENABLE_BOOTNODE" = "true" ]; then
         echo -e "===== BOOTNODE =====\n"
         
-        # Extract and display peer ID directly
-        peer_id=$(docker logs masa_bootnode 2>&1 | grep -o "p2p/[a-zA-Z0-9]*" | head -1 | cut -d "/" -f2)
-        [ -n "$peer_id" ] && echo "Peer ID: $peer_id"
-        
-        # Find ETH public key
-        eth_key=$(docker logs masa_bootnode 2>&1 | grep -o "Public Key:[[:space:]]*0x[0-9a-fA-F]*" | awk '{print $3}')
-        [ -n "$eth_key" ] && echo "ETH Address: $eth_key"
+        # Just show that it's running
+        if docker ps -q -f name=masa_bootnode >/dev/null 2>&1; then
+            echo "Bootnode: Running"
+        else
+            echo "Bootnode: Not running or failed to start"
+        fi
         echo ""
     fi
     
@@ -315,31 +301,26 @@ display_node_info() {
         for i in $(seq 1 $ORACLE_WORKER_COUNT); do
             container_name="masa_oracle_worker_$i"
             if docker ps -q -f name=$container_name >/dev/null 2>&1; then
-                echo "Oracle Worker $i:"
-                
-                # Extract and display peer ID directly
-                peer_id=$(docker logs $container_name 2>&1 | grep -o "p2p/[a-zA-Z0-9]*" | head -1 | cut -d "/" -f2)
-                [ -n "$peer_id" ] && echo "Peer ID: $peer_id"
-                
-                # Find ETH public key
-                eth_key=$(docker logs $container_name 2>&1 | grep -o "Public Key:[[:space:]]*0x[0-9a-fA-F]*" | awk '{print $3}')
-                [ -n "$eth_key" ] && echo "ETH Address: $eth_key"
-                echo ""
+                echo "Oracle Worker $i: Running"
             else
                 echo "Oracle Worker $i: Not running or failed to start"
-                echo ""
             fi
         done
+        echo ""
     fi
     
     # Display TEE worker info if any running
     if [ "$TEE_WORKER_COUNT" -gt 0 ]; then
         echo -e "===== TEE WORKERS =====\n"
         for i in $(seq 1 $TEE_WORKER_COUNT); do
-            echo "TEE Worker $i:"
-            docker logs masa_tee-worker_$i 2>&1 | grep -i "key" | tail -5
-            echo ""
+            container_name="masa_tee-worker_$i"
+            if docker ps -q -f name=$container_name >/dev/null 2>&1; then
+                echo "TEE Worker $i: Running"
+            else 
+                echo "TEE Worker $i: Not running or failed to start"
+            fi
         done
+        echo ""
     fi
     
     echo -e "============= End Node Information =============\n"
@@ -404,39 +385,23 @@ if [ "$ENABLE_BOOTNODE" = "true" ]; then
             echo "Using provided bootnode peer ID: $BOOTNODE_PEER_ID"
             BOOTNODE_ADDRESS="/ip4/$HOST_IP/udp/4001/quic-v1/p2p/$BOOTNODE_PEER_ID"
         else
-            echo "Getting bootnode peer ID for worker configuration..."
-            # Run the function WITHOUT capturing its output
-            get_bootnode_peer_id
-            # Read the last line which should contain our bootnode address
-            BOOTNODE_ADDRESS=$(docker logs masa_bootnode 2>&1 | grep -o "/ip4/[^ ]*" | head -1)
-            if [ -n "$BOOTNODE_ADDRESS" ]; then
-                echo "Found complete multiaddress: $BOOTNODE_ADDRESS"
-            fi
-
+            echo "Getting bootnode address for worker configuration..."
+            # Get the bootnode address
+            get_bootnode_address
+            
             if [ -z "$BOOTNODE_ADDRESS" ] || [[ "$BOOTNODE_ADDRESS" != /* ]]; then
                 echo "Warning: Failed to get valid bootnode address."
                 echo "Options:"
                 echo "1) Continue with basic bootstrap address (workers may not connect properly)"
                 echo "2) Skip oracle worker setup (recommended to inspect bootnode logs first)"
-                echo "3) Provide bootnode peer ID manually"
                 
-                read -p "Enter your choice (1/2/3, default: 2): " choice
+                read -p "Enter your choice (1/2, default: 2): " choice
                 choice=${choice:-2}
                 
                 case "$choice" in
                     1)
                         echo "Continuing with basic bootstrap address"
                         BOOTNODE_ADDRESS="/ip4/$HOST_IP/udp/4001/quic-v1"
-                        ;;
-                    3)
-                        read -p "Enter bootnode peer ID: " manual_peer_id
-                        if [ -n "$manual_peer_id" ]; then
-                            BOOTNODE_ADDRESS="/ip4/$HOST_IP/udp/4001/quic-v1/p2p/$manual_peer_id"
-                            echo "Using manual bootnode peer ID: $manual_peer_id"
-                        else
-                            echo "No peer ID provided, skipping oracle worker setup"
-                            ORACLE_WORKER_COUNT=0
-                        fi
                         ;;
                     *)
                         echo "Skipping oracle worker setup. You can manually inspect bootnode logs with:"
