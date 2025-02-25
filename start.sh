@@ -20,6 +20,10 @@ BITTENSOR_IMAGE=${BITTENSOR_IMAGE:-"masaengineering/masa-bittensor:latest"}
 ORACLE_IMAGE=${ORACLE_IMAGE:-"masaengineering/oracle:latest"}
 TEE_WORKER_IMAGE=${TEE_WORKER_IMAGE:-"masaengineering/tee-worker:latest"}
 
+# Get the host IP address
+HOST_IP=$(hostname -I | awk '{print $1}')
+echo "Host IP address: $HOST_IP"
+
 echo "Starting nodes for network: $SUBTENSOR_NETWORK (subnet $NETUID)"
 echo "Validator count: $VALIDATOR_COUNT"
 echo "Miner count: $MINER_COUNT"
@@ -137,10 +141,10 @@ start_node() {
             ;;
     esac
 
-    # Launch bittensor nodes
+    # Launch bittensor nodes with host networking
     docker run -d \
         --name "masa_${role}_${instance_num}" \
-        --network masa_network \
+        --network host \
         --env-file .env \
         -e ROLE=$role \
         -e NETUID=$NETUID \
@@ -151,6 +155,7 @@ start_node() {
         -e MASA_BASE_URL=${MASA_BASE_URL} \
         -e API_URL=${API_URL} \
         -e COLDKEY_MNEMONIC="$COLDKEY_MNEMONIC" \
+        -e HOST_IP="$HOST_IP" \
         $ENV_VARS \
         -v $(pwd)/.env:/app/.env \
         -v $(pwd)/.bittensor:/root/.bittensor \
@@ -158,9 +163,6 @@ start_node() {
         -v $(pwd)/masa:/app/masa \
         -v $(pwd)/neurons:/app/neurons \
         -v $(pwd)/config.json:/app/config.json \
-        -p $port:$port \
-        -p $metrics_port:$metrics_port \
-        -p $grafana_port:$grafana_port \
         $IMAGE python -m startup
 }
 
@@ -176,22 +178,18 @@ start_bootnode() {
     echo "  Grafana: $grafana_port"
 
     # Check if ports are available
-    if ! check_port $port || ! check_port $metrics_port || ! check_port $grafana_port; then
+    if ! check_port $port || ! check_port $metrics_port || ! check_port $grafana_port || ! check_port 4001; then
         echo "Error: One or more ports are already in use for bootnode"
         exit 1
     fi
 
-    # Launch bootnode
+    # Launch bootnode with host networking
     docker run -d \
         --name "masa_bootnode" \
         --hostname "masa_bootnode" \
-        --network masa_network \
+        --network host \
         -v $(pwd)/bootnode.env:/home/masa/.env \
         -v $(pwd)/.masa-bootnode:/home/masa/.masa \
-        -p $port:8080 \
-        -p 4001:4001/udp \
-        -p $metrics_port:$metrics_port \
-        -p $grafana_port:$grafana_port \
         $ORACLE_IMAGE \
         --masaDir=/home/masa/.masa \
         --env=hometest \
@@ -215,7 +213,8 @@ get_bootnode_peer_id() {
     if [ -s /tmp/peer_id.txt ]; then
         peer_id=$(cat /tmp/peer_id.txt)
         echo "Found peer ID: $peer_id"
-        echo "/dns4/masa_bootnode/udp/4001/quic-v1/p2p/$peer_id"
+        # Use actual IP instead of container name
+        echo "/ip4/$HOST_IP/udp/4001/quic-v1/p2p/$peer_id"
         return 0
     fi
     
@@ -225,7 +224,8 @@ get_bootnode_peer_id() {
     if [ -s /tmp/peer_id.txt ]; then
         peer_id=$(cat /tmp/peer_id.txt)
         echo "Found peer ID: $peer_id"
-        echo "/dns4/masa_bootnode/udp/4001/quic-v1/p2p/$peer_id"
+        # Use actual IP instead of container name
+        echo "/ip4/$HOST_IP/udp/4001/quic-v1/p2p/$peer_id"
         return 0
     fi
     
@@ -254,8 +254,8 @@ start_oracle_worker() {
     # Validate bootnode address
     if [[ "$bootnodes" != /* ]]; then
         echo "WARNING: Invalid bootnode address format: $bootnodes"
-        echo "Using default bootnode address format"
-        bootnodes="/dns4/masa_bootnode/udp/4001/quic-v1"
+        echo "Using default bootnode address format with host IP"
+        bootnodes="/ip4/$HOST_IP/udp/4001/quic-v1"
     fi
     
     echo "  Using bootnode: $bootnodes"
@@ -266,15 +266,12 @@ start_oracle_worker() {
         exit 1
     fi
 
-    # Launch oracle worker with dynamically determined bootnode
+    # Launch oracle worker with host networking and IP-based bootnode address
     docker run -d \
         --name "masa_oracle_worker_${instance_num}" \
-        --network masa_network \
+        --network host \
         -v $(pwd)/worker.env:/home/masa/.env \
         -v $(pwd)/.masa-worker:/home/masa/.masa \
-        -p $port:8080 \
-        -p $metrics_port:$metrics_port \
-        -p $grafana_port:$grafana_port \
         $ORACLE_IMAGE \
         --masaDir=/home/masa/.masa \
         --env=hometest \
@@ -348,6 +345,13 @@ display_node_info() {
     echo -e "============= End Node Information =============\n"
 }
 
+# Function to clean up containers
+cleanup() {
+    echo "Cleaning up containers..."
+    docker rm -f $(docker ps -aq --filter "name=masa_") 2>/dev/null || echo "No containers to remove"
+    echo "Done!"
+}
+
 # Clean up any existing containers
 echo "Cleaning up existing containers..."
 # First clean up all containers with masa_ prefix
@@ -398,15 +402,15 @@ if [ "$ENABLE_BOOTNODE" = "true" ]; then
         if [ -n "$BOOTNODE_PEER_ID" ]; then
             # Use provided BOOTNODE_PEER_ID if specified
             echo "Using provided bootnode peer ID: $BOOTNODE_PEER_ID"
-            BOOTNODE_ADDRESS="/dns4/masa_bootnode/udp/4001/quic-v1/p2p/$BOOTNODE_PEER_ID"
+            BOOTNODE_ADDRESS="/ip4/$HOST_IP/udp/4001/quic-v1/p2p/$BOOTNODE_PEER_ID"
         else
             echo "Getting bootnode peer ID for worker configuration..."
             # Run the function WITHOUT capturing its output
             get_bootnode_peer_id
             # Read the last line which should contain our bootnode address
-            BOOTNODE_ADDRESS=$(docker logs masa_bootnode 2>&1 | grep -o "p2p/[a-zA-Z0-9]*" | head -1)
+            BOOTNODE_ADDRESS=$(docker logs masa_bootnode 2>&1 | grep -o "/ip4/[^ ]*" | head -1)
             if [ -n "$BOOTNODE_ADDRESS" ]; then
-                BOOTNODE_ADDRESS="/dns4/masa_bootnode/udp/4001/quic-v1/$BOOTNODE_ADDRESS"
+                echo "Found complete multiaddress: $BOOTNODE_ADDRESS"
             fi
 
             if [ -z "$BOOTNODE_ADDRESS" ] || [[ "$BOOTNODE_ADDRESS" != /* ]]; then
@@ -422,12 +426,12 @@ if [ "$ENABLE_BOOTNODE" = "true" ]; then
                 case "$choice" in
                     1)
                         echo "Continuing with basic bootstrap address"
-                        BOOTNODE_ADDRESS="/dns4/masa_bootnode/udp/4001/quic-v1"
+                        BOOTNODE_ADDRESS="/ip4/$HOST_IP/udp/4001/quic-v1"
                         ;;
                     3)
                         read -p "Enter bootnode peer ID: " manual_peer_id
                         if [ -n "$manual_peer_id" ]; then
-                            BOOTNODE_ADDRESS="/dns4/masa_bootnode/udp/4001/quic-v1/p2p/$manual_peer_id"
+                            BOOTNODE_ADDRESS="/ip4/$HOST_IP/udp/4001/quic-v1/p2p/$manual_peer_id"
                             echo "Using manual bootnode peer ID: $manual_peer_id"
                         else
                             echo "No peer ID provided, skipping oracle worker setup"
