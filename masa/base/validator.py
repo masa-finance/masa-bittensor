@@ -241,13 +241,8 @@ class BaseValidatorNeuron(BaseNeuron):
             f"Attempting to set weights on {self.config.subtensor.network} ..."
         )
 
-        # Add debug logging to understand the types and use_torch value
-        from bittensor.utils.registration import use_torch
-
+        # Always convert to NumPy array - known to work in prod
         raw_weights = self.scores.to("cpu").numpy()
-        bt.logging.debug(f"DIAGNOSTIC - use_torch() returns: {use_torch()}")
-        bt.logging.debug(f"DIAGNOSTIC - self.scores type: {type(self.scores)}")
-        bt.logging.debug(f"DIAGNOSTIC - raw_weights type: {type(raw_weights)}")
 
         (
             processed_weight_uids,

@@ -26,7 +26,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from bittensor.utils.btlogging import logging
-from bittensor.utils.registration import legacy_torch_api_compat, torch, use_torch
+from bittensor.utils.registration import legacy_torch_api_compat, torch
 
 if typing.TYPE_CHECKING:
     from bittensor.core.metagraph import Metagraph
@@ -116,29 +116,9 @@ async def process_weights_for_netuid(
     if metagraph is None:
         metagraph = await subtensor.metagraph(netuid)
 
-    # Add debug logging for weights type and use_torch
-    logging.debug(f"PROCESS WEIGHTS - weights type: {type(weights)}")
-    logging.debug(
-        f"PROCESS WEIGHTS - weights is torch.Tensor: {isinstance(weights, torch.Tensor)}"
-    )
-    logging.debug(
-        f"PROCESS WEIGHTS - weights is np.ndarray: {isinstance(weights, np.ndarray)}"
-    )
-    logging.debug(f"PROCESS WEIGHTS - use_torch() returns: {use_torch()}")
-
-    # Cast weights to floats.
-    if isinstance(weights, torch.Tensor):
-        if not isinstance(weights, torch.FloatTensor):
-            logging.debug(
-                f"PROCESS WEIGHTS - Attempting to convert weights with type() method"
-            )
-            weights = weights.type(torch.float32)
-    else:
-        if not isinstance(weights, np.ndarray) or weights.dtype != np.float32:
-            logging.debug(
-                f"PROCESS WEIGHTS - Attempting to convert weights with astype() method"
-            )
-            weights = weights.astype(np.float32)
+    # Cast weights to NumPy float32 if needed
+    if not isinstance(weights, np.ndarray) or weights.dtype != np.float32:
+        weights = weights.astype(np.float32)
 
     # Network configuration parameters from an subtensor.
     # These parameters determine the range of acceptable weights for each neuron.
@@ -150,52 +130,25 @@ async def process_weights_for_netuid(
     logging.debug("max_weight_limit", max_weight_limit)
 
     # Find all non zero weights.
-    non_zero_weight_idx = (
-        torch.argwhere(weights > 0).squeeze(dim=1)
-        if isinstance(weights, torch.Tensor)
-        else np.argwhere(weights > 0).squeeze(axis=1)
-    )
+    non_zero_weight_idx = np.argwhere(weights > 0).squeeze(axis=1)
     non_zero_weight_uids = uids[non_zero_weight_idx]
     non_zero_weights = weights[non_zero_weight_idx]
-    nzw_size = (
-        non_zero_weights.numel()
-        if isinstance(non_zero_weights, torch.Tensor)
-        else non_zero_weights.size
-    )
+    nzw_size = non_zero_weights.size
+
     if nzw_size == 0 or metagraph.n < min_allowed_weights:
         logging.warning("No non-zero weights returning all ones.")
-        final_weights = (
-            torch.ones((metagraph.n)).to(metagraph.n) / metagraph.n
-            if isinstance(uids, torch.Tensor)
-            else np.ones((metagraph.n), dtype=np.float32) / metagraph.n
-        )
-        final_weights_count = (
-            torch.tensor(list(range(len(final_weights))))
-            if isinstance(uids, torch.Tensor)
-            else np.arange(len(final_weights))
-        )
-        return (
-            (final_weights_count, final_weights)
-            if isinstance(uids, torch.Tensor)
-            else (final_weights_count, final_weights)
-        )
+        final_weights = np.ones((metagraph.n), dtype=np.float32) / metagraph.n
+        final_weights_count = np.arange(len(final_weights))
+        return final_weights_count, final_weights
 
     elif nzw_size < min_allowed_weights:
         logging.warning(
             "No non-zero weights less then min allowed weight, returning all ones."
         )
-        weights = (
-            torch.ones((metagraph.n)).to(metagraph.n) * 1e-5
-            if isinstance(uids, torch.Tensor)
-            else np.ones((metagraph.n), dtype=np.float32) * 1e-5
-        )  # creating minimum even non-zero weights
+        weights = np.ones((metagraph.n), dtype=np.float32) * 1e-5
         weights[non_zero_weight_idx] += non_zero_weights
         normalized_weights = normalize_max_weight(x=weights, limit=max_weight_limit)
-        nw_arange = (
-            torch.tensor(list(range(len(normalized_weights))))
-            if isinstance(uids, torch.Tensor)
-            else np.arange(len(normalized_weights))
-        )
+        nw_arange = np.arange(len(normalized_weights))
         return nw_arange, normalized_weights
 
     # Compute the exclude quantile and find the weights in the lowest quantile
@@ -203,11 +156,8 @@ async def process_weights_for_netuid(
         non_zero_weights
     )
     exclude_quantile = min([quantile, max_exclude])
-    lowest_quantile = (
-        non_zero_weights.quantile(exclude_quantile)
-        if isinstance(non_zero_weights, torch.Tensor)
-        else np.quantile(non_zero_weights, exclude_quantile)
-    )
+    lowest_quantile = np.quantile(non_zero_weights, exclude_quantile)
+
     logging.debug("max_exclude", max_exclude)
     logging.debug("exclude_quantile", exclude_quantile)
     logging.debug("lowest_quantile", lowest_quantile)
