@@ -453,6 +453,17 @@ class Forwarder:
                 # Continue with validation of a random tweet from the valid set
                 random_tweet = dict(random.choice(unique_tweets)).get("Tweet", {})
 
+                # Add detailed logging of the sample tweet
+                bt.logging.info(
+                    f"\n🔍 Sample Tweet Validation Details for {self.format_miner_info(uid)}:\n"
+                    f"    ID: {random_tweet.get('ID')}\n"
+                    f"    Text: {random_tweet.get('Text', 'NO_TEXT')}\n"
+                    f"    Username: {random_tweet.get('Username', 'NO_USERNAME')}\n"
+                    f"    Name: {random_tweet.get('Name', 'NO_NAME')}\n"
+                    f"    Timestamp: {datetime.fromtimestamp(random_tweet.get('Timestamp', 0), UTC)}\n"
+                    f"    URL: {self.format_tweet_url(random_tweet.get('ID'))}"
+                )
+
                 query_words = (
                     self.normalize_whitespace(random_keyword.replace('"', ""))
                     .strip()
