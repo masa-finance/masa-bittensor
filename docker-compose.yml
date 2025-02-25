@@ -18,19 +18,19 @@ services:
     image: masaengineering/masa-bittensor:latest
     env_file: .env
     environment:
-      - ROLE=${ROLE}
-      - NETUID=${NETUID}
-      - SUBTENSOR_NETWORK=${SUBTENSOR_NETWORK}
-      - WALLET_NAME=${WALLET_NAME}
-      - HOTKEY_NAME=${HOTKEY_NAME}
-      - MINER_AXON_PORT=${MINER_PORT}
-      - MINER_METRICS_PORT=${METRICS_PORT}
-      - MINER_GRAFANA_PORT=${GRAFANA_PORT}
-      - VALIDATOR_AXON_PORT=${VALIDATOR_AXON_PORT}
-      - VALIDATOR_METRICS_PORT=${VALIDATOR_METRICS_PORT}
-      - VALIDATOR_GRAFANA_PORT=${VALIDATOR_GRAFANA_PORT}
-      - REPLICA_NUM=${REPLICA_NUM}
-      - MASA_BASE_URL=${MASA_BASE_URL}
+      - ROLE=${ROLE:-miner}
+      - NETUID=${NETUID:-42}
+      - SUBTENSOR_NETWORK=${SUBTENSOR_NETWORK:-test}
+      - WALLET_NAME=${WALLET_NAME:-miner}
+      - HOTKEY_NAME=${HOTKEY_NAME:-default}
+      - MINER_AXON_PORT=${MINER_PORT:-8091}
+      - MINER_METRICS_PORT=${METRICS_PORT:-8092}
+      - MINER_GRAFANA_PORT=${GRAFANA_PORT:-3000}
+      - VALIDATOR_AXON_PORT=${VALIDATOR_AXON_PORT:-8093}
+      - VALIDATOR_METRICS_PORT=${VALIDATOR_METRICS_PORT:-8094}
+      - VALIDATOR_GRAFANA_PORT=${VALIDATOR_GRAFANA_PORT:-3001}
+      - REPLICA_NUM=${REPLICA_NUM:-1}
+      - MASA_BASE_URL=${MASA_BASE_URL:-https://test.protocol-api.masa.ai}
       - API_URL=${API_URL}
     volumes:
       - ./.env:/app/.env
@@ -40,7 +40,7 @@ services:
       - ./neurons:/app/neurons
     entrypoint: ["python", "-u", "-m", "startup"]
     ports:
-      - "${MINER_PORT}:${MINER_PORT}"
-      - "${METRICS_PORT}:${METRICS_PORT}"
-      - "${GRAFANA_PORT}:${GRAFANA_PORT}"
+      - "${MINER_PORT}:${MINER_PORT:-8091}"
+      - "${METRICS_PORT}:${METRICS_PORT:-8092}"
+      - "${GRAFANA_PORT}:${GRAFANA_PORT:-3000}"
     restart: unless-stopped
