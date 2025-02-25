@@ -30,3 +30,10 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+dependencies = [
+    "bittensor>=9.0.0",
+    "masa-ai>=0.2.7",
+    "aiohttp>=3.10.11",
+    "fastapi>=0.110.3",
+    "loguru>=0.7.3",
+]
