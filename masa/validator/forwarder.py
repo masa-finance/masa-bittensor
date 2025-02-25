@@ -349,8 +349,6 @@ class Forwarder:
         invalid_tweet_uids = set()
         successful_uids = set()
 
-        all_valid_tweets = []  # Initialize the list to collect all valid tweets
-
         for response, uid in zip(responses, miner_uids):
             try:
                 if not response:
@@ -419,16 +417,9 @@ class Forwarder:
                         all_tweets_valid = False
                         break  # Break inner loop
 
-                # If any tweet failed validation, skip this miner
-                if not all_tweets_valid:
-                    invalid_tweet_uids.add(uid)
-                    self.validator.scorer.add_volume(uid, 0, current_block)
-                    continue  # Skip to next miner
-
                 bt.logging.info(
                     f"✅ {self.format_miner_info(uid)} PASSED - {len(all_responses)} valid tweets"
                 )
-                successful_uids.add(uid)
 
                 # Check for duplicates - if number of unique IDs doesn't match total tweets, batch has duplicates
                 unique_ids = {tweet["Tweet"]["ID"] for tweet in all_responses}
@@ -436,7 +427,7 @@ class Forwarder:
                     bt.logging.info(
                         f"❌ {self.format_miner_info(uid)} FAILED - batch contains duplicates"
                     )
-                    self.validator.scorer.add_volume(uid, 0, current_block)
+                    all_tweets_valid = False
                     continue  # Skip to next miner
 
                 # Continue with validation of a random tweet from the set
@@ -481,9 +472,10 @@ class Forwarder:
                 )
 
                 if not query_in_tweet:
-                    bt.logging.debug(
+                    bt.logging.info(
                         f"❌ Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
+                    all_tweets_valid = False
 
                 tweet_timestamp = datetime.fromtimestamp(
                     random_tweet.get("Timestamp", 0), UTC
@@ -498,6 +490,7 @@ class Forwarder:
                     bt.logging.debug(
                         f"❌ Timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
+                    all_tweets_valid = False
 
                 # Log validation results for both checks
                 tweet_url = self.format_tweet_url(random_tweet.get("ID"))
@@ -507,28 +500,6 @@ class Forwarder:
                 bt.logging.info(
                     f"{'✅' if is_since_date_requested else '❌'} Timestamp ({tweet_timestamp.strftime('%Y-%m-%d %H:%M:%S')} >= {yesterday.strftime('%Y-%m-%d')}): {tweet_url}"
                 )
-
-                # Only add to all_valid_tweets if all validation checks pass
-                if query_in_tweet and is_since_date_requested:
-                    all_valid_tweets.extend(
-                        all_responses
-                    )  # Add all tweets from this miner
-                    bt.logging.info(
-                        f"✅ Adding {len(all_responses)} validated tweets from {self.format_miner_info(uid)}"
-                    )
-                else:
-                    # Log why validation failed
-                    failures = []
-                    if not query_in_tweet:
-                        failures.append("query match")
-                    if not is_since_date_requested:
-                        failures.append("timestamp")
-                    bt.logging.info(
-                        f"❌ Sample tweet failed local validation ({', '.join(failures)}): {self.format_tweet_url(random_tweet.get('ID'))}"
-                    )
-                    # Set volume to 0 for this miner and continue to next
-                    self.validator.scorer.add_volume(uid, 0, current_block)
-                    continue
 
                 # note, score only unique tweets per miner (uid)
                 uid_int = int(uid)
@@ -564,15 +535,30 @@ class Forwarder:
                     self.validator.scorer.add_volume(
                         uid_int, len(updates), current_block
                     )
+
+                # If all tweets passed validation, export this batch
+                if all_tweets_valid:
+                    bt.logging.info(
+                        f"✅ All tweets from {self.format_miner_info(uid)} passed validation, exporting batch"
+                    )
+                    # Export valid batch directly to API
+                    await self.validator.export_tweets(
+                        list(
+                            {
+                                tweet["Tweet"]["ID"]: tweet for tweet in all_responses
+                            }.values()
+                        ),
+                        query.strip().replace('"', ""),
+                    )
+                    successful_uids.add(uid)
+                else:
+                    bt.logging.info(
+                        f"❌ Not all tweets from {self.format_miner_info(uid)} passed validation, skipping batch"
+                    )
+                    invalid_tweet_uids.add(uid)
             except Exception as e:
                 bt.logging.error(f"Error processing miner {uid}: {e}")
                 continue
-
-        # Send tweets to API
-        await self.validator.export_tweets(
-            list({tweet["Tweet"]["ID"]: tweet for tweet in all_valid_tweets}.values()),
-            query.strip().replace('"', ""),
-        )
 
         # Log detailed summary of all miners
         bt.logging.info("📊 Miner Response Summary:")
