@@ -69,12 +69,6 @@ class Forwarder:
         if not ascii_id.isdigit() or ascii_id.startswith("0"):
             return False
 
-        # Check length (Twitter IDs are typically 15-20 digits)
-        if not (15 <= len(ascii_id) <= 20):
-            return False
-
-        return True
-
     async def forward_request(
         self,
         request: Any,
