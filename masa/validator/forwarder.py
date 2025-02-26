@@ -282,15 +282,133 @@ class Forwarder:
                         f"failed to fetch subnet config from GitHub: {response.status}"
                     )
 
+    async def validate_tweet_batch(
+        self, uid: int, all_responses: list, random_keyword: str
+    ) -> bool:
+        """
+        Validate a batch of tweets from a miner. Performs all validation checks in sequence:
+        1. Basic structure and ID validation
+        2. Duplicate detection within batch
+        3. Query matching
+        4. Timestamp validation
+        5. Existence verification via masa-ai
+
+        Returns True only if ALL validation checks pass.
+        """
+        try:
+            # Flag to track if all tweets passed validation
+            all_tweets_valid = True
+
+            # Validate all tweets first
+            for i, tweet in enumerate(all_responses, 1):
+                if not (
+                    "Tweet" in tweet and "ID" in tweet["Tweet"] and tweet["Tweet"]["ID"]
+                ):
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(uid)} FAILED - malformed tweet at position {i}/{len(all_responses)} | Tweet: {tweet}"
+                    )
+                    all_tweets_valid = False
+                    break  # Break inner loop
+
+                tweet_id = tweet["Tweet"]["ID"]
+                if not self.strict_tweet_id_validation(tweet_id):
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(uid)} FAILED - invalid tweet ID at position {i}/{len(all_responses)} | ID: {tweet_id}\n"
+                        f"    Tweet Text: {tweet['Tweet'].get('Text', 'NO_TEXT')}\n"
+                        f"    Full Tweet: {tweet}"
+                    )
+                    all_tweets_valid = False
+                    break  # Break inner loop
+
+            # Check for duplicates - if number of unique IDs doesn't match total tweets, batch has duplicates
+            unique_ids = {tweet["Tweet"]["ID"] for tweet in all_responses}
+            if len(unique_ids) != len(all_responses):
+                bt.logging.info(
+                    f"❌ {self.format_miner_info(uid)} FAILED - batch contains duplicates"
+                )
+                all_tweets_valid = False
+                return False  # Return early since batch has duplicates
+
+            # Continue with validation of a random tweet from the set
+            random_tweet = dict(random.choice(all_responses)).get("Tweet", {})
+
+            # Add detailed logging of the sample tweet
+            bt.logging.info(
+                f"\n🔍 Sample Tweet Validation Details for {self.format_miner_info(uid)}:\n"
+                f"    ID: {random_tweet.get('ID')}\n"
+                f"    Text: {random_tweet.get('Text', 'NO_TEXT')}\n"
+                f"    Username: {random_tweet.get('Username', 'NO_USERNAME')}\n"
+                f"    Name: {random_tweet.get('Name', 'NO_NAME')}\n"
+                f"    Timestamp: {datetime.fromtimestamp(random_tweet.get('Timestamp', 0), UTC)}\n"
+                f"    URL: {self.format_tweet_url(random_tweet.get('ID'))}"
+            )
+
+            query_words = (
+                self.normalize_whitespace(random_keyword.replace('"', ""))
+                .strip()
+                .lower()
+                .split()
+            )
+
+            fields_to_check = [
+                self.normalize_whitespace(random_tweet.get("Text", "")).strip().lower(),
+                self.normalize_whitespace(random_tweet.get("Name", "")).strip().lower(),
+                self.normalize_whitespace(random_tweet.get("Username", ""))
+                .strip()
+                .lower(),
+                self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
+                .strip()
+                .lower(),
+            ]
+
+            query_in_tweet = all(
+                any(word in field for field in fields_to_check) for word in query_words
+            )
+
+            if not query_in_tweet:
+                bt.logging.info(
+                    f"❌ Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                )
+                all_tweets_valid = False
+
+            tweet_timestamp = datetime.fromtimestamp(
+                random_tweet.get("Timestamp", 0), UTC
+            )
+
+            yesterday = datetime.now(UTC).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) - timedelta(days=1)
+            is_since_date_requested = yesterday <= tweet_timestamp
+
+            if not is_since_date_requested:
+                bt.logging.debug(
+                    f"❌ Timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                )
+                all_tweets_valid = False
+
+            # Log validation results for both checks
+            tweet_url = self.format_tweet_url(random_tweet.get("ID"))
+            bt.logging.info(
+                f"{'✅' if query_in_tweet else '❌'} Query match ({random_keyword}): {tweet_url}"
+            )
+            bt.logging.info(
+                f"{'✅' if is_since_date_requested else '❌'} Timestamp ({tweet_timestamp.strftime('%Y-%m-%d %H:%M:%S')} >= {yesterday.strftime('%Y-%m-%d')}): {tweet_url}"
+            )
+
+            return all_tweets_valid
+
+        except Exception as e:
+            bt.logging.error(
+                f"Error validating tweets from {self.format_miner_info(uid)}: {e}"
+            )
+            return False
+
     async def get_miners_volumes(self, current_block: int):
         if len(self.validator.versions) == 0:
             bt.logging.info("Pinging axons to get miner versions...")
             return await self.ping_axons(current_block)
         if len(self.validator.keywords) == 0 or self.check_tempo(current_block):
             await self.fetch_twitter_queries()
-        # Comment out the GitHub config fetch to use only the local config
-        # if len(self.validator.subnet_config) == 0 or self.check_tempo(current_block):
-        #     await self.fetch_subnet_config()
 
         # Reset uncalled_uids if empty
         if len(self.validator.uncalled_uids) == 0:
@@ -332,7 +450,7 @@ class Forwarder:
             query=query,
             timeout=timeout,
         )
-        formatted_responses, miner_uids = await self.forward_request(
+        responses, miner_uids = await self.forward_request(
             request,
             sample_size=sample_size,
             timeout=timeout,
@@ -349,7 +467,7 @@ class Forwarder:
         invalid_tweet_uids = set()
         successful_uids = set()
 
-        for response, uid in zip(formatted_responses, miner_uids):
+        for response, uid in zip(responses, miner_uids):
             try:
                 if not response:
                     bt.logging.info(
@@ -358,13 +476,38 @@ class Forwarder:
                     no_response_uids.add(uid)
                     continue
 
-                all_responses = response.get("response", [])
+                try:
+                    # First check if we got a None response inside a valid dict
+                    if isinstance(response, dict) and response.get("response") is None:
+                        bt.logging.info(
+                            f"❌ {self.format_miner_info(uid)} FAILED - miner returned None response (likely timeout)"
+                        )
+                        no_response_uids.add(
+                            uid
+                        )  # This is actually a timeout/no response case
+                        continue
+
+                    all_responses = response.get("response", [])
+                    bt.logging.debug(
+                        f"Raw response from {self.format_miner_info(uid)}: {response}"
+                    )
+                except Exception as e:
+                    bt.logging.info(
+                        f"❌ {self.format_miner_info(uid)} FAILED - malformed response | Error: {e} | Raw: {response}"
+                    )
+                    empty_response_uids.add(uid)
+                    continue
+
                 if not all_responses:
                     bt.logging.info(
                         f"❌ {self.format_miner_info(uid)} FAILED - empty response array | Response: {response}"
                     )
                     empty_response_uids.add(uid)
                     continue
+
+                bt.logging.info(
+                    f"Processing {len(all_responses)} tweets from {self.format_miner_info(uid)}"
+                )
 
                 # Validate the batch
                 if await self.validate_tweet_batch(uid, all_responses, random_keyword):
@@ -405,16 +548,57 @@ class Forwarder:
                             uid_int, len(updates), current_block
                         )
 
-                    # Export the batch
                     bt.logging.info(
                         f"✅ All {len(all_responses)} tweets from {self.format_miner_info(uid)} passed validation, exporting batch"
                     )
+
+                    # DETAILED EXPORT LOGGING
+                    tweet_ids = [tweet["Tweet"]["ID"] for tweet in all_responses]
+                    bt.logging.info(
+                        f"🚀 EXPORTING {len(all_responses)} tweets from {self.format_miner_info(uid)}"
+                    )
+                    # Show just the first few IDs as examples
+                    sample_size = min(3, len(tweet_ids))
+                    if sample_size > 0:
+                        sample_ids = tweet_ids[:sample_size]
+                        bt.logging.info(
+                            f"Sample IDs: {sample_ids}{' + more...' if len(tweet_ids) > sample_size else ''}"
+                        )
+
+                    # Add TimeParsed field to each tweet before export
+                    current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                    for tweet in all_responses:
+                        if "Tweet" in tweet:
+                            tweet["Tweet"]["TimeParsed"] = current_time_str
+
+                    # Log details of what's being exported without redundant deduplication
+                    for i, tweet in enumerate(
+                        all_responses[:3]
+                    ):  # Log first 3 tweets as sample
+                        bt.logging.info(
+                            f"  Tweet {i+1}/{min(3, len(all_responses))} Sample:\n"
+                            f"    ID: {tweet['Tweet']['ID']}\n"
+                            f"    Text: {tweet['Tweet'].get('Text', '')[:100]}...\n"
+                            f"    URL: {self.format_tweet_url(tweet['Tweet']['ID'])}\n"
+                            f"    TimeParsed: {tweet['Tweet']['TimeParsed']}\n"
+                        )
+
+                    if len(all_responses) > 3:
+                        bt.logging.info(
+                            f"  ... and {len(all_responses) - 3} more tweets"
+                        )
+
+                    # Export valid batch directly to API
                     await self.validator.export_tweets(
                         all_responses,
-                        random_keyword.strip().replace('"', ""),
+                        query.strip().replace('"', ""),
                     )
                     successful_uids.add(uid)
-
+                else:
+                    bt.logging.info(
+                        f"❌ Not all tweets from {self.format_miner_info(uid)} passed validation, skipping batch"
+                    )
+                    invalid_tweet_uids.add(uid)
             except Exception as e:
                 bt.logging.error(f"Error processing miner {uid}: {e}")
                 continue
@@ -469,124 +653,3 @@ class Forwarder:
         except (IndexError, AttributeError):
             # Fallback if we can't get the hotkey for some reason
             return f"Miner {uid}"
-
-    async def validate_tweet_batch(
-        self, uid: int, all_responses: list, random_keyword: str
-    ) -> bool:
-        """
-        Validate a batch of tweets from a miner. Performs all validation checks in sequence:
-        1. Basic structure and ID validation
-        2. Duplicate detection within batch
-        3. Query matching
-        4. Timestamp validation
-        5. Existence verification via masa-ai
-
-        Returns True only if ALL validation checks pass.
-        """
-        try:
-            # Validate all tweets first
-            for i, tweet in enumerate(all_responses, 1):
-                if not (
-                    "Tweet" in tweet and "ID" in tweet["Tweet"] and tweet["Tweet"]["ID"]
-                ):
-                    bt.logging.info(
-                        f"❌ {self.format_miner_info(uid)} FAILED - malformed tweet at position {i}/{len(all_responses)} | Tweet: {tweet}"
-                    )
-                    return False
-
-                tweet_id = tweet["Tweet"]["ID"]
-                if not self.strict_tweet_id_validation(tweet_id):
-                    bt.logging.info(
-                        f"❌ {self.format_miner_info(uid)} FAILED - invalid tweet ID at position {i}/{len(all_responses)} | ID: {tweet_id}\n"
-                        f"    Tweet Text: {tweet['Tweet'].get('Text', 'NO_TEXT')}\n"
-                        f"    Full Tweet: {tweet}"
-                    )
-                    return False
-
-            # Check for duplicates within batch
-            unique_ids = {tweet["Tweet"]["ID"] for tweet in all_responses}
-            if len(unique_ids) != len(all_responses):
-                bt.logging.info(
-                    f"❌ {self.format_miner_info(uid)} FAILED - batch contains duplicates"
-                )
-                return False
-
-            # Select and validate a random tweet from the set
-            random_tweet = dict(random.choice(all_responses)).get("Tweet", {})
-
-            # Log the sample tweet details
-            bt.logging.info(
-                f"\n🔍 Sample Tweet Validation Details for {self.format_miner_info(uid)}:\n"
-                f"    ID: {random_tweet.get('ID')}\n"
-                f"    Text: {random_tweet.get('Text', 'NO_TEXT')}\n"
-                f"    Username: {random_tweet.get('Username', 'NO_USERNAME')}\n"
-                f"    Name: {random_tweet.get('Name', 'NO_NAME')}\n"
-                f"    Timestamp: {datetime.fromtimestamp(random_tweet.get('Timestamp', 0), UTC)}\n"
-                f"    URL: {self.format_tweet_url(random_tweet.get('ID'))}"
-            )
-
-            # Check query match
-            query_words = (
-                self.normalize_whitespace(random_keyword.replace('"', ""))
-                .strip()
-                .lower()
-                .split()
-            )
-
-            fields_to_check = [
-                self.normalize_whitespace(random_tweet.get("Text", "")).strip().lower(),
-                self.normalize_whitespace(random_tweet.get("Name", "")).strip().lower(),
-                self.normalize_whitespace(random_tweet.get("Username", ""))
-                .strip()
-                .lower(),
-                self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
-                .strip()
-                .lower(),
-            ]
-
-            query_in_tweet = all(
-                any(word in field for field in fields_to_check) for word in query_words
-            )
-
-            if not query_in_tweet:
-                bt.logging.info(
-                    f"❌ Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
-                )
-                return False
-
-            # Check timestamp
-            tweet_timestamp = datetime.fromtimestamp(
-                random_tweet.get("Timestamp", 0), UTC
-            )
-            yesterday = datetime.now(UTC).replace(
-                hour=0, minute=0, second=0, microsecond=0
-            ) - timedelta(days=1)
-            is_since_date_requested = yesterday <= tweet_timestamp
-
-            if not is_since_date_requested:
-                bt.logging.debug(
-                    f"❌ Timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
-                )
-                return False
-
-            # Log validation results
-            tweet_url = self.format_tweet_url(random_tweet.get("ID"))
-            bt.logging.info(
-                f"{'✅' if query_in_tweet else '❌'} Query match ({random_keyword}): {tweet_url}"
-            )
-            bt.logging.info(
-                f"{'✅' if is_since_date_requested else '❌'} Timestamp ({tweet_timestamp.strftime('%Y-%m-%d %H:%M:%S')} >= {yesterday.strftime('%Y-%m-%d')}): {tweet_url}"
-            )
-
-            # Finally, verify tweet exists via masa-ai
-            tweet_exists = await self.validate_tweet_exists(random_tweet.get("ID"))
-            if not tweet_exists:
-                return False
-
-            return True
-
-        except Exception as e:
-            bt.logging.error(
-                f"Error validating tweets from {self.format_miner_info(uid)}: {e}"
-            )
-            return False
