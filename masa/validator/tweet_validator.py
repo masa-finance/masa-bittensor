@@ -26,7 +26,6 @@ class TweetValidator:
     ) -> bool:
         """
         Validate a tweet by checking it against the Masa protocol API.
-        Currently disabled - always returns True.
 
         Args:
             tweet_id (str): The ID of the tweet to validate
@@ -39,7 +38,38 @@ class TweetValidator:
         Returns:
             bool: True if the tweet is valid, False otherwise
         """
-        bt.logging.debug(
-            f"Tweet validation disabled - automatically passing tweet {tweet_id}"
-        )
-        return True
+        if not self.api_key:
+            bt.logging.error("No API key configured for tweet validation")
+            return False
+
+        try:
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            payload = {
+                "id": tweet_id,
+                "name": name,
+                "username": username,
+                "text": text,
+                "timestamp": timestamp,
+                "hashtags": hashtags,
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}{self.api_path}", headers=headers, json=payload
+                ) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        is_valid = result.get("exists", False)
+                        bt.logging.debug(
+                            f"Tweet {tweet_id} validation result: {is_valid}"
+                        )
+                        return is_valid
+                    else:
+                        bt.logging.error(
+                            f"Tweet validation API returned status {response.status}"
+                        )
+                        return False
+
+        except Exception as e:
+            bt.logging.error(f"Error validating tweet {tweet_id}: {str(e)}")
+            return False
