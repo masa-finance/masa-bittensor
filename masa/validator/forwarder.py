@@ -425,7 +425,7 @@ class Forwarder:
                                     f"🔍 Attempting to validate tweet {random_tweet.get('ID')} with masa-ai validator (attempt {attempt + 1}/3)"
                                 )
                                 bt.logging.info(
-                                    f"📤 Sending to validator:\n"
+                                    f"📤 Sending to masa-ai for validation:\n"
                                     f"    tweet_id: {random_tweet.get('ID')}\n"
                                     f"    expected_name: {random_tweet.get('Name')}\n"
                                     f"    expected_username: {random_tweet.get('Username')}\n"
