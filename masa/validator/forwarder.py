@@ -302,7 +302,7 @@ class Forwarder:
             # Create TweetValidator instance from masa-ai package
             validator = TweetValidator()
 
-            # Validate all tweets first
+            # Validate all tweets first for basic structure
             for i, tweet in enumerate(all_responses, 1):
                 if not (
                     "Tweet" in tweet and "ID" in tweet["Tweet"] and tweet["Tweet"]["ID"]
@@ -323,125 +323,142 @@ class Forwarder:
                     all_tweets_valid = False
                     break  # Break inner loop
 
-            # Check for duplicates - if number of unique IDs doesn't match total tweets, batch has duplicates
+            # Check for duplicates
             unique_ids = {tweet["Tweet"]["ID"] for tweet in all_responses}
             if len(unique_ids) != len(all_responses):
                 bt.logging.info(
                     f"❌ {self.format_miner_info(uid)} FAILED - batch contains duplicates"
                 )
                 all_tweets_valid = False
-                return False  # Return early since batch has duplicates
+                return False
 
-            # Continue with validation of a random tweet from the set
-            random_tweet = dict(random.choice(all_responses)).get("Tweet", {})
+            # Select 5 random tweets for validation
+            num_tweets_to_validate = min(5, len(all_responses))
+            random_tweets = random.sample(all_responses, num_tweets_to_validate)
 
-            # Add detailed logging of the sample tweet
-            bt.logging.info(
-                f"\n🔍 Sample Tweet Validation Details for {self.format_miner_info(uid)}:\n"
-                f"    ID: {random_tweet.get('ID')}\n"
-                f"    Text: {random_tweet.get('Text', 'NO_TEXT')}\n"
-                f"    Username: {random_tweet.get('Username', 'NO_USERNAME')}\n"
-                f"    Name: {random_tweet.get('Name', 'NO_NAME')}\n"
-                f"    Timestamp: {datetime.fromtimestamp(random_tweet.get('Timestamp', 0), UTC)}\n"
-                f"    URL: {self.format_tweet_url(random_tweet.get('ID'))}"
-            )
+            # Validate each selected tweet
+            for i, tweet_data in enumerate(random_tweets, 1):
+                random_tweet = dict(tweet_data).get("Tweet", {})
+                random_tweet_id = random_tweet.get("ID")
+                bt.logging.info(f"Selected tweet {random_tweet_id} for validation")
 
-            query_words = (
-                self.normalize_whitespace(random_keyword.replace('"', ""))
-                .strip()
-                .lower()
-                .split()
-            )
-
-            fields_to_check = [
-                self.normalize_whitespace(random_tweet.get("Text", "")).strip().lower(),
-                self.normalize_whitespace(random_tweet.get("Name", "")).strip().lower(),
-                self.normalize_whitespace(random_tweet.get("Username", ""))
-                .strip()
-                .lower(),
-                self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
-                .strip()
-                .lower(),
-            ]
-
-            query_in_tweet = all(
-                any(word in field for field in fields_to_check) for word in query_words
-            )
-
-            if not query_in_tweet:
+                # Add detailed logging of the sample tweet
                 bt.logging.info(
-                    f"❌ Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                    f"\n🔍 Sample Tweet Validation Details for {self.format_miner_info(uid)}:\n"
+                    f"    ID: {random_tweet.get('ID')}\n"
+                    f"    Text: {random_tweet.get('Text', 'NO_TEXT')}\n"
+                    f"    Username: {random_tweet.get('Username', 'NO_USERNAME')}\n"
+                    f"    Name: {random_tweet.get('Name', 'NO_NAME')}\n"
+                    f"    Timestamp: {datetime.fromtimestamp(random_tweet.get('Timestamp', 0), UTC)}\n"
+                    f"    URL: {self.format_tweet_url(random_tweet.get('ID'))}"
                 )
-                all_tweets_valid = False
 
-            tweet_timestamp = datetime.fromtimestamp(
-                random_tweet.get("Timestamp", 0), UTC
-            )
-
-            yesterday = datetime.now(UTC).replace(
-                hour=0, minute=0, second=0, microsecond=0
-            ) - timedelta(days=1)
-            is_since_date_requested = yesterday <= tweet_timestamp
-
-            if not is_since_date_requested:
-                bt.logging.debug(
-                    f"❌ Timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                query_words = (
+                    self.normalize_whitespace(random_keyword.replace('"', ""))
+                    .strip()
+                    .lower()
+                    .split()
                 )
-                all_tweets_valid = False
 
-            # Log validation results for both checks
-            tweet_url = self.format_tweet_url(random_tweet.get("ID"))
-            bt.logging.info(
-                f"{'✅' if query_in_tweet else '❌'} Query match ({random_keyword}): {tweet_url}"
-            )
-            bt.logging.info(
-                f"{'✅' if is_since_date_requested else '❌'} Timestamp ({tweet_timestamp.strftime('%Y-%m-%d %H:%M:%S')} >= {yesterday.strftime('%Y-%m-%d')}): {tweet_url}"
-            )
+                fields_to_check = [
+                    self.normalize_whitespace(random_tweet.get("Text", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Name", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(random_tweet.get("Username", ""))
+                    .strip()
+                    .lower(),
+                    self.normalize_whitespace(str(random_tweet.get("Hashtags", [])))
+                    .strip()
+                    .lower(),
+                ]
 
-            # Only proceed with masa-ai validation if other checks passed
-            if all_tweets_valid:
-                try:
-                    # Validate the randomly selected tweet with masa-ai's TweetValidator
+                query_in_tweet = all(
+                    any(word in field for field in fields_to_check)
+                    for word in query_words
+                )
+
+                if not query_in_tweet:
                     bt.logging.info(
-                        f"🔍 Attempting to validate tweet {random_tweet.get('ID')} with masa-ai validator"
+                        f"❌ Query match check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
                     )
-                    bt.logging.info(
-                        f"📤 Sending to validator:\n"
-                        f"    tweet_id: {random_tweet.get('ID')}\n"
-                        f"    expected_name: {random_tweet.get('Name')}\n"
-                        f"    expected_username: {random_tweet.get('Username')}\n"
-                        f"    expected_text: {random_tweet.get('Text')}\n"
-                        f"    expected_timestamp: {random_tweet.get('Timestamp')}\n"
-                        f"    expected_hashtags: {random_tweet.get('Hashtags', [])}"
-                    )
-                    is_valid = validator.validate_tweet(
-                        tweet_id=random_tweet.get("ID"),
-                        expected_name=random_tweet.get("Name"),
-                        expected_username=random_tweet.get("Username"),
-                        expected_text=random_tweet.get("Text"),
-                        expected_timestamp=random_tweet.get("Timestamp"),
-                        expected_hashtags=random_tweet.get("Hashtags", []),
-                    )
-                    if is_valid:
-                        bt.logging.info(
-                            f"✅ Tweet {tweet_url} passed masa-ai validation"
-                        )
-                    else:
-                        bt.logging.info(
-                            f"❌ Tweet {tweet_url} failed masa-ai validation"
-                        )
-                        all_tweets_valid = False
-                except Exception as e:
-                    error_msg = str(e)
-                    if "404" in error_msg:
-                        bt.logging.info(
-                            f"❌ Tweet {tweet_url} CONFIRMED FAKE - Twitter API returned 404"
-                        )
-                    else:
-                        bt.logging.warning(
-                            f"⚠️ Could not verify tweet {tweet_url} - masa-ai validation error: {e}"
-                        )
                     all_tweets_valid = False
+
+                tweet_timestamp = datetime.fromtimestamp(
+                    random_tweet.get("Timestamp", 0), UTC
+                )
+
+                yesterday = datetime.now(UTC).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                ) - timedelta(days=1)
+                is_since_date_requested = yesterday <= tweet_timestamp
+
+                if not is_since_date_requested:
+                    bt.logging.debug(
+                        f"❌ Timestamp check failed for {self.format_tweet_url(random_tweet.get('ID'))}"
+                    )
+                    all_tweets_valid = False
+
+                # Log validation results for both checks
+                tweet_url = self.format_tweet_url(random_tweet.get("ID"))
+                bt.logging.info(
+                    f"{'✅' if query_in_tweet else '❌'} Query match ({random_keyword}): {tweet_url}"
+                )
+                bt.logging.info(
+                    f"{'✅' if is_since_date_requested else '❌'} Timestamp ({tweet_timestamp.strftime('%Y-%m-%d %H:%M:%S')} >= {yesterday.strftime('%Y-%m-%d')}): {tweet_url}"
+                )
+
+                # Only proceed with masa-ai validation if other checks passed
+                if all_tweets_valid:
+                    try:
+                        # Validate with masa-ai's TweetValidator
+                        bt.logging.info(
+                            f"🔍 Attempting to validate tweet {random_tweet.get('ID')} with masa-ai validator"
+                        )
+                        bt.logging.info(
+                            f"📤 Sending to validator:\n"
+                            f"    tweet_id: {random_tweet.get('ID')}\n"
+                            f"    expected_name: {random_tweet.get('Name')}\n"
+                            f"    expected_username: {random_tweet.get('Username')}\n"
+                            f"    expected_text: {random_tweet.get('Text')}\n"
+                            f"    expected_timestamp: {random_tweet.get('Timestamp')}\n"
+                            f"    expected_hashtags: {random_tweet.get('Hashtags', [])}"
+                        )
+                        is_valid = validator.validate_tweet(
+                            tweet_id=random_tweet.get("ID"),
+                            expected_name=random_tweet.get("Name"),
+                            expected_username=random_tweet.get("Username"),
+                            expected_text=random_tweet.get("Text"),
+                            expected_timestamp=random_tweet.get("Timestamp"),
+                            expected_hashtags=random_tweet.get("Hashtags", []),
+                        )
+                        if is_valid:
+                            bt.logging.info(
+                                f"✅ Tweet {tweet_url} passed masa-ai validation"
+                            )
+                        else:
+                            bt.logging.info(
+                                f"❌ Tweet {tweet_url} failed masa-ai validation"
+                            )
+                            all_tweets_valid = False
+                    except Exception as e:
+                        error_msg = str(e)
+                        if "404" in error_msg:
+                            bt.logging.info(
+                                f"❌ Tweet {tweet_url} CONFIRMED FAKE - Twitter API returned 404"
+                            )
+                        else:
+                            bt.logging.warning(
+                                f"⚠️ Could not verify tweet {tweet_url} - masa-ai validation error: {e}"
+                            )
+                        all_tweets_valid = False
+
+                # Add 2-second delay between validations (except for the last tweet)
+                if i < num_tweets_to_validate:
+                    bt.logging.info("Waiting 2 seconds before next tweet validation...")
+                    await asyncio.sleep(2)
 
             return all_tweets_valid
 
