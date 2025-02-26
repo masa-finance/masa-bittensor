@@ -38,8 +38,7 @@ from masa.utils.uids import (
 )
 
 # Used only for trending queries functionality
-from masa_ai.tools.validator import TrendingQueries
-from masa.validator.tweet_validator import TweetValidator
+from masa_ai.tools.validator import TrendingQueries, TweetValidator
 
 import re
 import sys
@@ -300,7 +299,7 @@ class Forwarder:
             # Flag to track if all tweets passed validation
             all_tweets_valid = True
 
-            # Create TweetValidator instance for masa-ai validation
+            # Create TweetValidator instance from masa-ai package
             validator = TweetValidator()
 
             # Validate all tweets first
@@ -402,8 +401,8 @@ class Forwarder:
             # Only proceed with masa-ai validation if other checks passed
             if all_tweets_valid:
                 try:
-                    # Validate the randomly selected tweet with masa-ai
-                    is_valid = await validator.validate_tweet(
+                    # Validate the randomly selected tweet with masa-ai's TweetValidator
+                    is_valid = validator.validate(
                         random_tweet.get("ID"),
                         random_tweet.get("Name"),
                         random_tweet.get("Username"),
