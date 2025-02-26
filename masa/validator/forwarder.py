@@ -39,6 +39,7 @@ from masa.utils.uids import (
 
 # Used only for trending queries functionality
 from masa_ai.tools.validator import TrendingQueries
+from masa.validator.tweet_validator import TweetValidator
 
 import re
 import sys
@@ -299,6 +300,9 @@ class Forwarder:
             # Flag to track if all tweets passed validation
             all_tweets_valid = True
 
+            # Create TweetValidator instance for masa-ai validation
+            validator = TweetValidator()
+
             # Validate all tweets first
             for i, tweet in enumerate(all_responses, 1):
                 if not (
@@ -394,6 +398,31 @@ class Forwarder:
             bt.logging.info(
                 f"{'✅' if is_since_date_requested else '❌'} Timestamp ({tweet_timestamp.strftime('%Y-%m-%d %H:%M:%S')} >= {yesterday.strftime('%Y-%m-%d')}): {tweet_url}"
             )
+
+            # Only proceed with masa-ai validation if other checks passed
+            if all_tweets_valid:
+                try:
+                    # Validate the randomly selected tweet with masa-ai
+                    is_valid = await validator.validate_tweet(
+                        random_tweet.get("ID"),
+                        random_tweet.get("Name"),
+                        random_tweet.get("Username"),
+                        random_tweet.get("Text"),
+                        random_tweet.get("Timestamp"),
+                        random_tweet.get("Hashtags", []),
+                    )
+                    if is_valid:
+                        bt.logging.info(
+                            f"✅ Tweet {tweet_url} passed masa-ai validation"
+                        )
+                    else:
+                        bt.logging.info(
+                            f"❌ Tweet {tweet_url} failed masa-ai validation"
+                        )
+                        all_tweets_valid = False
+                except Exception as e:
+                    bt.logging.error(f"Failed to validate tweet with masa-ai: {e}")
+                    all_tweets_valid = False
 
             return all_tweets_valid
 
