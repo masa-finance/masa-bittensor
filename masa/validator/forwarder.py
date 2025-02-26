@@ -449,11 +449,15 @@ class Forwarder:
                             bt.logging.info(
                                 f"❌ Tweet {tweet_url} CONFIRMED FAKE - Twitter API returned 404"
                             )
+                            all_tweets_valid = False
                         else:
                             bt.logging.warning(
-                                f"⚠️ Could not verify tweet {tweet_url} - masa-ai validation error: {e}"
+                                f"⚠️ Could not verify tweet {tweet_url} with masa-ai due to technical error: {e}"
                             )
-                        all_tweets_valid = False
+                            # Don't fail validation for technical errors
+                            bt.logging.info(
+                                f"✅ Tweet {tweet_url} passed validation (masa-ai check skipped)"
+                            )
 
                 # Add 2-second delay between validations (except for the last tweet)
                 if i < num_tweets_to_validate:
