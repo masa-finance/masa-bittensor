@@ -446,7 +446,7 @@ class Forwarder:
                                 )
                                 # Capture masa-ai's logs to check for 404
                                 log_handler = LogCaptureHandler()
-                                bt.logging.addHandler(log_handler)
+                                logging.getLogger().addHandler(log_handler)
 
                                 is_valid = validator.validate_tweet(
                                     tweet_id=random_tweet.get("ID"),
@@ -462,7 +462,7 @@ class Forwarder:
                                     "404 Client Error" in log
                                     for log in log_handler.logs
                                 )
-                                bt.logging.removeHandler(log_handler)
+                                logging.getLogger().removeHandler(log_handler)
 
                                 if is_valid:
                                     successful_validations += 1
