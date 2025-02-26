@@ -332,8 +332,8 @@ class Forwarder:
                 all_tweets_valid = False
                 return False
 
-            # Select 5 random tweets for validation
-            num_tweets_to_validate = min(5, len(all_responses))
+            # Select 3 random tweets for validation
+            num_tweets_to_validate = min(3, len(all_responses))
             random_tweets = random.sample(all_responses, num_tweets_to_validate)
 
             # Validate each selected tweet
