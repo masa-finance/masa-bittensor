@@ -418,6 +418,7 @@ class Forwarder:
                         successful_validations = 0
 
                         for attempt in range(3):
+                            validation_attempts += 1
                             try:
                                 # Validate with masa-ai's TweetValidator
                                 bt.logging.info(
@@ -440,7 +441,6 @@ class Forwarder:
                                     expected_timestamp=random_tweet.get("Timestamp"),
                                     expected_hashtags=random_tweet.get("Hashtags", []),
                                 )
-                                validation_attempts += 1
                                 if is_valid:
                                     successful_validations += 1
                                     bt.logging.info(
@@ -453,7 +453,6 @@ class Forwarder:
 
                             except Exception as e:
                                 error_msg = str(e)
-                                validation_attempts += 1
                                 if "404" in error_msg:
                                     bt.logging.info(
                                         f"❌ Tweet {tweet_url} received 404 from Twitter API on attempt {attempt + 1}"
@@ -463,9 +462,12 @@ class Forwarder:
                                         f"⚠️ Could not verify tweet {tweet_url} with masa-ai on attempt {attempt + 1} due to technical error: {e}"
                                     )
 
-                            # Add a small delay between attempts
+                            # Add a delay between attempts (3 seconds)
                             if attempt < 2:  # Don't delay after the last attempt
-                                await asyncio.sleep(1)
+                                bt.logging.info(
+                                    "Waiting 3 seconds before next validation attempt..."
+                                )
+                                await asyncio.sleep(3)
 
                         # After all attempts, check if we got enough successful validations
                         if successful_validations >= 2:
@@ -484,10 +486,10 @@ class Forwarder:
                         )
                         all_tweets_valid = False
 
-                # Add 2-second delay between validations (except for the last tweet)
+                # Add 5-second delay between validating different tweets (except for the last tweet)
                 if i < num_tweets_to_validate:
-                    bt.logging.info("Waiting 2 seconds before next tweet validation...")
-                    await asyncio.sleep(2)
+                    bt.logging.info("Waiting 5 seconds before validating next tweet...")
+                    await asyncio.sleep(5)
 
             return all_tweets_valid
 
