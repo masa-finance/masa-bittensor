@@ -455,8 +455,8 @@ class Forwarder:
 
                             except Exception as e:
                                 error_msg = str(e)
-                                # Check if masa-ai logs contain ERROR 404
-                                if "ERROR 404" in error_msg:
+                                # Check if masa-ai logged an ERROR 404
+                                if "ERROR 404" in self.validator.last_logs:
                                     bt.logging.info(
                                         f"❌ Tweet {tweet_url} received 404 from Twitter API on attempt {attempt + 1}"
                                     )
