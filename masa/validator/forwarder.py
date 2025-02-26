@@ -425,7 +425,7 @@ class Forwarder:
                                     f"🔍 Attempting to validate tweet {random_tweet.get('ID')} with masa-ai validator (attempt {attempt + 1}/3)"
                                 )
                                 bt.logging.info(
-                                    f"📤 Sending to masa-ai for validation:\n"
+                                    f"📤 Sending to validator:\n"
                                     f"    tweet_id: {random_tweet.get('ID')}\n"
                                     f"    expected_name: {random_tweet.get('Name')}\n"
                                     f"    expected_username: {random_tweet.get('Username')}\n"
@@ -433,43 +433,32 @@ class Forwarder:
                                     f"    expected_timestamp: {random_tweet.get('Timestamp')}\n"
                                     f"    expected_hashtags: {random_tweet.get('Hashtags', [])}"
                                 )
-                                try:
-                                    is_valid = validator.validate_tweet(
-                                        tweet_id=random_tweet.get("ID"),
-                                        expected_name=random_tweet.get("Name"),
-                                        expected_username=random_tweet.get("Username"),
-                                        expected_text=random_tweet.get("Text"),
-                                        expected_timestamp=random_tweet.get(
-                                            "Timestamp"
-                                        ),
-                                        expected_hashtags=random_tweet.get(
-                                            "Hashtags", []
-                                        ),
+                                is_valid = validator.validate_tweet(
+                                    tweet_id=random_tweet.get("ID"),
+                                    expected_name=random_tweet.get("Name"),
+                                    expected_username=random_tweet.get("Username"),
+                                    expected_text=random_tweet.get("Text"),
+                                    expected_timestamp=random_tweet.get("Timestamp"),
+                                    expected_hashtags=random_tweet.get("Hashtags", []),
+                                )
+                                if is_valid:
+                                    successful_validations += 1
+                                    bt.logging.info(
+                                        f"✅ Tweet {tweet_url} passed masa-ai validation on attempt {attempt + 1}"
                                     )
-                                    if is_valid:
-                                        successful_validations += 1
+                                    # Early exit if we have enough successes
+                                    if successful_validations >= 2:
                                         bt.logging.info(
-                                            f"✅ Tweet {tweet_url} passed masa-ai validation on attempt {attempt + 1}"
+                                            f"✅ Tweet {tweet_url} passed masa-ai validation ({successful_validations}/{validation_attempts} attempts successful)"
                                         )
-                                    else:
-                                        bt.logging.info(
-                                            f"❌ Tweet {tweet_url} failed masa-ai validation on attempt {attempt + 1}"
-                                        )
-                                except Exception as validation_error:
-                                    error_msg = str(validation_error)
-                                    if "404" in error_msg:
-                                        bt.logging.info(
-                                            f"❌ Tweet {tweet_url} received 404 from Twitter API on attempt {attempt + 1}"
-                                        )
-                                    else:
-                                        bt.logging.info(
-                                            f"❓ Tweet {tweet_url} encountered technical error on attempt {attempt + 1}: {validation_error}"
-                                        )
-                                        successful_validations += 1
+                                        break
 
                             except Exception as e:
                                 error_msg = str(e)
-                                if "404" in error_msg:
+                                if (
+                                    "404" in error_msg.lower()
+                                    or "not found" in error_msg.lower()
+                                ):
                                     bt.logging.info(
                                         f"❌ Tweet {tweet_url} received 404 from Twitter API on attempt {attempt + 1}"
                                     )
@@ -478,9 +467,17 @@ class Forwarder:
                                         f"❓ Tweet {tweet_url} encountered technical error on attempt {attempt + 1}: {e}"
                                     )
                                     successful_validations += 1
+                                    # Early exit if we have enough successes
+                                    if successful_validations >= 2:
+                                        bt.logging.info(
+                                            f"✅ Tweet {tweet_url} passed masa-ai validation ({successful_validations}/{validation_attempts} attempts successful)"
+                                        )
+                                        break
 
                             # Add a delay between attempts (3 seconds)
-                            if attempt < 2:  # Don't delay after the last attempt
+                            if (
+                                attempt < 2 and successful_validations < 2
+                            ):  # Don't delay if we've succeeded or it's the last attempt
                                 bt.logging.info(
                                     "Waiting 3 seconds before next validation attempt..."
                                 )
@@ -489,7 +486,7 @@ class Forwarder:
                         # After all attempts, check if we got enough successful validations
                         if successful_validations >= 2:
                             bt.logging.info(
-                                f"✅ Tweet {tweet_url} passed masa-ai validation ({successful_validations}/3 attempts successful)"
+                                f"✅ Tweet {tweet_url} passed masa-ai validation ({successful_validations}/{validation_attempts} attempts successful)"
                             )
                         else:
                             bt.logging.info(
