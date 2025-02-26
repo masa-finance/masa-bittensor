@@ -402,6 +402,18 @@ class Forwarder:
             if all_tweets_valid:
                 try:
                     # Validate the randomly selected tweet with masa-ai's TweetValidator
+                    bt.logging.info(
+                        f"🔍 Attempting to validate tweet {random_tweet.get('ID')} with masa-ai validator"
+                    )
+                    bt.logging.info(
+                        f"📤 Sending to validator:\n"
+                        f"    tweet_id: {random_tweet.get('ID')}\n"
+                        f"    expected_name: {random_tweet.get('Name')}\n"
+                        f"    expected_username: {random_tweet.get('Username')}\n"
+                        f"    expected_text: {random_tweet.get('Text')}\n"
+                        f"    expected_timestamp: {random_tweet.get('Timestamp')}\n"
+                        f"    expected_hashtags: {random_tweet.get('Hashtags', [])}"
+                    )
                     is_valid = validator.validate_tweet(
                         tweet_id=random_tweet.get("ID"),
                         expected_name=random_tweet.get("Name"),
@@ -420,7 +432,15 @@ class Forwarder:
                         )
                         all_tweets_valid = False
                 except Exception as e:
-                    bt.logging.error(f"Failed to validate tweet with masa-ai: {e}")
+                    error_msg = str(e)
+                    if "404" in error_msg:
+                        bt.logging.info(
+                            f"❌ Tweet {tweet_url} CONFIRMED FAKE - Twitter API returned 404"
+                        )
+                    else:
+                        bt.logging.warning(
+                            f"⚠️ Could not verify tweet {tweet_url} - masa-ai validation error: {e}"
+                        )
                     all_tweets_valid = False
 
             return all_tweets_valid
