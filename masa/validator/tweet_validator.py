@@ -53,12 +53,16 @@ class TweetValidator:
                 "hashtags": hashtags,
             }
 
+            bt.logging.debug(
+                f"Sending validation request for tweet {tweet_id} to {self.base_url}{self.api_path}"
+            )
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.base_url}{self.api_path}", headers=headers, json=payload
                 ) as response:
+                    response_text = await response.text()
                     if response.status == 200:
-                        result = await response.json()
+                        result = json.loads(response_text)
                         is_valid = result.get("exists", False)
                         bt.logging.debug(
                             f"Tweet {tweet_id} validation result: {is_valid}"
@@ -66,7 +70,10 @@ class TweetValidator:
                         return is_valid
                     else:
                         bt.logging.error(
-                            f"Tweet validation API returned status {response.status}"
+                            f"Tweet validation API returned status {response.status}\n"
+                            f"URL: {self.base_url}{self.api_path}\n"
+                            f"Request payload: {json.dumps(payload, indent=2)}\n"
+                            f"Response body: {response_text}"
                         )
                         return False
 
