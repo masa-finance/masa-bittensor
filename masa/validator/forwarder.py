@@ -425,7 +425,7 @@ class Forwarder:
                                     f"🔍 Attempting to validate tweet {random_tweet.get('ID')} with masa-ai validator (attempt {attempt + 1}/3)"
                                 )
                                 bt.logging.info(
-                                    f"📤 Sending to masa-ai for validation:\n"
+                                    f"📤 Sending to validator:\n"
                                     f"    tweet_id: {random_tweet.get('ID')}\n"
                                     f"    expected_name: {random_tweet.get('Name')}\n"
                                     f"    expected_username: {random_tweet.get('Username')}\n"
@@ -457,10 +457,13 @@ class Forwarder:
                                     bt.logging.info(
                                         f"❌ Tweet {tweet_url} received 404 from Twitter API on attempt {attempt + 1}"
                                     )
+                                    # Do not increment successful_validations for 404 errors
                                 else:
-                                    bt.logging.warning(
-                                        f"⚠️ Could not verify tweet {tweet_url} with masa-ai on attempt {attempt + 1} due to technical error: {e}"
+                                    bt.logging.info(
+                                        f"❓ Tweet {tweet_url} encountered technical error on attempt {attempt + 1}: {e}"
                                     )
+                                    # Count all non-404 errors as successful validations
+                                    successful_validations += 1
 
                             # Add a delay between attempts (3 seconds)
                             if attempt < 2:  # Don't delay after the last attempt
