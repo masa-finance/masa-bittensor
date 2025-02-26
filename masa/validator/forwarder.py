@@ -455,14 +455,13 @@ class Forwarder:
 
                             except Exception as e:
                                 error_msg = str(e)
-                                if (
-                                    "404" in error_msg.lower()
-                                    or "not found" in error_msg.lower()
-                                ):
+                                # Check if masa-ai logs contain ERROR 404
+                                if "ERROR 404" in error_msg:
                                     bt.logging.info(
                                         f"❌ Tweet {tweet_url} received 404 from Twitter API on attempt {attempt + 1}"
                                     )
                                 else:
+                                    # Everything else is a technical glitch
                                     bt.logging.info(
                                         f"❓ Tweet {tweet_url} encountered technical error on attempt {attempt + 1}: {e}"
                                     )
