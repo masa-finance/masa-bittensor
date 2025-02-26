@@ -43,7 +43,6 @@ from masa_ai.tools.validator import TrendingQueries, TweetValidator
 import re
 import sys
 import os
-import traceback
 
 
 class Forwarder:
@@ -402,25 +401,7 @@ class Forwarder:
             # Only proceed with masa-ai validation if other checks passed
             if all_tweets_valid:
                 try:
-                    bt.logging.info(
-                        f"\n🔍 Attempting to validate tweet {random_tweet.get('ID')} with masa-ai validator"
-                    )
-
-                    # Create validator instance
-                    validator = TweetValidator()
-
-                    # Log what we're sending
-                    bt.logging.info(
-                        f"\n📤 Sending to validator:\n"
-                        f"    tweet_id: {random_tweet.get('ID')}\n"
-                        f"    expected_name: {random_tweet.get('Name')}\n"
-                        f"    expected_username: {random_tweet.get('Username')}\n"
-                        f"    expected_text: {random_tweet.get('Text')}\n"
-                        f"    expected_timestamp: {random_tweet.get('Timestamp')}\n"
-                        f"    expected_hashtags: {random_tweet.get('Hashtags', [])}"
-                    )
-
-                    # Call validate_tweet and capture result
+                    # Validate the randomly selected tweet with masa-ai's TweetValidator
                     is_valid = validator.validate_tweet(
                         tweet_id=random_tweet.get("ID"),
                         expected_name=random_tweet.get("Name"),
@@ -429,26 +410,17 @@ class Forwarder:
                         expected_timestamp=random_tweet.get("Timestamp"),
                         expected_hashtags=random_tweet.get("Hashtags", []),
                     )
-
                     if is_valid:
                         bt.logging.info(
                             f"✅ Tweet {tweet_url} passed masa-ai validation"
                         )
                     else:
-                        bt.logging.error(
+                        bt.logging.info(
                             f"❌ Tweet {tweet_url} failed masa-ai validation"
                         )
-
-                    all_tweets_valid = is_valid
-
+                        all_tweets_valid = False
                 except Exception as e:
-                    bt.logging.error(
-                        f"Error during masa-ai validation:\n"
-                        f"    Error Type: {type(e).__name__}\n"
-                        f"    Error Message: {str(e)}\n"
-                        f"    Tweet ID: {random_tweet.get('ID')}\n"
-                        f"    Full Error: {traceback.format_exc()}"
-                    )
+                    bt.logging.error(f"Failed to validate tweet with masa-ai: {e}")
                     all_tweets_valid = False
 
             return all_tweets_valid
@@ -533,16 +505,6 @@ class Forwarder:
                     continue
 
                 try:
-                    # First check if we got a None response inside a valid dict
-                    if isinstance(response, dict) and response.get("response") is None:
-                        bt.logging.info(
-                            f"❌ {self.format_miner_info(uid)} FAILED - miner returned None response (likely timeout)"
-                        )
-                        no_response_uids.add(
-                            uid
-                        )  # This is actually a timeout/no response case
-                        continue
-
                     all_responses = response.get("response", [])
                     bt.logging.debug(
                         f"Raw response from {self.format_miner_info(uid)}: {response}"
@@ -556,9 +518,9 @@ class Forwarder:
 
                 if not all_responses:
                     bt.logging.info(
-                        f"❌ {self.format_miner_info(uid)} FAILED - empty response array | Response: {response}"
+                        f"✅ {self.format_miner_info(uid)} returned no tweets"
                     )
-                    empty_response_uids.add(uid)
+                    successful_uids.add(uid)  # This is a valid response
                     continue
 
                 bt.logging.info(
