@@ -413,51 +413,76 @@ class Forwarder:
                 # Only proceed with masa-ai validation if other checks passed
                 if all_tweets_valid:
                     try:
-                        # Validate with masa-ai's TweetValidator
-                        bt.logging.info(
-                            f"🔍 Attempting to validate tweet {random_tweet.get('ID')} with masa-ai validator"
-                        )
-                        bt.logging.info(
-                            f"📤 Sending to validator:\n"
-                            f"    tweet_id: {random_tweet.get('ID')}\n"
-                            f"    expected_name: {random_tweet.get('Name')}\n"
-                            f"    expected_username: {random_tweet.get('Username')}\n"
-                            f"    expected_text: {random_tweet.get('Text')}\n"
-                            f"    expected_timestamp: {random_tweet.get('Timestamp')}\n"
-                            f"    expected_hashtags: {random_tweet.get('Hashtags', [])}"
-                        )
-                        is_valid = validator.validate_tweet(
-                            tweet_id=random_tweet.get("ID"),
-                            expected_name=random_tweet.get("Name"),
-                            expected_username=random_tweet.get("Username"),
-                            expected_text=random_tweet.get("Text"),
-                            expected_timestamp=random_tweet.get("Timestamp"),
-                            expected_hashtags=random_tweet.get("Hashtags", []),
-                        )
-                        if is_valid:
+                        # Make 3 attempts at masa-ai validation
+                        validation_attempts = 0
+                        successful_validations = 0
+
+                        for attempt in range(3):
+                            try:
+                                # Validate with masa-ai's TweetValidator
+                                bt.logging.info(
+                                    f"🔍 Attempting to validate tweet {random_tweet.get('ID')} with masa-ai validator (attempt {attempt + 1}/3)"
+                                )
+                                bt.logging.info(
+                                    f"📤 Sending to validator:\n"
+                                    f"    tweet_id: {random_tweet.get('ID')}\n"
+                                    f"    expected_name: {random_tweet.get('Name')}\n"
+                                    f"    expected_username: {random_tweet.get('Username')}\n"
+                                    f"    expected_text: {random_tweet.get('Text')}\n"
+                                    f"    expected_timestamp: {random_tweet.get('Timestamp')}\n"
+                                    f"    expected_hashtags: {random_tweet.get('Hashtags', [])}"
+                                )
+                                is_valid = validator.validate_tweet(
+                                    tweet_id=random_tweet.get("ID"),
+                                    expected_name=random_tweet.get("Name"),
+                                    expected_username=random_tweet.get("Username"),
+                                    expected_text=random_tweet.get("Text"),
+                                    expected_timestamp=random_tweet.get("Timestamp"),
+                                    expected_hashtags=random_tweet.get("Hashtags", []),
+                                )
+                                validation_attempts += 1
+                                if is_valid:
+                                    successful_validations += 1
+                                    bt.logging.info(
+                                        f"✅ Tweet {tweet_url} passed masa-ai validation on attempt {attempt + 1}"
+                                    )
+                                else:
+                                    bt.logging.info(
+                                        f"❌ Tweet {tweet_url} failed masa-ai validation on attempt {attempt + 1}"
+                                    )
+
+                            except Exception as e:
+                                error_msg = str(e)
+                                validation_attempts += 1
+                                if "404" in error_msg:
+                                    bt.logging.info(
+                                        f"❌ Tweet {tweet_url} received 404 from Twitter API on attempt {attempt + 1}"
+                                    )
+                                else:
+                                    bt.logging.warning(
+                                        f"⚠️ Could not verify tweet {tweet_url} with masa-ai on attempt {attempt + 1} due to technical error: {e}"
+                                    )
+
+                            # Add a small delay between attempts
+                            if attempt < 2:  # Don't delay after the last attempt
+                                await asyncio.sleep(1)
+
+                        # After all attempts, check if we got enough successful validations
+                        if successful_validations >= 2:
                             bt.logging.info(
-                                f"✅ Tweet {tweet_url} passed masa-ai validation"
+                                f"✅ Tweet {tweet_url} passed masa-ai validation ({successful_validations}/3 attempts successful)"
                             )
                         else:
                             bt.logging.info(
-                                f"❌ Tweet {tweet_url} failed masa-ai validation"
+                                f"❌ Tweet {tweet_url} failed masa-ai validation (only {successful_validations}/{validation_attempts} attempts successful)"
                             )
                             all_tweets_valid = False
+
                     except Exception as e:
-                        error_msg = str(e)
-                        if "404" in error_msg:
-                            bt.logging.info(
-                                f"❌ Tweet {tweet_url} CONFIRMED FAKE - Twitter API returned 404"
-                            )
-                            all_tweets_valid = False
-                        else:
-                            bt.logging.warning(
-                                f"⚠️ Could not verify tweet {tweet_url} with masa-ai due to technical error: {e}"
-                            )
-                            # Don't fail validation for technical errors
-                            bt.logging.info(
-                                f"✅ Tweet {tweet_url} passed validation (masa-ai check skipped)"
-                            )
+                        bt.logging.error(
+                            f"Unexpected error during masa-ai validation: {e}"
+                        )
+                        all_tweets_valid = False
 
                 # Add 2-second delay between validations (except for the last tweet)
                 if i < num_tweets_to_validate:
