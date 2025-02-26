@@ -458,6 +458,7 @@ class Forwarder:
                                 )
 
                                 # Check if it was a 404
+                                bt.logging.info(f"Captured logs: {log_handler.logs}")
                                 is_404 = any(
                                     "404 Client Error" in log
                                     for log in log_handler.logs
