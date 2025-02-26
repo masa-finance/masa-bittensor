@@ -446,9 +446,19 @@ class Forwarder:
                                 )
                                 # Capture masa-ai's logs to check for 404
                                 log_handler = LogCaptureHandler()
+                                log_handler.setLevel(
+                                    logging.DEBUG
+                                )  # Ensure handler captures all levels
+                                formatter = logging.Formatter("%(message)s")
+                                log_handler.setFormatter(formatter)
+
                                 masa_logger = logging.getLogger(
                                     "masa_ai.tools.validator.validate_tweet"
                                 )
+                                masa_logger.setLevel(
+                                    logging.DEBUG
+                                )  # Ensure logger emits all levels
+                                masa_logger.propagate = True  # Ensure logs propagate up
                                 masa_logger.addHandler(log_handler)
 
                                 is_valid = validator.validate_tweet(
