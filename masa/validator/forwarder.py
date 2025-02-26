@@ -417,10 +417,6 @@ class Forwarder:
                         all_tweets_valid = False
                         break  # Break inner loop
 
-                bt.logging.info(
-                    f"✅ {self.format_miner_info(uid)} PASSED - {len(all_responses)} valid tweets"
-                )
-
                 # Check for duplicates - if number of unique IDs doesn't match total tweets, batch has duplicates
                 unique_ids = {tweet["Tweet"]["ID"] for tweet in all_responses}
                 if len(unique_ids) != len(all_responses):
@@ -501,45 +497,47 @@ class Forwarder:
                     f"{'✅' if is_since_date_requested else '❌'} Timestamp ({tweet_timestamp.strftime('%Y-%m-%d %H:%M:%S')} >= {yesterday.strftime('%Y-%m-%d')}): {tweet_url}"
                 )
 
-                # note, score only unique tweets per miner (uid)
-                uid_int = int(uid)
+                # If all tweets passed validation, handle volume scoring and export
+                if all_tweets_valid:
+                    uid_int = int(uid)
 
-                if not self.validator.tweets_by_uid.get(uid_int):
-                    self.validator.tweets_by_uid[uid_int] = {
-                        tweet["Tweet"]["ID"] for tweet in all_responses
-                    }
-                    new_tweet_count = len(all_responses)
-                    self.validator.scorer.add_volume(
-                        uid_int, new_tweet_count, current_block
-                    )
-                    bt.logging.info(
-                        f"First submission from {self.format_miner_info(uid_int)}: {new_tweet_count} new tweets"
-                    )
-                else:
-                    existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
-                    new_tweet_ids = {tweet["Tweet"]["ID"] for tweet in all_responses}
-                    updates = new_tweet_ids - existing_tweet_ids
-                    duplicate_with_history = len(new_tweet_ids) - len(updates)
-
-                    if duplicate_with_history > 0:
+                    # Handle volume scoring
+                    if not self.validator.tweets_by_uid.get(uid_int):
+                        self.validator.tweets_by_uid[uid_int] = {
+                            tweet["Tweet"]["ID"] for tweet in all_responses
+                        }
+                        new_tweet_count = len(all_responses)
+                        self.validator.scorer.add_volume(
+                            uid_int, new_tweet_count, current_block
+                        )
                         bt.logging.info(
-                            f"Found {duplicate_with_history} previously seen tweets from {self.format_miner_info(uid_int)} "
-                            f"(reduced from {len(new_tweet_ids)} to {len(updates)} new tweets)"
+                            f"First submission from {self.format_miner_info(uid_int)}: {new_tweet_count} new tweets"
                         )
                     else:
-                        bt.logging.debug(
-                            f"All {len(new_tweet_ids)} tweets from {self.format_miner_info(uid_int)} are new"
+                        existing_tweet_ids = self.validator.tweets_by_uid[uid_int]
+                        new_tweet_ids = {
+                            tweet["Tweet"]["ID"] for tweet in all_responses
+                        }
+                        updates = new_tweet_ids - existing_tweet_ids
+                        duplicate_with_history = len(new_tweet_ids) - len(updates)
+
+                        if duplicate_with_history > 0:
+                            bt.logging.info(
+                                f"Found {duplicate_with_history} previously seen tweets from {self.format_miner_info(uid_int)} "
+                                f"(reduced from {len(new_tweet_ids)} to {len(updates)} new tweets)"
+                            )
+                        else:
+                            bt.logging.debug(
+                                f"All {len(new_tweet_ids)} tweets from {self.format_miner_info(uid_int)} are new"
+                            )
+
+                        self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
+                        self.validator.scorer.add_volume(
+                            uid_int, len(updates), current_block
                         )
 
-                    self.validator.tweets_by_uid[uid_int].update(new_tweet_ids)
-                    self.validator.scorer.add_volume(
-                        uid_int, len(updates), current_block
-                    )
-
-                # If all tweets passed validation, export this batch
-                if all_tweets_valid:
                     bt.logging.info(
-                        f"✅ All tweets from {self.format_miner_info(uid)} passed validation, exporting batch"
+                        f"✅ All {len(all_responses)} tweets from {self.format_miner_info(uid)} passed validation, exporting batch"
                     )
 
                     # DETAILED EXPORT LOGGING
