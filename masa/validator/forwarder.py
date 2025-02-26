@@ -632,67 +632,6 @@ class Forwarder:
         """Format a tweet ID into an x.com URL."""
         return f"https://x.com/i/status/{tweet_id}"
 
-    async def process_response(self, uid: int, response: Any) -> None:
-        """Process a single miner's response."""
-        try:
-            # Spot check validation
-            if await self.validate_spot_check(uid, response):
-                bt.logging.debug(f"Miner {uid} passed spot check")
-
-                # Process tweet counts
-                if len(response.get("tweets", [])) > 0:
-                    new_tweets = len(
-                        [t for t in response["tweets"] if self.is_new_tweet(t)]
-                    )
-                    total_tweets = len(response["tweets"])
-
-                    if new_tweets == total_tweets:
-                        bt.logging.debug(
-                            f"Miner {uid} produced {new_tweets} new tweets"
-                        )
-                    else:
-                        bt.logging.debug(
-                            f"Miner {uid} produced {new_tweets} new tweets (total: {total_tweets})"
-                        )
-
-                    # Log sample tweet URL at debug level
-                    if response["tweets"]:
-                        sample_tweet = response["tweets"][0]
-                        bt.logging.debug(
-                            f"Sample tweet from miner {uid}: {self.format_tweet_url(sample_tweet['id'])}"
-                        )
-            else:
-                bt.logging.debug(f"Miner {uid} failed spot check")
-
-        except Exception as e:
-            bt.logging.error(f"Error processing response from miner {uid}: {e}")
-
-    async def validate_spot_check(self, uid: int, response: Any) -> bool:
-        """Validate a random tweet from the response."""
-        try:
-            if not response or not response.get("tweets"):
-                return False
-
-            random_tweet = random.choice(response["tweets"])
-            tweet_id = random_tweet.get("id")
-
-            is_valid = await self.validate_tweet(random_tweet)
-
-            if is_valid:
-                bt.logging.info(
-                    f"Tweet validation passed: {self.format_tweet_url(tweet_id)}"
-                )
-            else:
-                bt.logging.info(
-                    f"Tweet validation failed: {self.format_tweet_url(tweet_id)}"
-                )
-
-            return is_valid
-
-        except Exception as e:
-            bt.logging.error(f"Error in spot check for miner {uid}: {e}")
-            return False
-
     # Helper function to format miner info
     def format_miner_info(self, uid: int) -> str:
         """Format miner info with TaoStats link using hotkey."""
