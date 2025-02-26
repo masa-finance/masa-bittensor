@@ -45,15 +45,20 @@ import sys
 import os
 
 import logging
+from loguru import logger
+import io
 
 
-class LogCaptureHandler(logging.Handler):
+class LogCaptureHandler:
     def __init__(self):
-        super().__init__()
         self.logs = []
+        self.output = io.StringIO()
 
-    def emit(self, record):
-        self.logs.append(record.getMessage())
+    def write(self, message):
+        self.logs.append(message.strip())
+
+    def flush(self):
+        pass
 
 
 class Forwarder:
@@ -446,20 +451,7 @@ class Forwarder:
                                 )
                                 # Capture masa-ai's logs to check for 404
                                 log_handler = LogCaptureHandler()
-                                log_handler.setLevel(
-                                    logging.DEBUG
-                                )  # Ensure handler captures all levels
-                                formatter = logging.Formatter("%(message)s")
-                                log_handler.setFormatter(formatter)
-
-                                masa_logger = logging.getLogger(
-                                    "masa_ai.tools.validator.validate_tweet"
-                                )
-                                masa_logger.setLevel(
-                                    logging.DEBUG
-                                )  # Ensure logger emits all levels
-                                masa_logger.propagate = True  # Ensure logs propagate up
-                                masa_logger.addHandler(log_handler)
+                                logger.add(log_handler, format="{message}")
 
                                 is_valid = validator.validate_tweet(
                                     tweet_id=random_tweet.get("ID"),
@@ -476,7 +468,7 @@ class Forwarder:
                                     "404 Client Error" in log
                                     for log in log_handler.logs
                                 )
-                                masa_logger.removeHandler(log_handler)
+                                logger.remove()
 
                                 if is_valid:
                                     successful_validations += 1
