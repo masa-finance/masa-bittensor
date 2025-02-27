@@ -123,11 +123,11 @@ class BaseNeuron(ABC):
 
         if self.spec_version < weights_version:
             bt.logging.warning(
-                f"🟡 Code is outdated based on subnet requirements! Required: {weights_version}, Current: {self.spec_version} (v{__version__}). Please update your code to the latest release!"
+                f"🟡 Code is outdated! Current: {self.spec_version}, Required: {weights_version}. Please update your code to the latest release!"
             )
         else:
             bt.logging.success(
-                f"🟢 Code is up to date! Current: {self.spec_version} (v{__version__}), Required: {weights_version}"
+                f"🟢 Code is up to date! Current: {self.spec_version}, Required: {weights_version}"
             )
 
         # Each miner gets a unique identity (UID) in the network for differentiation.

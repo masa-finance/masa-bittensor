@@ -17,7 +17,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 # Define the code version for miners / validators.  This must match weights_version on the subnet!  If not, validators won't be able to set weights, and miners will get a warning.
-__version__ = "1.5.0"
+from importlib.metadata import version
+
+__version__ = version("masa")
 version_split = __version__.split(".")
 __spec_version__ = (
     (100 * int(version_split[0]))
